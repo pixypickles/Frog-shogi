@@ -1,26 +1,15 @@
-池将棋MIX 試作 v0.6.1
+池将棋MIX 試作 v0.6.2
 
-404修正版
+変更点
+- 蓮の葉判定マスを大幅に増加（盤面の過半数）
+- 1マスごとの葉だけでなく、複数マスをまとめて覆う大きな蓮の葉を6枚追加
+- 大きな葉の上でも駒・移動候補が見えるようレイヤー調整
+- 戦闘ページ遷移を ./jump-battle.html / ./water-battle.html と明示
 
-GitHub Pagesで battle/jump/index.html や battle/water/index.html が
-404になる環境があったため、戦闘ページと必要ファイルをすべてルート直下へ移しました。
+戦闘
+- 蓮の葉マス → ジャンプ戦
+- 水中マス → 縦持ち水中戦
 
-配置するファイル
-- index.html
-- game.js
-- style.css
-- jump-battle.html
-- jump-battle.js
-- jump-battle.css
-- water-battle.html
-- water-battle.js
-- water-battle.css
-- frog-fighter-logo.png
-
-駒取り時
-- 蓮の葉マス → jump-battle.html
-- 水中マス → water-battle.html（縦持ち）
-- 戦闘終了 → index.html に戻って盤面へ結果反映
-
-GitHub Pagesへ上げる場合は、ZIP内の pond-shogi-mix-v0.6.1 フォルダの
-「中身」をそのまま公開ルートへ置いてください。
+404が続く場合
+公開先に jump-battle.html / water-battle.html が実際に存在するか確認してください。
+次段階ではページ遷移自体を無くし、同じindex.html内で戦闘を開く方式にも変更できます。

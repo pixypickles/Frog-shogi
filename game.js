@@ -54,7 +54,17 @@
     'カワズさん':['ファントムラッシュ','水圧ラッシュ','ミラージュキック','スピンキックカッター','方向キー1回転＋舌（隠し）']
   };
 
-  const LOTUS=[[0,0],[0,2],[0,4],[0,6],[0,8],[1,1],[1,3],[1,5],[1,7],[2,0],[2,4],[2,8],[3,2],[3,6],[4,0],[4,4],[4,8],[5,2],[5,6],[6,0],[6,4],[6,8],[7,1],[7,3],[7,5],[7,7],[8,0],[8,2],[8,4],[8,6],[8,8]];
+  const LOTUS=[
+    [0,0],[0,1],[0,2],[0,4],[0,6],[0,7],[0,8],
+    [1,0],[1,1],[1,2],[1,3],[1,5],[1,6],[1,7],[1,8],
+    [2,0],[2,1],[2,3],[2,4],[2,5],[2,7],[2,8],
+    [3,0],[3,2],[3,3],[3,4],[3,5],[3,6],[3,8],
+    [4,0],[4,1],[4,2],[4,4],[4,6],[4,7],[4,8],
+    [5,0],[5,2],[5,3],[5,4],[5,5],[5,6],[5,8],
+    [6,0],[6,1],[6,3],[6,4],[6,5],[6,7],[6,8],
+    [7,0],[7,1],[7,2],[7,4],[7,6],[7,7],[7,8],
+    [8,0],[8,1],[8,2],[8,4],[8,6],[8,7],[8,8]
+  ];
   const lotusSet=new Set(LOTUS.map(x=>x.join(',')));
   const $=id=>document.getElementById(id), boardEl=$('board'), statusText=$('statusText'), turnBadge=$('turnBadge'), moveCountEl=$('moveCount'), modal=$('battleModal');
   let assignments=JSON.parse(JSON.stringify(RECOMMENDED)), state;
@@ -84,6 +94,21 @@
 
   function render(){
     boardEl.innerHTML='';
+    // 複数マスをまとめて覆う大きな蓮の葉。見た目だけでなく、
+    // 下の LOTUS セル群もジャンプ戦判定にしている。
+    [
+      {x:9,y:8,w:31,h:24,rot:-13},
+      {x:54,y:5,w:34,h:25,rot:11},
+      {x:31,y:31,w:40,h:29,rot:-5},
+      {x:3,y:52,w:34,h:26,rot:14},
+      {x:62,y:52,w:34,h:26,rot:-12},
+      {x:30,y:73,w:39,h:24,rot:7}
+    ].forEach((v,i)=>{
+      const leaf=document.createElement('div');
+      leaf.className='lotus-mass';
+      leaf.style.cssText=`left:${v.x}%;top:${v.y}%;width:${v.w}%;height:${v.h}%;--mass-rot:${v.rot}deg;--mass-delay:${i*-0.7}s`;
+      boardEl.appendChild(leaf);
+    });
     for(let r=0;r<9;r++)for(let c=0;c<9;c++){
       const cell=document.createElement('button'); cell.type='button'; cell.className=`cell ${lotusSet.has(`${r},${c}`)?'lotus':'water'}`; cell.style.setProperty('--leaf-rot',`${((r*17+c*29)%70)-35}deg`); cell.dataset.r=r;cell.dataset.c=c;
       const legal=state.legal.find(m=>m.r===r&&m.c===c); if(state.selected&&state.selected.r===r&&state.selected.c===c)cell.classList.add('selected'); if(legal)cell.classList.add(legal.capture?'capture':'legal');
@@ -168,7 +193,7 @@
       playerRole,
       terrain,
       node:`${b.fr},${b.fc}->${b.tr},${b.tc}`,
-      returnUrl:'index.html'
+      returnUrl:'./index.html'
     };
     try{
       sessionStorage.removeItem('mixBattleResult');
@@ -182,7 +207,7 @@
     }
     statusText.textContent=`${terrain==='lotus'?'蓮の葉ジャンプ':'水中'}バトルへ移動します…`;
     render();
-    const battlePage=terrain==='lotus'?'jump-battle.html':'water-battle.html';
+    const battlePage=terrain==='lotus'?'./jump-battle.html':'./water-battle.html';
     location.href=`${battlePage}?mix=1&battle=1`;
   }
 
