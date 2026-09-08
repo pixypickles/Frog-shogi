@@ -1,17 +1,26 @@
-池将棋MIX 試作 v0.6
+池将棋MIX 試作 v0.6.1
 
-今回の大きな変更
-- 駒取り時の仮ダイアログを廃止し、実際の格闘ゲームへ接続
-- 蓮の葉マスで駒取り → JUMP v2.49 の蓮の葉ジャンプバトル
-- 水中マスで駒取り → Water v2.0.18 の水中バトル
-- 水中MIX戦は縦持ちを強制して、そのまま縦画面でプレイ
-- 天使軍が攻める場合：プレイヤーが攻撃側を操作
-- 悪魔軍CPUが攻める場合：プレイヤーが防御側を操作
-- 攻撃側は役割HP（95～100%）、防御側はその約1/3から開始
-- 戦闘終了後「将棋盤へ戻る」で盤面を復元し、勝敗を駒取りへ反映
-- 防御側が勝った場合は駒取り阻止。双方の駒は元の位置に残る
-- 王／玉が戦闘で敗北した場合はその場で対局終了
+404修正版
 
-注意
-- 成り、持ち駒、王手・詰み判定など完全な将棋ルールはまだ未実装
-- バトル中の残HPは次の戦闘へ持ち越さず、遭遇ごとに役割HPから開始
+GitHub Pagesで battle/jump/index.html や battle/water/index.html が
+404になる環境があったため、戦闘ページと必要ファイルをすべてルート直下へ移しました。
+
+配置するファイル
+- index.html
+- game.js
+- style.css
+- jump-battle.html
+- jump-battle.js
+- jump-battle.css
+- water-battle.html
+- water-battle.js
+- water-battle.css
+- frog-fighter-logo.png
+
+駒取り時
+- 蓮の葉マス → jump-battle.html
+- 水中マス → water-battle.html（縦持ち）
+- 戦闘終了 → index.html に戻って盤面へ結果反映
+
+GitHub Pagesへ上げる場合は、ZIP内の pond-shogi-mix-v0.6.1 フォルダの
+「中身」をそのまま公開ルートへ置いてください。

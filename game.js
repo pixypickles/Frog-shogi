@@ -168,7 +168,7 @@
       playerRole,
       terrain,
       node:`${b.fr},${b.fc}->${b.tr},${b.tc}`,
-      returnUrl:'../../index.html'
+      returnUrl:'index.html'
     };
     try{
       sessionStorage.removeItem('mixBattleResult');
@@ -182,7 +182,7 @@
     }
     statusText.textContent=`${terrain==='lotus'?'蓮の葉ジャンプ':'水中'}バトルへ移動します…`;
     render();
-    const battlePage=terrain==='lotus'?'battle/jump/index.html':'battle/water/index.html';
+    const battlePage=terrain==='lotus'?'jump-battle.html':'water-battle.html';
     location.href=`${battlePage}?mix=1&battle=1`;
   }
 
