@@ -3227,6 +3227,7 @@
   function mixTypeFor(nameOrType){
     if(!nameOrType)return null;
     const map={
+      'モブ':'mob','モブさん':'mob',
       'カワズ':'kawazu','カワズさん':'kawazu',
       'ミカエル':'green','ミカエルさん':'green','ガブリエル':'blue','ガブリエルさん':'blue',
       'ルシファー':'black','ルシファーさん':'black','リリス':'purple','リリスさん':'purple',
@@ -5371,7 +5372,19 @@
     
     // 池将棋MIX：モブさん専用。技は2つだけ。
     if(f.type==='mob'){
-      if(kind==='punch' && water2HeldDir(f,'forward')){
+      const mobForward=water2HeldDir(f,'forward') || hasCommand([forward],650);
+      const mobUp=water2HeldDir(f,'up') || hasCommand(['up'],650);
+      // 上を優先。斜め前上で誤ってバブルショットになるのを防ぐ。
+      if(kind==='punch' && mobUp){
+        clearCommand();
+        const ok=specialUppercut(f);
+        if(ok){
+          comboEl.textContent='かえる跳びアッパー!';
+          setTimeout(()=>{if(comboEl.textContent==='かえる跳びアッパー!')comboEl.textContent='';},620);
+        }
+        return ok;
+      }
+      if(kind==='punch' && mobForward){
         clearCommand();
         return specialWater2Shot(f,{
           name:'バブルショット',
@@ -5381,19 +5394,10 @@
           speed:190,
           damage:3.0,
           r:18,
-          charge:.28,
+          charge:.24,
           wobble:.12,
           maxReflect:3
         });
-      }
-      if(kind==='punch' && water2HeldDir(f,'up')){
-        clearCommand();
-        const ok=specialUppercut(f);
-        if(ok){
-          comboEl.textContent='かえる跳びアッパー!';
-          setTimeout(()=>{if(comboEl.textContent==='かえる跳びアッパー!')comboEl.textContent='';},620);
-        }
-        return ok;
       }
     }
 
@@ -6371,8 +6375,10 @@
 
       if(enemy.type==='beelzebub' && enemy.specialT<=0 && enemy.bossSpecialCooldown<=0){
         const roll=Math.random();
-        if(roll<dt*.10){ specialVenomWater(enemy); return; }
-        if(roll<dt*.26){ specialAbyssShock(enemy,dy<0?'upper':'lower'); return; }
+        if(!mixBattleMode){
+          if(roll<dt*.10){ specialVenomWater(enemy); return; }
+          if(roll<dt*.26){ specialAbyssShock(enemy,dy<0?'upper':'lower'); return; }
+        }
         if(dist>150 && roll<dt*.46){ specialWater2Shot(enemy,{name:'ベノムショット',attack:'punch',color:'venom',style:'venomGloss',speed:285,angle:-24,curve:285,damage:5.0,r:29,charge:.46,poisonDuration:2.2,maxReflect:4}); return; }
       }
       if(enemy.type==='satanael'&&enemy.specialT<=0){const r=Math.random();if(dist>190&&r<dt*.16){specialDisasterFlare(enemy);return;}if(dist>220&&r<dt*.28){specialDarkRay(enemy);return;}if(r<dt*.38){specialDarkPressure(enemy);return;}if(r<dt*.50){specialInfernoWave(enemy);return;}}
@@ -8901,7 +8907,10 @@ ctx.closePath();ctx.fill();}ctx.restore();});
       selectedOpponent=eType||'black';
       show('game');resize();startGame('free',selectedOpponent);
       if(player)player.hp=Math.max(1,Math.min(100,playerIsAttacker?mixBattleContext.attackerHp:mixBattleContext.defenderHp));
-      if(enemy)enemy.hp=Math.max(1,Math.min(100,playerIsAttacker?mixBattleContext.defenderHp:mixBattleContext.attackerHp));
+      if(enemy){
+        enemy.hp=Math.max(1,Math.min(100,playerIsAttacker?mixBattleContext.defenderHp:mixBattleContext.attackerHp));
+        enemy.bossSpecialCooldown=Math.max(enemy.bossSpecialCooldown||0,1.2);
+      }
       updateHud();
       if(practiceExitButton)practiceExitButton.hidden=true;
       if(mixMapReturn)mixMapReturn.style.display='none';
