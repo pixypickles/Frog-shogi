@@ -348,7 +348,8 @@
   const selectCardCommands={
     mob:[
       'バブルショット：前 ＋ パンチ',
-      'かえる跳びアッパー：上 ＋ パンチ'
+      'かえる跳びアッパー：上 ＋ パンチ',
+      'トリプルキック：前 ＋ キック'
     ],
     green:[
       'バーニングアッパー：上 ＋ パンチ',
@@ -3149,7 +3150,7 @@
 
   function practiceSpecialText(type){
     const map={
-      mob:['前 ＋ パンチ：バブルショット','上 ＋ パンチ：かえる跳びアッパー'],
+      mob:['前 ＋ パンチ：バブルショット','上 ＋ パンチ：かえる跳びアッパー','前 ＋ キック：トリプルキック'],
       green:['上 ＋ パンチ：バーニングアッパー','前 ＋ キック：バーニングキック','後ろ ＋ パンチ：バーニングショット','下 → 後ろ ＋ キック：バーニングサイクロン'],
       blue:['上 ＋ パンチ：アクアトルネード','下 ＋ キック：アクアストリーム','後ろ ＋ パンチ：アクアボルテックス','前 ＋ パンチ：アクアショット'],
       yellow:['前 ＋ パンチ：エアカッター（2連）','前 ＋ キック：エアカッター（2連・斜め下）','後ろ ＋ パンチ：エアーギロチン（真上 → 真下）','後ろ ＋ キック：エアブレード（真下 → 真上）','ガード ×2：ヒーリングバブル','上 ＋ ガード：エアホバー（約5秒・方向入力で空中移動）'],
@@ -5255,6 +5256,57 @@
     comboEl.textContent='インフェルノクロー!';return true;
   }
 
+
+  function specialMobTripleKick(f){
+    if(gameOver||!f||f.type!=='mob'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    const other=f.isPlayer?enemy:player;
+    if(!other)return false;
+
+    f.specialType='mobTripleKick';
+    f.specialT=.78;
+    f.attack='kick';
+    f.attackVariant='mid';
+    f.attackT=.78;
+    f.vx=0;
+    comboEl.textContent='トリプルキック!';
+
+    const hitOnce=(delay,damage,step,knock)=>{
+      setTimeout(()=>{
+        if(gameOver||!other||other.hp<=0||f.specialType!=='mobTripleKick')return;
+
+        // 1発ごとに前へ素早く滑り込みながら蹴る
+        f.x=Math.max(42,Math.min(innerWidth-42,f.x+f.face*step));
+        f.face=(other.x>=f.x)?1:-1;
+        f.attack='kick';
+        f.attackVariant='mid';
+        f.attackT=Math.max(f.attackT,.17);
+
+        const dx=(other.x-f.x)*f.face;
+        const dy=Math.abs(other.y-f.y);
+        if(dx>-18 && dx<105 && dy<82){
+          if(other.guard){
+            spawnImpact(other.x,other.y,'guard');
+            other.vx+=f.face*28;
+          }else{
+            damageHit(f,other,damage*f.damageMul,knock*f.face,-10);
+            spawnImpact(other.x,other.y,'hit');
+          }
+        }
+      },delay);
+    };
+
+    hitOnce(70,1.8,34,40);
+    hitOnce(205,2.0,38,48);
+    hitOnce(340,2.4,44,72);
+
+    setTimeout(()=>{
+      if(comboEl.textContent==='トリプルキック!')comboEl.textContent='';
+    },720);
+
+    clearCommand();
+    return true;
+  }
+
   function trySpecial(f,kind){
     if(kind==='guard'&&f&&f.type==='satanael'&&water2HeldDir(f,'down')){clearCommand();return specialDarkPressure(f);}
     if(!f) return false;
@@ -5374,6 +5426,10 @@
     if(f.type==='mob'){
       const mobForward=water2HeldDir(f,'forward') || hasCommand([forward],650);
       const mobUp=water2HeldDir(f,'up') || hasCommand(['up'],650);
+      if(kind==='kick' && mobForward){
+        clearCommand();
+        return specialMobTripleKick(f);
+      }
       // 上を優先。斜め前上で誤ってバブルショットになるのを防ぐ。
       if(kind==='punch' && mobUp){
         clearCommand();
@@ -8899,12 +8955,13 @@ ctx.closePath();ctx.fill();}ctx.restore();});
 
   // MIXから呼ばれた場合はキャラ選択を飛ばして遭遇戦を開始。
   if(mixBattleMode && mixBattleContext){
-    setTimeout(()=>{
+    requestAnimationFrame(()=>{
       const playerIsAttacker=mixBattleContext.playerRole!=='defender';
       const pType=mixTypeFor(playerIsAttacker?mixBattleContext.attackerType:mixBattleContext.defenderType);
       const eType=mixTypeFor(playerIsAttacker?mixBattleContext.defenderType:mixBattleContext.attackerType);
       selectedFighter=pType||'green';
       selectedOpponent=eType||'black';
+      document.documentElement.classList.remove('mix-battle-boot');
       show('game');resize();startGame('free',selectedOpponent);
       if(player)player.hp=Math.max(1,Math.min(100,playerIsAttacker?mixBattleContext.attackerHp:mixBattleContext.defenderHp));
       if(enemy){
@@ -8914,6 +8971,6 @@ ctx.closePath();ctx.fill();}ctx.restore();});
       updateHud();
       if(practiceExitButton)practiceExitButton.hidden=true;
       if(mixMapReturn)mixMapReturn.style.display='none';
-    },80);
+    });
   }
 })();

@@ -5,6 +5,22 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   <meta name="theme-color" content="#eefaff" />
   <title>フロッグファイター2 JUMP Prototype v2.49</title>
+  
+<script>
+(function(){
+  const q=new URLSearchParams(location.search);
+  if(q.get('mix')==='1' && q.get('battle')==='1'){
+    document.documentElement.classList.add('mix-battle-boot');
+  }
+})();
+</script>
+<style>
+html.mix-battle-boot body{visibility:hidden!important}
+html.mix-battle-boot #titleScreen,
+html.mix-battle-boot #selectScreen,
+html.mix-battle-boot #portraitOverlay{display:none!important}
+</style>
+
   <link rel="stylesheet" href="jump-battle.css?v=0.6.1" />
 
 
