@@ -1,17 +1,17 @@
 (() => {
   const BOARD_SIZE=9, TYPES=['king','rook','bishop','gold','silver','knight','lance','pawn'];
-  const K={king:'王',rook:'飛',bishop:'角',gold:'金',silver:'銀',knight:'桂',lance:'香',pawn:'歩'};
-  const LABEL={king:'王／玉',rook:'飛車',bishop:'角行',gold:'金将 ×2',silver:'銀将 ×2',knight:'桂馬 ×2',lance:'香車 ×2',pawn:'歩兵 ×9'};
+  const K={king:'王',rook:'飛',bishop:'角',gold:'金',silver:'銀',knight:'桂',lance:'香',pawn:'歩',tokin:'と'};
+  const LABEL={king:'王／玉',rook:'飛車',bishop:'角行',gold:'金将 ×2',silver:'銀将 ×2',knight:'桂馬 ×2',lance:'香車 ×2',pawn:'歩兵 ×9',tokin:'と金'};
   // 大幅弱体化はしない。戦闘接続後に実戦で再調整する仮値。
-  const ROLE_HP={king:100,rook:100,bishop:100,gold:100,silver:100,knight:98,lance:98,pawn:95};
+  const ROLE_HP={king:100,rook:100,bishop:100,gold:100,silver:100,knight:98,lance:98,pawn:100,tokin:100};
 
   const CHARACTERS={
     angel:['セラフィエル','ジィハル','ラファエル','ウリエル','ミカエル','ガブリエル','レミエル','カワズさん'],
     demon:['サタナエル','フラウロス','ベルゼブブ','サマエル','ルシファー','リリス','サリエル','コカビエル']
   };
   const RECOMMENDED={
-    angel:{king:'セラフィエル',rook:'ジィハル',bishop:'ラファエル',gold:'ウリエル',silver:'ミカエル',knight:'ガブリエル',lance:'レミエル',pawn:'カワズさん'},
-    demon:{king:'サタナエル',rook:'フラウロス',bishop:'ベルゼブブ',gold:'サマエル',silver:'ルシファー',knight:'リリス',lance:'サリエル',pawn:'コカビエル'}
+    angel:{king:'セラフィエル',rook:'ジィハル',bishop:'ラファエル',gold:'ウリエル',silver:'ミカエル',knight:'ガブリエル',lance:'レミエル',pawn:'モブさん',tokin:'カワズさん'},
+    demon:{king:'サタナエル',rook:'フラウロス',bishop:'ベルゼブブ',gold:'サマエル',silver:'ルシファー',knight:'リリス',lance:'サリエル',pawn:'モブさん',tokin:'コカビエル'}
   };
 
   // JUMP v2.49 のキャラクター配色を、盤上で見分けやすい主色へ簡略化。
@@ -31,7 +31,8 @@
     'サタナエル':{body:'#4b0c12',limb:'#2e070b'},
     'サマエル':{body:'#2a183b',limb:'#1c102a'},
     'フラウロス':{body:'#c92825',limb:'#96191a'},
-    'カワズさん':{body:'#4fbd55',limb:'#388f3e',eye:'#d71920'}
+    'カワズさん':{body:'#4fbd55',limb:'#388f3e',eye:'#d71920'},
+    'モブさん':{body:'#76c98a',limb:'#55a86b'}
   };
 
   // JUMP v2.49 の練習技リストから抜粋。盤面選択時の確認用。
@@ -51,7 +52,8 @@
     'サタナエル':['ディザスターフレア','ダークレイ','ダークプレッシャー','インフェルノウェーブ'],
     'サマエル':['ポイズンゲート','ヴェノムタン','デッドリー・アクア'],
     'フラウロス':['ヘルフレイム','フレイムクロー','レオパードラッシュ','インフェルノクロー'],
-    'カワズさん':['ファントムラッシュ','水圧ラッシュ','ミラージュキック','スピンキックカッター','方向キー1回転＋舌（隠し）']
+    'カワズさん':['ファントムラッシュ','水圧ラッシュ','ミラージュキック','スピンキックカッター','方向キー1回転＋舌（隠し）'],
+    'モブさん':['前＋パンチ：バブルショット','上＋パンチ：かえる跳びアッパー']
   };
 
   const LOTUS=[
@@ -69,7 +71,9 @@
   const $=id=>document.getElementById(id), boardEl=$('board'), statusText=$('statusText'), turnBadge=$('turnBadge'), moveCountEl=$('moveCount'), modal=$('battleModal');
   let assignments=JSON.parse(JSON.stringify(RECOMMENDED)), state;
   const emptyBoard=()=>Array.from({length:9},()=>Array(9).fill(null));
-  const piece=(side,type)=>({side,type,name:assignments[side][type]});
+  const piece=(side,type)=>({side,type,name:type==='pawn'?'モブさん':assignments[side][type]});
+  function promotePawn(p){return {...p,type:'tokin',name:assignments[p.side].tokin||'カワズさん',promoted:true};}
+  function inPromotionZone(side,row){return side==='angel'?row<=2:row>=6;}
 
   function initialState(){
     const b=emptyBoard();
@@ -94,21 +98,7 @@
 
   function render(){
     boardEl.innerHTML='';
-    // 複数マスをまとめて覆う大きな蓮の葉。見た目だけでなく、
-    // 下の LOTUS セル群もジャンプ戦判定にしている。
-    [
-      {x:9,y:8,w:31,h:24,rot:-13},
-      {x:54,y:5,w:34,h:25,rot:11},
-      {x:31,y:31,w:40,h:29,rot:-5},
-      {x:3,y:52,w:34,h:26,rot:14},
-      {x:62,y:52,w:34,h:26,rot:-12},
-      {x:30,y:73,w:39,h:24,rot:7}
-    ].forEach((v,i)=>{
-      const leaf=document.createElement('div');
-      leaf.className='lotus-mass';
-      leaf.style.cssText=`left:${v.x}%;top:${v.y}%;width:${v.w}%;height:${v.h}%;--mass-rot:${v.rot}deg;--mass-delay:${i*-0.7}s`;
-      boardEl.appendChild(leaf);
-    });
+    // 大葉は撤去。小さい蓮の葉のみ。
     for(let r=0;r<9;r++)for(let c=0;c<9;c++){
       const cell=document.createElement('button'); cell.type='button'; cell.className=`cell ${lotusSet.has(`${r},${c}`)?'lotus':'water'}`; cell.style.setProperty('--leaf-rot',`${((r*17+c*29)%70)-35}deg`); cell.dataset.r=r;cell.dataset.c=c;
       const legal=state.legal.find(m=>m.r===r&&m.c===c); if(state.selected&&state.selected.r===r&&state.selected.c===c)cell.classList.add('selected'); if(legal)cell.classList.add(legal.capture?'capture':'legal');
@@ -166,7 +156,7 @@
   function attemptMove(fr,fc,tr,tc){
     const a=state.board[fr][fc],d=state.board[tr][tc];
     if(d){state.pendingBattle={fr,fc,tr,tc,attacker:a,defender:d};openBattle(state.pendingBattle);}
-    else{state.board[tr][tc]=a;state.board[fr][fc]=null;finishTurn(`${a.name}が移動しました。`);}
+    else{const moved=(a.type==='pawn'&&inPromotionZone(a.side,tr))?promotePawn(a):a;state.board[tr][tc]=moved;state.board[fr][fc]=null;finishTurn(`${a.name}が移動しました。${moved.type==='tokin'?` ${moved.name}（と）に成りました！`:''}`);}
   }
 
   function saveBattleSnapshot(){
@@ -233,13 +223,14 @@
     }catch(e){}
 
     if(result.winner==='attacker'){
-      state.board[b.tr][b.tc]=b.attacker;
+      const moved=(b.attacker.type==='pawn'&&inPromotionZone(b.attacker.side,b.tr))?promotePawn(b.attacker):b.attacker;
+      state.board[b.tr][b.tc]=moved;
       state.board[b.fr][b.fc]=null;
       if(b.defender.type==='king'){
         setTimeout(()=>endGame(b.attacker.side,b.defender),0);
       }else{
         const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'水中';
-        setTimeout(()=>finishTurn(`${terrainName}戦：${b.attacker.name}が${b.defender.name}を撃破。駒取り成立。`),0);
+        setTimeout(()=>finishTurn(`${terrainName}戦：${b.attacker.name}が${b.defender.name}を撃破。駒取り成立。${moved.type==='tokin'?` ${moved.name}（と）に成りました！`:''}`),0);
       }
     }else{
       const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'水中';
@@ -275,7 +266,7 @@
     if(state.turn==='demon' && !state.pendingBattle) scheduleCpuMove();
   }
 
-  const PIECE_VALUE={king:10000,rook:900,bishop:800,gold:600,silver:520,knight:360,lance:320,pawn:120};
+  const PIECE_VALUE={king:10000,rook:900,bishop:800,gold:600,silver:520,knight:360,lance:320,pawn:120,tokin:600};
 
   function scheduleCpuMove(){
     if(state.gameOver || state.cpuThinking || state.pendingBattle || state.turn!=='demon')return;
@@ -327,7 +318,7 @@
     const step=(dr,dc)=>add(r+dr,c+dc,p,out),ray=(dr,dc)=>{let rr=r+dr,cc=c+dc;while(inB(rr,cc)){const t=state.board[rr][cc];if(!t)out.push({r:rr,c:cc,capture:false});else{if(t.side!==p.side)out.push({r:rr,c:cc,capture:true});break;}rr+=dr;cc+=dc;}};
     switch(p.type){
       case'king':[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]].forEach(d=>step(...d));break;
-      case'gold':[[f,-1],[f,0],[f,1],[0,-1],[0,1],[-f,0]].forEach(d=>step(...d));break;
+      case'gold':case'tokin':[[f,-1],[f,0],[f,1],[0,-1],[0,1],[-f,0]].forEach(d=>step(...d));break;
       case'silver':[[f,-1],[f,0],[f,1],[-f,-1],[-f,1]].forEach(d=>step(...d));break;
       case'knight':[[2*f,-1],[2*f,1]].forEach(d=>step(...d));break;
       case'lance':ray(f,0);break;
@@ -341,25 +332,19 @@
   const inB=(r,c)=>r>=0&&r<9&&c>=0&&c<9;
 
   function buildEditor(){
-    ['angel','demon'].forEach(side=>{
-      const host=$(`${side}Editor`);host.innerHTML='';
-      TYPES.forEach(type=>{
-        const row=document.createElement('label');row.className='assign-row';row.innerHTML=`<span><b>${K[type]}</b><small>${LABEL[type]}</small></span>`;
-        const sel=document.createElement('select');sel.dataset.side=side;sel.dataset.type=type;
-        CHARACTERS[side].forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});
-        sel.value=assignments[side][type];sel.onchange=()=>validateAndApplyEditor();row.appendChild(sel);host.appendChild(row);
-      });
+    ['angel','demon'].forEach(side=>{const host=$(`${side}Editor`);host.innerHTML='';
+      TYPES.forEach(type=>{const row=document.createElement('label');row.className='assign-row';row.innerHTML=`<span><b>${K[type]}</b><small>${LABEL[type]}</small></span>`;
+        if(type==='pawn'){const fixed=document.createElement('div');fixed.className='fixed-assignment';fixed.textContent='モブさん（固定）';row.appendChild(fixed);}
+        else{const sel=document.createElement('select');sel.dataset.side=side;sel.dataset.type=type;CHARACTERS[side].forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});sel.value=assignments[side][type];sel.onchange=()=>validateAndApplyEditor();row.appendChild(sel);}host.appendChild(row);});
+      const row=document.createElement('label');row.className='assign-row promoted-row';row.innerHTML='<span><b>と</b><small>成り後</small></span>';const sel=document.createElement('select');sel.dataset.side=side;sel.dataset.type='tokin';CHARACTERS[side].forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});sel.value=assignments[side].tokin||RECOMMENDED[side].tokin;sel.onchange=()=>validateAndApplyEditor();row.appendChild(sel);host.appendChild(row);
     });
   }
   function validateAndApplyEditor(){
-    const next={angel:{},demon:{}};let ok=true;
-    ['angel','demon'].forEach(side=>{
-      const used=new Set();
-      document.querySelectorAll(`select[data-side="${side}"]`).forEach(sel=>{next[side][sel.dataset.type]=sel.value;if(used.has(sel.value))ok=false;used.add(sel.value);});
-    });
+    const next={angel:{pawn:'モブさん'},demon:{pawn:'モブさん'}};let ok=true;
+    ['angel','demon'].forEach(side=>{const used=new Set();document.querySelectorAll(`select[data-side="${side}"]`).forEach(sel=>{next[side][sel.dataset.type]=sel.value;if(sel.dataset.type!=='tokin'){if(used.has(sel.value))ok=false;used.add(sel.value);}});});
     $('editorWarning').hidden=ok;$('applyBtn').disabled=!ok;if(!ok)return;assignments=next;
   }
-  function updateRosterSummary(){['angel','demon'].forEach(side=>{$(`${side}Roster`).textContent=TYPES.map(t=>`${K[t]} ${assignments[side][t]}`).join(' / ');});}
+  function updateRosterSummary(){['angel','demon'].forEach(side=>{$(`${side}Roster`).textContent=TYPES.map(t=>`${K[t]} ${t==='pawn'?'モブさん':assignments[side][t]}`).concat([`と ${assignments[side].tokin}`]).join(' / ');});}
   $('recommendedBtn').onclick=()=>{assignments=JSON.parse(JSON.stringify(RECOMMENDED));buildEditor();$('editorWarning').hidden=true;$('applyBtn').disabled=false;};
   $('applyBtn').onclick=()=>{validateAndApplyEditor();if(!$('editorWarning').hidden)return;state=initialState();showSelected(null);statusText.textContent='編成を適用しました。天使軍はプレイヤー、悪魔軍はCPUです。';render();$('setupPanel').open=false;};
   $('resetBtn').onclick=()=>{if(confirm('現在の編成のまま盤面を初期状態に戻しますか？')){state=initialState();showSelected(null);statusText.textContent='盤面をリセットしました。天使軍から開始します。';render();}};
