@@ -31,7 +31,7 @@
     'サタナエル':{body:'#4b0c12',limb:'#2e070b'},
     'サマエル':{body:'#2a183b',limb:'#1c102a'},
     'フラウロス':{body:'#c92825',limb:'#96191a'},
-    'カワズさん':{body:'#4fbd55',limb:'#388f3e'}
+    'カワズさん':{body:'#4fbd55',limb:'#388f3e',eye:'#d71920'}
   };
 
   // JUMP v2.49 の練習技リストから抜粋。盤面選択時の確認用。
@@ -66,13 +66,13 @@
     const back=['lance','knight','silver','gold','king','gold','silver','knight','lance'];
     back.forEach((t,c)=>b[0][c]=piece('demon',t)); b[1][1]=piece('demon','rook'); b[1][7]=piece('demon','bishop'); for(let c=0;c<9;c++)b[2][c]=piece('demon','pawn');
     back.forEach((t,c)=>b[8][c]=piece('angel',t)); b[7][1]=piece('angel','bishop'); b[7][7]=piece('angel','rook'); for(let c=0;c<9;c++)b[6][c]=piece('angel','pawn');
-    return {board:b,turn:'angel',selected:null,legal:[],moves:0,pendingBattle:null};
+    return {board:b,turn:'angel',selected:null,legal:[],moves:0,pendingBattle:null,cpuThinking:false};
   }
 
   function frogMarkup(p){
     const pal=PALETTE[p.name]||{body:'#4fbd55',limb:'#388f3e'};
     const scale=p.type==='pawn'?.94:1;
-    return `<div class="piece ${p.side}" style="--frog-scale:${scale};--frog-body:${pal.body};--frog-limb:${pal.limb}">
+    return `<div class="piece ${p.side}" style="--frog-scale:${scale};--frog-body:${pal.body};--frog-limb:${pal.limb};--frog-eye:${pal.eye||'#132127'}">
       <div class="frog-token">
         <span class="frog-leg left"></span><span class="frog-leg right"></span>
         <span class="frog-body"></span><span class="frog-eyes"></span><span class="frog-pupils"></span>
@@ -91,7 +91,10 @@
       if(p)cell.insertAdjacentHTML('beforeend',frogMarkup(p));
       cell.addEventListener('click',onCellClick);boardEl.appendChild(cell);
     }
-    const a=state.turn==='angel';turnBadge.textContent=a?'天使軍の手番':'悪魔軍の手番';turnBadge.className=`turn-badge ${a?'angel':'demon'}`;moveCountEl.textContent=`${state.moves}手`; updateRosterSummary();
+    const a=state.turn==='angel';
+    turnBadge.textContent=a?'天使軍の手番':(state.cpuThinking?'悪魔軍 CPU 思考中…':'悪魔軍 CPU の手番');
+    turnBadge.className=`turn-badge ${a?'angel':'demon'}`;
+    moveCountEl.textContent=`${state.moves}手`; updateRosterSummary();
   }
 
   function showSelected(p){
@@ -109,6 +112,7 @@
     panel.classList.remove('empty');
     const pal=PALETTE[p.name]||{body:'#4fbd55'};
     $('selectedFrog').style.setProperty('--profile-body',pal.body);
+    $('selectedFrog').style.setProperty('--profile-eye',pal.eye||'#132127');
     $('selectedSide').textContent=p.side==='angel'?'天使軍':'悪魔軍';
     $('selectedName').textContent=p.name;
     $('selectedRole').textContent=`役割：${LABEL[p.type].replace(/ ×\d+/,'')}`;
@@ -118,7 +122,7 @@
   }
 
   function onCellClick(e){
-    if(state.pendingBattle)return;
+    if(state.pendingBattle || state.cpuThinking || state.turn==='demon')return;
     const r=+e.currentTarget.dataset.r,c=+e.currentTarget.dataset.c,p=state.board[r][c];
     if(state.selected){
       const m=state.legal.find(x=>x.r===r&&x.c===c);
@@ -157,7 +161,59 @@
   $('defenderWins').onclick=()=>{const b=state.pendingBattle;if(!b)return;modal.hidden=true;state.pendingBattle=null;finishTurn(`${b.defender.name}が防衛成功。攻撃は阻止されました。`);};
   $('cancelBattle').onclick=()=>{modal.hidden=true;state.pendingBattle=null;state.selected=null;state.legal=[];showSelected(null);statusText.textContent='戦闘をキャンセルしました。';render();};
 
-  function finishTurn(msg){state.selected=null;state.legal=[];state.moves++;state.turn=state.turn==='angel'?'demon':'angel';showSelected(null);statusText.textContent=msg;render();}
+  function finishTurn(msg){
+    state.selected=null;state.legal=[];state.moves++;
+    state.turn=state.turn==='angel'?'demon':'angel';
+    showSelected(null);statusText.textContent=msg;render();
+    if(state.turn==='demon' && !state.pendingBattle) scheduleCpuMove();
+  }
+
+  const PIECE_VALUE={king:10000,rook:900,bishop:800,gold:600,silver:520,knight:360,lance:320,pawn:120};
+
+  function scheduleCpuMove(){
+    if(state.cpuThinking || state.pendingBattle || state.turn!=='demon')return;
+    state.cpuThinking=true;
+    turnBadge.textContent='悪魔軍 CPU 思考中…';
+    statusText.textContent='悪魔軍が次の一手を考えています。';
+    setTimeout(cpuMove,650);
+  }
+
+  function cpuMove(){
+    if(state.turn!=='demon' || state.pendingBattle){state.cpuThinking=false;return;}
+    const choices=[];
+    for(let r=0;r<9;r++)for(let c=0;c<9;c++){
+      const p=state.board[r][c];
+      if(!p || p.side!=='demon')continue;
+      for(const m of getLegalMoves(r,c)){
+        const target=state.board[m.r][m.c];
+        let score=Math.random()*35;
+        if(target){
+          score+=PIECE_VALUE[target.type]||0;
+          score-=Math.max(0,(PIECE_VALUE[p.type]||0)-(PIECE_VALUE[target.type]||0))*.08;
+        }
+        // 少しだけ前進・中央進出を好む。完全ランダムより将棋らしくするための軽い評価。
+        score += m.r*7;
+        score += (4-Math.abs(4-m.c))*4;
+        if(p.type==='king' && !target)score-=70;
+        choices.push({fr:r,fc:c,tr:m.r,tc:m.c,score});
+      }
+    }
+    state.cpuThinking=false;
+    if(!choices.length){
+      state.turn='angel';
+      statusText.textContent='悪魔軍は動かせる駒がありません。天使軍の手番です。';
+      render();
+      return;
+    }
+    choices.sort((a,b)=>b.score-a.score);
+    // 上位候補から少し揺らして毎回同じ手になりすぎないようにする
+    const pool=choices.slice(0,Math.min(4,choices.length));
+    const pick=pool[Math.floor(Math.random()*pool.length)];
+    const p=state.board[pick.fr][pick.fc];
+    statusText.textContent=`CPU：${p.name}（${K[p.type]}）が動きます。`;
+    render();
+    setTimeout(()=>attemptMove(pick.fr,pick.fc,pick.tr,pick.tc),280);
+  }
 
   function getLegalMoves(r,c){
     const p=state.board[r][c];if(!p)return[];const f=p.side==='angel'?-1:1,out=[];
@@ -198,8 +254,8 @@
   }
   function updateRosterSummary(){['angel','demon'].forEach(side=>{$(`${side}Roster`).textContent=TYPES.map(t=>`${K[t]} ${assignments[side][t]}`).join(' / ');});}
   $('recommendedBtn').onclick=()=>{assignments=JSON.parse(JSON.stringify(RECOMMENDED));buildEditor();$('editorWarning').hidden=true;$('applyBtn').disabled=false;};
-  $('applyBtn').onclick=()=>{validateAndApplyEditor();if(!$('editorWarning').hidden)return;state=initialState();showSelected(null);statusText.textContent='編成を適用して盤面を初期化しました。';render();$('setupPanel').open=false;};
-  $('resetBtn').onclick=()=>{if(confirm('現在の編成のまま盤面を初期状態に戻しますか？')){state=initialState();showSelected(null);statusText.textContent='盤面をリセットしました。';render();}};
+  $('applyBtn').onclick=()=>{validateAndApplyEditor();if(!$('editorWarning').hidden)return;state=initialState();showSelected(null);statusText.textContent='編成を適用しました。天使軍はプレイヤー、悪魔軍はCPUです。';render();$('setupPanel').open=false;};
+  $('resetBtn').onclick=()=>{if(confirm('現在の編成のまま盤面を初期状態に戻しますか？')){state=initialState();showSelected(null);statusText.textContent='盤面をリセットしました。天使軍から開始します。';render();}};
 
   buildEditor();state=initialState();showSelected(null);render();
 })();

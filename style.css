@@ -41,7 +41,7 @@ button{font:inherit;color:inherit}
 .frog-eyes::before,.frog-eyes::after{content:"";position:absolute;width:26%;aspect-ratio:1;border-radius:50%;background:#f7fbff;box-shadow:inset 0 0 0 2px rgba(0,0,0,.18)}
 .frog-eyes::before{left:1%}.frog-eyes::after{right:1%}
 .frog-pupils{position:absolute;z-index:3;left:31%;top:13%;width:38%;height:16%}
-.frog-pupils::before,.frog-pupils::after{content:"";position:absolute;width:24%;aspect-ratio:1;border-radius:50%;background:#132127}
+.frog-pupils::before,.frog-pupils::after{content:"";position:absolute;width:24%;aspect-ratio:1;border-radius:50%;background:var(--frog-eye,#132127)}
 .frog-pupils::before{left:0}.frog-pupils::after{right:0}
 .frog-leg{position:absolute;top:63%;width:30%;height:26%;border-radius:50% 50% 65% 65%;background:var(--frog-limb)}
 .frog-leg.left{left:4%;transform:rotate(-20deg)}.frog-leg.right{right:4%;transform:rotate(20deg)}
@@ -86,3 +86,10 @@ html,body{background:linear-gradient(180deg,#10b6c5 0%,#0aa2b4 48%,#078fa4 100%)
 .piece.demon .frog-token{transform:scale(var(--frog-scale,1))}.piece.demon::before,.piece.angel::before{content:"";position:absolute;z-index:3;width:84%;height:72%;top:8%;left:8%;border-radius:50%;pointer-events:none}.piece.demon::before{box-shadow:inset 0 0 0 2px rgba(255,86,129,.72)}.piece.angel::before{box-shadow:inset 0 0 0 2px rgba(232,255,255,.72)}
 .selected-panel{border:2px solid rgba(255,255,255,.82)}.selected-title strong{color:#064f5d}.selected-title>span:last-child{color:#477984}.selected-side,.moves-label{color:#17899a}.hp-role{background:#d8f7f8;color:#0b6673}.move-chip{background:#e7fbfc;border-color:#c4f0f2;color:#165b66}.move-chip.muted{color:#5b8991}.profile-frog{box-shadow:inset 0 -5px 0 rgba(0,0,0,.09),0 3px 8px rgba(0,95,105,.2)}
 .roster summary,.mini-card h2{color:#075767}.assign-row select{background:#e9fbfc;color:#07505d;border-color:#bce8eb}.warning{background:#ffe8e8;color:#8b3131}.primary{background:#0d9fb4;color:#fff}.secondary{background:#ffd7e3;color:#7d2a4a}.setup-panel .ghost{color:#07505d}
+
+/* v0.5: 選択カードの瞳色。カワズさんは赤。 */
+.profile-frog::before,.profile-frog::after{
+  background:radial-gradient(circle at center,var(--profile-eye,#132127) 0 35%,#f7fbff 38% 68%,var(--profile-body,#4fbd55) 71% 100%);
+  border:0;
+  box-shadow:none;
+}
