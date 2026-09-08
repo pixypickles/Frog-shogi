@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="theme-color" content="#0d6672" />
-  <title>池将棋MIX 試作 v0.2</title>
+  <title>池将棋MIX 試作 v0.3</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -22,7 +22,7 @@
         <span id="turnBadge" class="turn-badge angel">天使軍の手番</span>
         <span id="moveCount" class="move-count">0手</span>
       </div>
-      <p id="statusText">駒をタップすると、移動できるマスが光ります。</p>
+      <p id="statusText">駒をタップすると、移動できるマスとキャラ情報が表示されます。</p>
       <div class="legend">
         <span><i class="dot lotus"></i>蓮の葉＝ジャンプ戦</span>
         <span><i class="dot water"></i>水中＝水中戦</span>
@@ -35,14 +35,30 @@
       <div class="army-label angel-label">天使軍</div>
     </section>
 
+    <section id="selectedPanel" class="selected-panel empty" aria-live="polite">
+      <div class="selected-head">
+        <div id="selectedFrog" class="profile-frog" aria-hidden="true"></div>
+        <div class="selected-title">
+          <span id="selectedSide" class="selected-side">駒を選択</span>
+          <strong id="selectedName">キャラクター情報</strong>
+          <span id="selectedRole">役割と技をここに表示します</span>
+        </div>
+        <div id="selectedHp" class="hp-role">HP —</div>
+      </div>
+      <div>
+        <div class="moves-label">SPECIAL MOVES</div>
+        <div id="selectedMoves" class="move-list"><span class="move-chip muted">自軍の駒をタップしてください</span></div>
+      </div>
+    </section>
+
     <section class="info-grid">
       <div class="mini-card">
-        <h2>今回の試作範囲</h2>
-        <p>通常将棋の初期配置・合法手・駒取り判定・地形判定・自由編成まで。実戦闘はまだ接続していません。</p>
+        <h2>v0.3</h2>
+        <p>カエル型のキャラ駒、キャラカラー、役割・名前表示、縦長盤面、選択中の技一覧を追加。</p>
       </div>
       <div class="mini-card">
-        <h2>駒取りテスト</h2>
-        <p>駒取り時は仮の戦闘画面が開き、攻撃成功／防衛成功を手動で選べます。</p>
+        <h2>役割HP（仮）</h2>
+        <p>大きく弱体化せず、歩95%・桂/香98%・その他100%。戦闘接続後に実戦で調整します。</p>
       </div>
     </section>
 
@@ -68,13 +84,13 @@
         <div class="fighter attacker">
           <span class="side-label">攻撃側</span>
           <strong id="attackerName">-</strong>
-          <small>HP 100%</small>
+          <small id="attackerHp">HP 100%</small>
         </div>
         <div class="vs">VS</div>
         <div class="fighter defender">
           <span class="side-label">防御側</span>
           <strong id="defenderName">-</strong>
-          <small>HP 33%（予定）</small>
+          <small id="defenderHp">HP 33%</small>
         </div>
       </div>
       <p id="battleHint" class="battle-hint"></p>
