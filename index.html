@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="theme-color" content="#0d6672" />
+  <title>池将棋MIX 試作 v0.1</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">FROG FIGHTER 2 / MIX PROTOTYPE</div>
+        <h1>池将棋MIX</h1>
+      </div>
+      <button id="resetBtn" class="ghost" type="button">リセット</button>
+    </header>
+
+    <section class="status-card" aria-live="polite">
+      <div class="turn-row">
+        <span id="turnBadge" class="turn-badge angel">天使軍の手番</span>
+        <span id="moveCount" class="move-count">0手</span>
+      </div>
+      <p id="statusText">駒をタップすると、移動できるマスが光ります。</p>
+      <div class="legend">
+        <span><i class="dot lotus"></i>蓮の葉＝ジャンプ戦</span>
+        <span><i class="dot water"></i>水中＝水中戦</span>
+      </div>
+    </section>
+
+    <section class="board-wrap">
+      <div class="army-label demon-label">悪魔軍</div>
+      <div id="board" class="board" role="grid" aria-label="9×9 池将棋盤"></div>
+      <div class="army-label angel-label">天使軍</div>
+    </section>
+
+    <section class="info-grid">
+      <div class="mini-card">
+        <h2>今回の試作範囲</h2>
+        <p>9×9盤・合法手・駒取り判定・地形判定まで。実戦闘はまだ接続していません。</p>
+      </div>
+      <div class="mini-card">
+        <h2>駒取りテスト</h2>
+        <p>駒取り時は仮の戦闘画面が開き、攻撃成功／防衛成功を手動で選べます。</p>
+      </div>
+    </section>
+
+    <details class="roster">
+      <summary>現在の仮配役を見る</summary>
+      <div class="roster-columns">
+        <div>
+          <h3>天使軍</h3>
+          <p>王 セラフィエル / 飛 ジィハル / 角 ラファエル / 金 ウリエル / 銀 ミカエル / 桂 ガブリエル / 香 レミエル / 歩 天使兵</p>
+        </div>
+        <div>
+          <h3>悪魔軍</h3>
+          <p>玉 サタナエル / 飛 フラウロス / 角 ベルゼブブ / 金 サマエル / 銀 ルシファー / 桂 リリス / 香 サリエル / 歩 悪魔兵</p>
+        </div>
+      </div>
+    </details>
+  </main>
+
+  <div id="battleModal" class="modal" hidden>
+    <div class="modal-backdrop"></div>
+    <section class="battle-card" role="dialog" aria-modal="true" aria-labelledby="battleTitle">
+      <div id="terrainPill" class="terrain-pill">水中バトル</div>
+      <h2 id="battleTitle">戦闘発生</h2>
+      <div class="versus">
+        <div class="fighter attacker">
+          <span class="side-label">攻撃側</span>
+          <strong id="attackerName">-</strong>
+          <small>HP 100%</small>
+        </div>
+        <div class="vs">VS</div>
+        <div class="fighter defender">
+          <span class="side-label">防御側</span>
+          <strong id="defenderName">-</strong>
+          <small>HP 33%（予定）</small>
+        </div>
+      </div>
+      <p id="battleHint" class="battle-hint"></p>
+      <div class="battle-actions">
+        <button id="attackerWins" class="primary" type="button">攻撃側が勝利</button>
+        <button id="defenderWins" class="secondary" type="button">防御側が耐える</button>
+        <button id="cancelBattle" class="ghost wide" type="button">戦闘をキャンセル</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
