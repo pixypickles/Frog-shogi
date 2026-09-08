@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="theme-color" content="#0d6672" />
-  <title>池将棋MIX 試作 v0.1</title>
+  <title>池将棋MIX 試作 v0.2</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -38,7 +38,7 @@
     <section class="info-grid">
       <div class="mini-card">
         <h2>今回の試作範囲</h2>
-        <p>9×9盤・合法手・駒取り判定・地形判定まで。実戦闘はまだ接続していません。</p>
+        <p>通常将棋の初期配置・合法手・駒取り判定・地形判定・自由編成まで。実戦闘はまだ接続していません。</p>
       </div>
       <div class="mini-card">
         <h2>駒取りテスト</h2>
@@ -46,18 +46,16 @@
       </div>
     </section>
 
+    <details id="setupPanel" class="roster setup-panel">
+      <summary>編成を変更する</summary>
+      <p class="setup-note">おすすめ配役を初期値にしています。同じキャラは別の駒種には重複配置できません。金・銀・桂・香の2枚、歩9枚は同じ担当キャラです。</p>
+      <div class="setup-actions"><button id="recommendedBtn" class="secondary" type="button">おすすめに戻す</button><button id="applyBtn" class="primary" type="button">この編成で盤面を開始</button></div>
+      <p id="editorWarning" class="warning" hidden>同じ軍のキャラが重複しています。8種類の駒に8人を1人ずつ割り当ててください。</p>
+      <div class="editor-columns"><div><h3>天使軍</h3><div id="angelEditor"></div></div><div><h3>悪魔軍</h3><div id="demonEditor"></div></div></div>
+    </details>
     <details class="roster">
-      <summary>現在の仮配役を見る</summary>
-      <div class="roster-columns">
-        <div>
-          <h3>天使軍</h3>
-          <p>王 セラフィエル / 飛 ジィハル / 角 ラファエル / 金 ウリエル / 銀 ミカエル / 桂 ガブリエル / 香 レミエル / 歩 天使兵</p>
-        </div>
-        <div>
-          <h3>悪魔軍</h3>
-          <p>玉 サタナエル / 飛 フラウロス / 角 ベルゼブブ / 金 サマエル / 銀 ルシファー / 桂 リリス / 香 サリエル / 歩 悪魔兵</p>
-        </div>
-      </div>
+      <summary>現在の配役を見る</summary>
+      <div class="roster-columns"><div><h3>天使軍</h3><p id="angelRoster"></p></div><div><h3>悪魔軍</h3><p id="demonRoster"></p></div></div>
     </details>
   </main>
 
