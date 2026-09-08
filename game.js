@@ -144,22 +144,89 @@
     else{state.board[tr][tc]=a;state.board[fr][fc]=null;finishTurn(`${a.name}が移動しました。`);}
   }
 
-  function openBattle(b){
-    const terrain=lotusSet.has(`${b.tr},${b.tc}`)?'lotus':'water';
-    $('attackerName').textContent=`${b.attacker.name}（${K[b.attacker.type]}）`;
-    $('defenderName').textContent=`${b.defender.name}（${K[b.defender.type]}）`;
-    const aHp=ROLE_HP[b.attacker.type], dRoleHp=ROLE_HP[b.defender.type], dStart=Math.round(dRoleHp/3);
-    $('attackerHp').textContent=`HP ${aHp}%（役割補正）`;
-    $('defenderHp').textContent=`HP 約${dStart}%（役割HPの1/3）`;
-    $('terrainPill').textContent=terrain==='lotus'?'蓮の葉ジャンプバトル':'水中バトル';
-    $('terrainPill').className=`terrain-pill ${terrain==='lotus'?'lotus':''}`;
-    $('battleHint').textContent='戦闘はまだ未接続です。攻撃側勝利なら駒取り成立、防御成功なら両駒が元の位置に残ります。';
-    modal.hidden=false;
+  function saveBattleSnapshot(){
+    try{
+      state.cpuThinking=false;
+      sessionStorage.setItem('pondShogiSnapshot',JSON.stringify({state,assignments}));
+    }catch(e){console.warn('盤面保存に失敗',e);}
   }
 
-  $('attackerWins').onclick=()=>{const b=state.pendingBattle;if(!b)return;state.board[b.tr][b.tc]=b.attacker;state.board[b.fr][b.fc]=null;modal.hidden=true;state.pendingBattle=null;if(b.defender.type==='king'){endGame(b.attacker.side,b.defender);return;}finishTurn(`${b.attacker.name}が${b.defender.name}を撃破。駒取り成立。`);};
-  $('defenderWins').onclick=()=>{const b=state.pendingBattle;if(!b)return;modal.hidden=true;state.pendingBattle=null;finishTurn(`${b.defender.name}が防衛成功。攻撃は阻止されました。`);};
-  $('cancelBattle').onclick=()=>{modal.hidden=true;state.pendingBattle=null;state.selected=null;state.legal=[];showSelected(null);statusText.textContent='戦闘をキャンセルしました。';render();};
+  function openBattle(b){
+    const terrain=lotusSet.has(`${b.tr},${b.tc}`)?'lotus':'water';
+    const aHp=ROLE_HP[b.attacker.type];
+    const dRoleHp=ROLE_HP[b.defender.type];
+    const dStart=Math.max(1,Math.round(dRoleHp/3));
+    const playerRole=b.attacker.side==='angel'?'attacker':'defender';
+    const context={
+      source:'pond-shogi-v0.6',
+      attacker:b.attacker.name,
+      defender:b.defender.name,
+      attackerType:b.attacker.name,
+      defenderType:b.defender.name,
+      attackerHp:aHp,
+      defenderHp:dStart,
+      playerRole,
+      terrain,
+      node:`${b.fr},${b.fc}->${b.tr},${b.tc}`,
+      returnUrl:'../../index.html'
+    };
+    try{
+      sessionStorage.removeItem('mixBattleResult');
+      sessionStorage.setItem('mixBattle',JSON.stringify(context));
+      saveBattleSnapshot();
+    }catch(e){
+      statusText.textContent='戦闘データの保存に失敗しました。';
+      state.pendingBattle=null;
+      render();
+      return;
+    }
+    statusText.textContent=`${terrain==='lotus'?'蓮の葉ジャンプ':'水中'}バトルへ移動します…`;
+    render();
+    const battlePage=terrain==='lotus'?'battle/jump/index.html':'battle/water/index.html';
+    location.href=`${battlePage}?mix=1&battle=1`;
+  }
+
+  function loadSavedBattle(){
+    let snap=null,result=null;
+    try{
+      snap=JSON.parse(sessionStorage.getItem('pondShogiSnapshot')||'null');
+      result=JSON.parse(sessionStorage.getItem('mixBattleResult')||'null');
+    }catch(e){}
+    if(!snap)return false;
+    if(snap.assignments)assignments=snap.assignments;
+    if(snap.state){
+      state=snap.state;
+      state.cpuThinking=false;
+    }
+    if(!result || !state || !state.pendingBattle)return true;
+
+    const b=state.pendingBattle;
+    state.pendingBattle=null;
+    try{
+      sessionStorage.removeItem('mixBattleResult');
+      sessionStorage.removeItem('pondShogiSnapshot');
+    }catch(e){}
+
+    if(result.winner==='attacker'){
+      state.board[b.tr][b.tc]=b.attacker;
+      state.board[b.fr][b.fc]=null;
+      if(b.defender.type==='king'){
+        setTimeout(()=>endGame(b.attacker.side,b.defender),0);
+      }else{
+        const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'水中';
+        setTimeout(()=>finishTurn(`${terrainName}戦：${b.attacker.name}が${b.defender.name}を撃破。駒取り成立。`),0);
+      }
+    }else{
+      const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'水中';
+      setTimeout(()=>finishTurn(`${terrainName}戦：${b.defender.name}が防衛成功。攻撃を阻止しました。`),0);
+    }
+    return true;
+  }
+
+  // v0.6以降は実戦へ接続するため、旧・手動勝敗ボタンは通常使わない。
+  $('attackerWins').onclick=()=>{};
+  $('defenderWins').onclick=()=>{};
+  $('cancelBattle').onclick=()=>{};
 
   function endGame(winnerSide, defeatedKing){
     state.gameOver=true;
@@ -272,5 +339,18 @@
   $('applyBtn').onclick=()=>{validateAndApplyEditor();if(!$('editorWarning').hidden)return;state=initialState();showSelected(null);statusText.textContent='編成を適用しました。天使軍はプレイヤー、悪魔軍はCPUです。';render();$('setupPanel').open=false;};
   $('resetBtn').onclick=()=>{if(confirm('現在の編成のまま盤面を初期状態に戻しますか？')){state=initialState();showSelected(null);statusText.textContent='盤面をリセットしました。天使軍から開始します。';render();}};
 
-  buildEditor();state=initialState();showSelected(null);render();
+  const restored=loadSavedBattle();
+  if(restored && state && state.pendingBattle){
+    let hasResult=false,hasBattle=false;
+    try{
+      hasResult=!!sessionStorage.getItem('mixBattleResult');
+      hasBattle=!!sessionStorage.getItem('mixBattle');
+    }catch(e){}
+    if(!hasResult && !hasBattle){
+      state.pendingBattle=null;
+      statusText.textContent='戦闘が中断されたため、盤面に戻りました。';
+    }
+  }
+  if(!restored)state=initialState();
+  buildEditor();showSelected(null);render();
 })();
