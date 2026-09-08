@@ -66,7 +66,7 @@
     const back=['lance','knight','silver','gold','king','gold','silver','knight','lance'];
     back.forEach((t,c)=>b[0][c]=piece('demon',t)); b[1][1]=piece('demon','rook'); b[1][7]=piece('demon','bishop'); for(let c=0;c<9;c++)b[2][c]=piece('demon','pawn');
     back.forEach((t,c)=>b[8][c]=piece('angel',t)); b[7][1]=piece('angel','bishop'); b[7][7]=piece('angel','rook'); for(let c=0;c<9;c++)b[6][c]=piece('angel','pawn');
-    return {board:b,turn:'angel',selected:null,legal:[],moves:0,pendingBattle:null,cpuThinking:false};
+    return {board:b,turn:'angel',selected:null,legal:[],moves:0,pendingBattle:null,cpuThinking:false,gameOver:false};
   }
 
   function frogMarkup(p){
@@ -122,7 +122,7 @@
   }
 
   function onCellClick(e){
-    if(state.pendingBattle || state.cpuThinking || state.turn==='demon')return;
+    if(state.gameOver || state.pendingBattle || state.cpuThinking || state.turn==='demon')return;
     const r=+e.currentTarget.dataset.r,c=+e.currentTarget.dataset.c,p=state.board[r][c];
     if(state.selected){
       const m=state.legal.find(x=>x.r===r&&x.c===c);
@@ -157,9 +157,24 @@
     modal.hidden=false;
   }
 
-  $('attackerWins').onclick=()=>{const b=state.pendingBattle;if(!b)return;state.board[b.tr][b.tc]=b.attacker;state.board[b.fr][b.fc]=null;modal.hidden=true;state.pendingBattle=null;finishTurn(`${b.attacker.name}が${b.defender.name}を撃破。駒取り成立。`);};
+  $('attackerWins').onclick=()=>{const b=state.pendingBattle;if(!b)return;state.board[b.tr][b.tc]=b.attacker;state.board[b.fr][b.fc]=null;modal.hidden=true;state.pendingBattle=null;if(b.defender.type==='king'){endGame(b.attacker.side,b.defender);return;}finishTurn(`${b.attacker.name}が${b.defender.name}を撃破。駒取り成立。`);};
   $('defenderWins').onclick=()=>{const b=state.pendingBattle;if(!b)return;modal.hidden=true;state.pendingBattle=null;finishTurn(`${b.defender.name}が防衛成功。攻撃は阻止されました。`);};
   $('cancelBattle').onclick=()=>{modal.hidden=true;state.pendingBattle=null;state.selected=null;state.legal=[];showSelected(null);statusText.textContent='戦闘をキャンセルしました。';render();};
+
+  function endGame(winnerSide, defeatedKing){
+    state.gameOver=true;
+    state.cpuThinking=false;
+    state.selected=null;
+    state.legal=[];
+    showSelected(null);
+    const winner=winnerSide==='angel'?'天使軍':'悪魔軍';
+    statusText.textContent=`${defeatedKing.name}（王）が倒されました。${winner}の勝利！`;
+    turnBadge.textContent=`${winner} 勝利`;
+    turnBadge.className=`turn-badge ${winnerSide}`;
+    render();
+    // render() が手番表示を上書きするため、最後に勝利表示を固定
+    turnBadge.textContent=`${winner} 勝利`;
+  }
 
   function finishTurn(msg){
     state.selected=null;state.legal=[];state.moves++;
@@ -171,7 +186,7 @@
   const PIECE_VALUE={king:10000,rook:900,bishop:800,gold:600,silver:520,knight:360,lance:320,pawn:120};
 
   function scheduleCpuMove(){
-    if(state.cpuThinking || state.pendingBattle || state.turn!=='demon')return;
+    if(state.gameOver || state.cpuThinking || state.pendingBattle || state.turn!=='demon')return;
     state.cpuThinking=true;
     turnBadge.textContent='悪魔軍 CPU 思考中…';
     statusText.textContent='悪魔軍が次の一手を考えています。';
@@ -179,7 +194,7 @@
   }
 
   function cpuMove(){
-    if(state.turn!=='demon' || state.pendingBattle){state.cpuThinking=false;return;}
+    if(state.gameOver || state.turn!=='demon' || state.pendingBattle){state.cpuThinking=false;return;}
     const choices=[];
     for(let r=0;r<9;r++)for(let c=0;c<9;c++){
       const p=state.board[r][c];
