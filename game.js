@@ -32,7 +32,7 @@
     'サマエル':{body:'#2a183b',limb:'#1c102a'},
     'フラウロス':{body:'#c92825',limb:'#96191a'},
     'カワズさん':{body:'#4fbd55',limb:'#388f3e',eye:'#d71920'},
-    'モブさん':{body:'#76c98a',limb:'#55a86b'}
+    'モブさん':{body:'#79b85a',limb:'#5a9442'}
   };
 
   // JUMP v2.49 の練習技リストから抜粋。盤面選択時の確認用。
@@ -85,8 +85,8 @@
 
   function frogMarkup(p){
     const pal=PALETTE[p.name]||{body:'#4fbd55',limb:'#388f3e'};
-    const scale=p.type==='pawn'?.94:1;
-    return `<div class="piece ${p.side}" style="--frog-scale:${scale};--frog-body:${pal.body};--frog-limb:${pal.limb};--frog-eye:${pal.eye||'#132127'}">
+    const scale=p.type==='pawn'?.82:1;
+    return `<div class="piece ${p.side} ${p.type}" style="--frog-scale:${scale};--frog-body:${pal.body};--frog-limb:${pal.limb};--frog-eye:${pal.eye||'#132127'}">
       <div class="frog-token">
         <span class="frog-leg left"></span><span class="frog-leg right"></span>
         <span class="frog-body"></span><span class="frog-eyes"></span><span class="frog-pupils"></span>

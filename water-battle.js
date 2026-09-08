@@ -135,6 +135,7 @@
 
   const stats = {
     green:  { speed: 160, tongue: 210, damage: 1.00, defense:1.00, sink:7, hue:0, scale:1.00 },
+    mob:    { speed: 154, tongue: 195, damage: 0.88, defense:0.92, sink:6, hue:0, scale:0.84 },
     blue:   { speed: 182, tongue: 260, damage: 0.88, defense:1.00, sink:5, hue:95, scale:1.00 },
     black:  { speed: 148, tongue: 225, damage: 1.22, defense:1.00, sink:9, hue:0, scale:1.00 },
     purple: { speed: 174, tongue: 245, damage: 0.92, defense:1.00, sink:5, hue:0, scale:1.00 },
@@ -343,6 +344,10 @@
   }
 
   const selectCardCommands={
+    mob:[
+      'バブルショット：前 ＋ パンチ',
+      'かえる跳びアッパー：上 ＋ パンチ'
+    ],
     green:[
       'バーニングアッパー：上 ＋ パンチ',
       'バーニングキック：前 ＋ キック',
@@ -888,6 +893,7 @@
   }
 
   function fighterPalette(type){
+    if(type==='mob') return {body:'#79b85a',limb:'#5a9442',light:'#a9d97d',belly:'#eef7d8',eyeBump:'#8fc96a'};
     if(type==='flauros'){
       return {body:'#c92825',limb:'#b91f20',light:'#ff6a3d',belly:'#ef9b58',eyeBump:'#e64631'};
     }
@@ -2729,6 +2735,7 @@
   function dashVector(dir){
     const s=Math.SQRT1_2;
     const map={
+      'モブ':'mob','モブさん':'mob',
       right:[1,0],
       downRight:[s,s],
       down:[0,1],
@@ -3173,6 +3180,7 @@
 
   function practiceSpecialText(type){
     const map={
+      mob:['前 ＋ パンチ：バブルショット','上 ＋ パンチ：かえる跳びアッパー'],
       green:['上 ＋ パンチ：バーニングアッパー','前 ＋ キック：バーニングキック','後ろ ＋ パンチ：バーニングショット','下 → 後ろ ＋ キック：バーニングサイクロン'],
       blue:['上 ＋ パンチ：アクアトルネード','下 ＋ キック：アクアストリーム','後ろ ＋ パンチ：アクアボルテックス','前 ＋ パンチ：アクアショット'],
       yellow:['前 ＋ パンチ：水圧カッター（正面）','前 ＋ キック：水圧カッター（下15度）','後ろ ＋ パンチ：カープ水圧カッター（上から弧）','後ろ ＋ キック：カープ水圧カッター（下から弧）','ガード ×2：ヒーリングバブル','後ろ → 下 ＋ ガード：高速バブル移動'],
@@ -3284,7 +3292,7 @@
 
   function fighterDisplayName(type){
     return {
-      green:'ミカエルさん', blue:'ガブリエルさん', black:'ルシファーさん',
+      mob:'モブさん', green:'ミカエルさん', blue:'ガブリエルさん', black:'ルシファーさん',
       purple:'リリスさん', yellow:'ラファエルさん', orange:'ウリエルさん',
       piranha:'リヴァイアさん', crayfish:'アスモデウスさん',
       beelzebub:'ベルゼブブさん', flauros:'フラウロスさん', satanael:'サタナエルさん', samael:'サマエルさん', seraphiel:'セラフィエルさん', remiel:'レミエルさん', jihal:'ジィハルさん', kokabiel:'コカビエルさん', sariel:'サリエルさん', kawazu:'カワズさん'
@@ -3547,7 +3555,7 @@
     const z=[];
     const fx=x=>f.x+f.face*x;
 
-    if(f.type==='green' && f.specialType==='uppercut' && f.specialT<=.54 && f.specialT>=.08)
+    if((f.type==='green'||f.type==='mob') && f.specialType==='uppercut' && f.specialT<=.54 && f.specialT>=.08)
       z.push({owner:f,x:fx(48),y:f.y-22,r:30});
     if(f.type==='green' && f.specialType==='dropkick' && f.specialT<=.475 && f.specialT>=.06)
       z.push({owner:f,x:fx(63),y:f.y+25,r:39});
@@ -3985,9 +3993,9 @@
       f.vy=-520;
       f.vx+=f.face*70;
 
-      comboEl.textContent='バーニングアッパー!';
+      comboEl.textContent=(f.type==='mob'?'かえる跳びアッパー!':'バーニングアッパー!');
       setTimeout(()=>{
-        if(comboEl.textContent==='バーニングアッパー!') comboEl.textContent='';
+        if(comboEl.textContent==='バーニングアッパー!'||comboEl.textContent==='かえる跳びアッパー!') comboEl.textContent='';
       },600);
     },180);
 
@@ -5319,6 +5327,35 @@
         input.punchTapTimes=[];
         clearCommand();
         return specialKawazuPressureRush(f);
+      }
+    }
+
+    
+    // 池将棋MIX：モブさん専用。技は2つだけ。
+    if(f.type==='mob'){
+      if(kind==='punch' && water2HeldDir(f,'forward')){
+        clearCommand();
+        return specialWater2Shot(f,{
+          name:'バブルショット',
+          attack:'punch',
+          color:'bubble',
+          style:'bubble',
+          speed:190,
+          damage:3.0,
+          r:18,
+          charge:.28,
+          wobble:.12,
+          maxReflect:3
+        });
+      }
+      if(kind==='punch' && water2HeldDir(f,'up')){
+        clearCommand();
+        const ok=specialUppercut(f);
+        if(ok){
+          comboEl.textContent='かえる跳びアッパー!';
+          setTimeout(()=>{if(comboEl.textContent==='かえる跳びアッパー!')comboEl.textContent='';},620);
+        }
+        return ok;
       }
     }
 
