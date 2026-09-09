@@ -1,17 +1,17 @@
 (() => {
   const BOARD_SIZE=9, TYPES=['king','rook','bishop','gold','silver','knight','lance','pawn'];
-  const K={king:'王',rook:'飛',bishop:'角',gold:'金',silver:'銀',knight:'桂',lance:'香',pawn:'歩',tokin:'と'};
+  const K={king:'王',rook:'飛',bishop:'角',gold:'金',silver:'銀',knight:'桂',lance:'香',pawn:'歩',tokin:'と',dragon:'龍',horse:'馬',proSilver:'全',proKnight:'圭',proLance:'杏'};
   const LABEL={king:'王／玉',rook:'飛車',bishop:'角行',gold:'金将 ×2',silver:'銀将 ×2',knight:'桂馬 ×2',lance:'香車 ×2',pawn:'歩兵 ×9',tokin:'と金'};
   // 大幅弱体化はしない。戦闘接続後に実戦で再調整する仮値。
-  const ROLE_HP={king:100,rook:100,bishop:100,gold:100,silver:100,knight:98,lance:98,pawn:100,tokin:100};
+  const ROLE_HP={king:100,rook:100,bishop:100,gold:100,silver:100,knight:98,lance:98,pawn:100,tokin:100,dragon:100,horse:100,proSilver:100,proKnight:100,proLance:100};
 
   const CHARACTERS={
     angel:['セラフィエル','ジィハル','ラファエル','ウリエル','ミカエル','ガブリエル','レミエル','カワズさん'],
     demon:['サタナエル','フラウロス','ベルゼブブ','サマエル','ルシファー','リリス','サリエル','コカビエル']
   };
   const RECOMMENDED={
-    angel:{king:'セラフィエル',rook:'ジィハル',bishop:'ラファエル',gold:'ウリエル',silver:'ミカエル',knight:'ガブリエル',lance:'レミエル',pawn:'モブさん',tokin:'カワズさん'},
-    demon:{king:'サタナエル',rook:'フラウロス',bishop:'ベルゼブブ',gold:'サマエル',silver:'ルシファー',knight:'リリス',lance:'サリエル',pawn:'モブさん',tokin:'コカビエル'}
+    angel:{king:'セラフィエル',rook:'ジィハル',bishop:'ラファエル',gold:'ウリエル',silver:'ミカエル',knight:'ガブリエル',lance:'レミエル',pawn:'モブさん'},
+    demon:{king:'サタナエル',rook:'フラウロス',bishop:'ベルゼブブ',gold:'サマエル',silver:'ルシファー',knight:'リリス',lance:'サリエル',pawn:'モブさん'}
   };
 
   // JUMP v2.49 のキャラクター配色を、盤上で見分けやすい主色へ簡略化。
@@ -72,8 +72,22 @@
   let assignments=JSON.parse(JSON.stringify(RECOMMENDED)), state;
   const emptyBoard=()=>Array.from({length:9},()=>Array(9).fill(null));
   const piece=(side,type)=>({side,type,name:type==='pawn'?'モブさん':assignments[side][type]});
-  function promotePawn(p){return {...p,type:'tokin',name:assignments[p.side].tokin||'カワズさん',promoted:true};}
+  function promotePawn(p){return {...p,type:'tokin',name:'カワズさん',promoted:true,baseType:'pawn'};}
+  const PROMOTED_TYPE={rook:'dragon',bishop:'horse',silver:'proSilver',knight:'proKnight',lance:'proLance'};
   function inPromotionZone(side,row){return side==='angel'?row<=2:row>=6;}
+  function canPromoteMove(p,fr,tr){
+    return !!(p && PROMOTED_TYPE[p.type] && (inPromotionZone(p.side,fr)||inPromotionZone(p.side,tr)));
+  }
+  function mustPromote(p,tr){
+    if(!p)return false;
+    if(p.type==='lance')return p.side==='angel'?tr===0:tr===8;
+    if(p.type==='knight')return p.side==='angel'?tr<=1:tr>=7;
+    return false;
+  }
+  function promotePiece(p,useKawazu=false){
+    const nt=PROMOTED_TYPE[p.type]; if(!nt)return p;
+    return {...p,type:nt,baseType:p.type,promoted:true,name:useKawazu?'カワズさん':p.name};
+  }
 
   function initialState(){
     const b=emptyBoard();
@@ -156,7 +170,40 @@
   function attemptMove(fr,fc,tr,tc){
     const a=state.board[fr][fc],d=state.board[tr][tc];
     if(d){state.pendingBattle={fr,fc,tr,tc,attacker:a,defender:d};openBattle(state.pendingBattle);}
-    else{const moved=(a.type==='pawn'&&inPromotionZone(a.side,tr))?promotePawn(a):a;state.board[tr][tc]=moved;state.board[fr][fc]=null;finishTurn(`${a.name}が移動しました。${moved.type==='tokin'?` ${moved.name}（と）に成りました！`:''}`);}
+    else{completeBoardMove(fr,fc,tr,tc,a);}
+  }
+
+  function completeBoardMove(fr,fc,tr,tc,a){
+    if(a.type==='pawn' && inPromotionZone(a.side,tr)){
+      const moved=promotePawn(a);state.board[tr][tc]=moved;state.board[fr][fc]=null;
+      finishTurn(`${a.name}がカワズさん（と）に成りました！`);return;
+    }
+    if(canPromoteMove(a,fr,tr)){
+      if(a.side==='angel'){openPromotionChoice({fr,fc,tr,tc,piece:a});return;}
+      const moved=promotePiece(a,false);state.board[tr][tc]=moved;state.board[fr][fc]=null;
+      finishTurn(`${a.name}が${K[moved.type]}に成りました。`);return;
+    }
+    state.board[tr][tc]=a;state.board[fr][fc]=null;finishTurn(`${a.name}が移動しました。`);
+  }
+
+  let pendingPromotion=null;
+  function openPromotionChoice(data){
+    pendingPromotion=data;
+    const p=data.piece, forced=mustPromote(p,data.tr);
+    $('promotionText').textContent=`${p.name}（${K[p.type]}）をどうしますか？`;
+    $('promotionStay').hidden=forced;
+    $('promotionModal').hidden=false;
+  }
+  function resolvePromotion(mode){
+    if(!pendingPromotion)return;
+    const {fr,fc,tr,tc,piece:p,alreadyMoved}=pendingPromotion; pendingPromotion=null;$('promotionModal').hidden=true;
+    let moved=p,msg='';
+    if(mode==='stay'){msg=`${p.name}は成らずに進みました。`;}
+    else{
+      moved=promotePiece(p,mode==='kawazu');
+      msg=mode==='kawazu'?`${p.name}が${K[moved.type]}に成り、カワズさんへ交代しました！`:`${p.name}が${K[moved.type]}に成りました！`;
+    }
+    state.board[tr][tc]=moved;if(!alreadyMoved || fr!==tr || fc!==tc)state.board[fr][fc]=null;finishTurn(msg);
   }
 
   function saveBattleSnapshot(){
@@ -223,14 +270,20 @@
     }catch(e){}
 
     if(result.winner==='attacker'){
-      const moved=(b.attacker.type==='pawn'&&inPromotionZone(b.attacker.side,b.tr))?promotePawn(b.attacker):b.attacker;
-      state.board[b.tr][b.tc]=moved;
-      state.board[b.fr][b.fc]=null;
+      const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'水中';
       if(b.defender.type==='king'){
+        state.board[b.tr][b.tc]=b.attacker;state.board[b.fr][b.fc]=null;
         setTimeout(()=>endGame(b.attacker.side,b.defender),0);
+      }else if(b.attacker.type==='pawn' && inPromotionZone(b.attacker.side,b.tr)){
+        const moved=promotePawn(b.attacker);state.board[b.tr][b.tc]=moved;state.board[b.fr][b.fc]=null;
+        setTimeout(()=>finishTurn(`${terrainName}戦：駒取り成立。モブさんがカワズさん（と）に成りました！`),0);
+      }else if(canPromoteMove(b.attacker,b.fr,b.tr) && b.attacker.side==='angel'){
+        state.board[b.tr][b.tc]=b.attacker;state.board[b.fr][b.fc]=null;
+        setTimeout(()=>openPromotionChoice({fr:b.tr,fc:b.tc,tr:b.tr,tc:b.tc,piece:b.attacker,alreadyMoved:true}),0);
       }else{
-        const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'水中';
-        setTimeout(()=>finishTurn(`${terrainName}戦：${b.attacker.name}が${b.defender.name}を撃破。駒取り成立。${moved.type==='tokin'?` ${moved.name}（と）に成りました！`:''}`),0);
+        const moved=canPromoteMove(b.attacker,b.fr,b.tr)?promotePiece(b.attacker,false):b.attacker;
+        state.board[b.tr][b.tc]=moved;state.board[b.fr][b.fc]=null;
+        setTimeout(()=>finishTurn(`${terrainName}戦：${b.attacker.name}が${b.defender.name}を撃破。駒取り成立。${moved!==b.attacker?` ${K[moved.type]}に成りました。`:''}`),0);
       }
     }else{
       const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'水中';
@@ -266,7 +319,7 @@
     if(state.turn==='demon' && !state.pendingBattle) scheduleCpuMove();
   }
 
-  const PIECE_VALUE={king:10000,rook:900,bishop:800,gold:600,silver:520,knight:360,lance:320,pawn:120,tokin:600};
+  const PIECE_VALUE={king:10000,rook:900,bishop:800,gold:600,silver:520,knight:360,lance:320,pawn:120,tokin:600,proLance:600,proKnight:600,proSilver:600,horse:950,dragon:1100};
 
   function scheduleCpuMove(){
     if(state.gameOver || state.cpuThinking || state.pendingBattle || state.turn!=='demon')return;
@@ -318,12 +371,14 @@
     const step=(dr,dc)=>add(r+dr,c+dc,p,out),ray=(dr,dc)=>{let rr=r+dr,cc=c+dc;while(inB(rr,cc)){const t=state.board[rr][cc];if(!t)out.push({r:rr,c:cc,capture:false});else{if(t.side!==p.side)out.push({r:rr,c:cc,capture:true});break;}rr+=dr;cc+=dc;}};
     switch(p.type){
       case'king':[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]].forEach(d=>step(...d));break;
-      case'gold':case'tokin':[[f,-1],[f,0],[f,1],[0,-1],[0,1],[-f,0]].forEach(d=>step(...d));break;
+      case'gold':case'tokin':case'proSilver':case'proKnight':case'proLance':[[f,-1],[f,0],[f,1],[0,-1],[0,1],[-f,0]].forEach(d=>step(...d));break;
       case'silver':[[f,-1],[f,0],[f,1],[-f,-1],[-f,1]].forEach(d=>step(...d));break;
       case'knight':[[2*f,-1],[2*f,1]].forEach(d=>step(...d));break;
       case'lance':ray(f,0);break;
       case'rook':[[-1,0],[1,0],[0,-1],[0,1]].forEach(d=>ray(...d));break;
       case'bishop':[[-1,-1],[-1,1],[1,-1],[1,1]].forEach(d=>ray(...d));break;
+      case'dragon':[[-1,0],[1,0],[0,-1],[0,1]].forEach(d=>ray(...d));[[-1,-1],[-1,1],[1,-1],[1,1]].forEach(d=>step(...d));break;
+      case'horse':[[-1,-1],[-1,1],[1,-1],[1,1]].forEach(d=>ray(...d));[[-1,0],[1,0],[0,-1],[0,1]].forEach(d=>step(...d));break;
       case'pawn':step(f,0);
     }
     return out;
@@ -335,16 +390,23 @@
     ['angel','demon'].forEach(side=>{const host=$(`${side}Editor`);host.innerHTML='';
       TYPES.forEach(type=>{const row=document.createElement('label');row.className='assign-row';row.innerHTML=`<span><b>${K[type]}</b><small>${LABEL[type]}</small></span>`;
         if(type==='pawn'){const fixed=document.createElement('div');fixed.className='fixed-assignment';fixed.textContent='モブさん（固定）';row.appendChild(fixed);}
-        else{const sel=document.createElement('select');sel.dataset.side=side;sel.dataset.type=type;CHARACTERS[side].forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});sel.value=assignments[side][type];sel.onchange=()=>validateAndApplyEditor();row.appendChild(sel);}host.appendChild(row);});
-      const row=document.createElement('label');row.className='assign-row promoted-row';row.innerHTML='<span><b>と</b><small>成り後</small></span>';const sel=document.createElement('select');sel.dataset.side=side;sel.dataset.type='tokin';CHARACTERS[side].forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});sel.value=assignments[side].tokin||RECOMMENDED[side].tokin;sel.onchange=()=>validateAndApplyEditor();row.appendChild(sel);host.appendChild(row);
+        else{const sel=document.createElement('select');sel.dataset.side=side;sel.dataset.type=type;
+          CHARACTERS[side].filter(n=>n!=='カワズさん').forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});
+          sel.value=assignments[side][type];sel.onchange=()=>validateAndApplyEditor();row.appendChild(sel);}
+        host.appendChild(row);
+      });
+      if(side==='angel'){const note=document.createElement('div');note.className='promotion-reserve';note.textContent='カワズさん：成り交代専用（歩は自動／その他は成る時に選択）';host.appendChild(note);}
     });
   }
   function validateAndApplyEditor(){
     const next={angel:{pawn:'モブさん'},demon:{pawn:'モブさん'}};let ok=true;
-    ['angel','demon'].forEach(side=>{const used=new Set();document.querySelectorAll(`select[data-side="${side}"]`).forEach(sel=>{next[side][sel.dataset.type]=sel.value;if(sel.dataset.type!=='tokin'){if(used.has(sel.value))ok=false;used.add(sel.value);}});});
+    ['angel','demon'].forEach(side=>{const used=new Set();document.querySelectorAll(`select[data-side="${side}"]`).forEach(sel=>{next[side][sel.dataset.type]=sel.value;if(used.has(sel.value))ok=false;used.add(sel.value);});});
     $('editorWarning').hidden=ok;$('applyBtn').disabled=!ok;if(!ok)return;assignments=next;
   }
-  function updateRosterSummary(){['angel','demon'].forEach(side=>{$(`${side}Roster`).textContent=TYPES.map(t=>`${K[t]} ${t==='pawn'?'モブさん':assignments[side][t]}`).concat([`と ${assignments[side].tokin}`]).join(' / ');});}
+  function updateRosterSummary(){['angel','demon'].forEach(side=>{$(`${side}Roster`).textContent=TYPES.map(t=>`${K[t]} ${t==='pawn'?'モブさん':assignments[side][t]}`).join(' / ')+(side==='angel'?' / 成り交代 カワズさん':'');});}
+  $('promotionKeep').onclick=()=>resolvePromotion('keep');
+  $('promotionKawazu').onclick=()=>resolvePromotion('kawazu');
+  $('promotionStay').onclick=()=>resolvePromotion('stay');
   $('recommendedBtn').onclick=()=>{assignments=JSON.parse(JSON.stringify(RECOMMENDED));buildEditor();$('editorWarning').hidden=true;$('applyBtn').disabled=false;};
   $('applyBtn').onclick=()=>{validateAndApplyEditor();if(!$('editorWarning').hidden)return;state=initialState();showSelected(null);statusText.textContent='編成を適用しました。天使軍はプレイヤー、悪魔軍はCPUです。';render();$('setupPanel').open=false;};
   $('resetBtn').onclick=()=>{if(confirm('現在の編成のまま盤面を初期状態に戻しますか？')){state=initialState();showSelected(null);statusText.textContent='盤面をリセットしました。天使軍から開始します。';render();}};

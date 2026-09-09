@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="theme-color" content="#0d6672" />
-  <title>池将棋MIX 試作 v0.7.4</title>
+  <title>池将棋MIX 試作 v0.7.5</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -53,7 +53,7 @@
 
     <section class="info-grid">
       <div class="mini-card">
-        <h2>v0.7.4</h2>
+        <h2>v0.7.5</h2>
         <p>明るい池デザインへ刷新。駒はキャラ色そのもののカエル型にし、陣営色ではなく各キャラの色を前面に出しました。</p>
       </div>
       <div class="mini-card">
@@ -64,7 +64,7 @@
 
     <details id="setupPanel" class="roster setup-panel">
       <summary>編成を変更する</summary>
-      <p class="setup-note">おすすめ配役を初期値にしています。歩9枚はモブさん固定で選択不可。「と」は成り後キャラとして別に選択できます。</p>
+      <p class="setup-note">歩9枚はモブさん固定です。カワズさんは通常役には配置せず、成り交代専用にします。歩は敵陣で自動的にカワズさん（と）へ成ります。</p>
       <div class="setup-actions"><button id="recommendedBtn" class="secondary" type="button">おすすめに戻す</button><button id="applyBtn" class="primary" type="button">この編成で盤面を開始</button></div>
       <p id="editorWarning" class="warning" hidden>同じ軍のキャラが重複しています。8種類の駒に8人を1人ずつ割り当ててください。</p>
       <div class="editor-columns"><div><h3>天使軍</h3><div id="angelEditor"></div></div><div><h3>悪魔軍</h3><div id="demonEditor"></div></div></div>
@@ -74,6 +74,21 @@
       <div class="roster-columns"><div><h3>天使軍</h3><p id="angelRoster"></p></div><div><h3>悪魔軍</h3><p id="demonRoster"></p></div></div>
     </details>
   </main>
+
+  <div id="promotionModal" class="modal" hidden>
+    <div class="modal-backdrop"></div>
+    <section class="battle-card promotion-card" role="dialog" aria-modal="true" aria-labelledby="promotionTitle">
+      <div class="terrain-pill lotus">成り</div>
+      <h2 id="promotionTitle">成りますか？</h2>
+      <p id="promotionText" class="battle-hint"></p>
+      <div class="promotion-actions">
+        <button id="promotionKeep" class="primary" type="button">成る・今のキャラのまま</button>
+        <button id="promotionKawazu" class="kawazu-choice" type="button">成る・カワズさんに交代</button>
+        <button id="promotionStay" class="ghost" type="button">成らない</button>
+      </div>
+      <p class="promotion-note">※ 香車が最奥段、桂馬が最奥2段へ進む場合は「成らない」を選べません。</p>
+    </section>
+  </div>
 
   <div id="battleModal" class="modal" hidden>
     <div class="modal-backdrop"></div>
