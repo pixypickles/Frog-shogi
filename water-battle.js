@@ -368,7 +368,7 @@
       'カープ水圧カッター（上から弧）：後ろ ＋ パンチ',
       'カープ水圧カッター（下から弧）：後ろ ＋ キック',
       'ヒーリングバブル：ガード ×2',
-      '高速バブル移動：後ろ → 下 ＋ ガード'
+      '高速バブル上下移動：後ろ → 下 ＋ ガード'
     ],
     orange:[
       'ホワイトカウンター：下 → 後ろ ＋ ガード',
@@ -3187,7 +3187,7 @@
       mob:['前 ＋ パンチ：バブルショット','上 ＋ パンチ：かえる跳びアッパー','前 ＋ キック：トリプルキック'],
       green:['上 ＋ パンチ：バーニングアッパー','前 ＋ キック：バーニングキック','後ろ ＋ パンチ：バーニングショット','下 → 後ろ ＋ キック：バーニングサイクロン'],
       blue:['上 ＋ パンチ：アクアトルネード','下 ＋ キック：アクアストリーム','後ろ ＋ パンチ：アクアボルテックス','前 ＋ パンチ：アクアショット'],
-      yellow:['前 ＋ パンチ：水圧カッター（正面）','前 ＋ キック：水圧カッター（下15度）','後ろ ＋ パンチ：カープ水圧カッター（上から弧）','後ろ ＋ キック：カープ水圧カッター（下から弧）','ガード ×2：ヒーリングバブル','後ろ → 下 ＋ ガード：高速バブル移動'],
+      yellow:['前 ＋ パンチ：水圧カッター（正面）','前 ＋ キック：水圧カッター（下15度）','後ろ ＋ パンチ：カープ水圧カッター（上から弧）','後ろ ＋ キック：カープ水圧カッター（下から弧）','ガード ×2：ヒーリングバブル','後ろ → 下 ＋ ガード：高速バブル上下移動'],
       orange:['下 → 後ろ ＋ ガード：ホワイトカウンター','後ろ → 前 ＋ ガード：ガーディアンタックル','ガード長押し：ホワイトオーラ','オーラ中 パンチ / キック：白い長リーチ攻撃','ガード ＋ パンチ：ホワイトショット'],
       black:['前 ＋ キック：ヘルクラッシュ（氷オーラの蹴り・特大ノックバック）','後ろ ＋ パンチ長押し → 離す：アビスチャージ（周囲を一瞬凍結）','前 ＋ パンチ：アイスショット','後ろ ＋ ガード：アイスウォール'],
       purple:['舌連打：舌ラッシュ','後ろ ＋ 舌：バブルショット','後ろ ＋ キック：バックスピンキック（追加入力で追加回転）','前 ＋ キック：ドロップキック'],
@@ -4351,9 +4351,9 @@
     f.vx=0;
     f.vy=0;
 
-    comboEl.textContent='高速バブル移動!';
+    comboEl.textContent='高速バブル上下移動!';
     setTimeout(()=>{
-      if(comboEl.textContent==='高速バブル移動!') comboEl.textContent='';
+      if(comboEl.textContent==='高速バブル上下移動!') comboEl.textContent='';
     },720);
     clearCommand();
     return true;
@@ -5280,7 +5280,44 @@
     return true;
   }
 
+
+  // v0.7.8 縦型水中：ラファエル専用調整
+  function rafaelAimVector(f){
+    const other=f.isPlayer?enemy:player;
+    if(!other)return {x:f.face,y:0};
+    const dx=other.x-f.x,dy=other.y-f.y,len=Math.hypot(dx,dy)||1;
+    return {x:dx/len,y:dy/len};
+  }
+  function specialRafaelAirBlade(f){
+    if(gameOver||!f||f.type!=='yellow'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    const v=rafaelAimVector(f);
+    f.specialType='rafaelAirBlade'; f.specialT=.48; f.attackT=.42; f.attack='punch';
+    projectiles.push({owner:f,x:f.x+v.x*36,y:f.y+v.y*36,vx:v.x*245,vy:v.y*245,r:27,life:2.3,damage:5.0,color:'airBlade',style:'airBlade',name:'エア（水圧）ブレード',pierce:false,reflects:0,maxReflect:2});
+    comboEl.textContent='エア（水圧）ブレード!';
+    setTimeout(()=>{if(comboEl.textContent==='エア（水圧）ブレード!')comboEl.textContent='';},700);
+    clearCommand(); return true;
+  }
+  function specialRafaelVerticalBubbleMove(f,dir){
+    if(gameOver||!f||f.type!=='yellow'||f.stun>0||f.guard||f.specialT>0)return false;
+    f.specialType='rafaelBubbleMove'; f.specialT=.46;
+    f.vy=(dir==='up'?-1:1)*390; f.vx*=.25;
+    spawnImpact(f.x,f.y,'guard');
+    comboEl.textContent=dir==='up'?'高速バブル上昇!':'高速バブル下降!';
+    setTimeout(()=>{if(comboEl.textContent.includes('高速バブル'))comboEl.textContent='';},520);
+    clearCommand(); return true;
+  }
+
   function trySpecial(f,kind){
+    // ラファエル：縦型水中では上下機動と全方向射撃を優先
+    if(f && f.type==='yellow'){
+      const upNow=water2HeldDir(f,'up') || hasCommand(['up'],650);
+      const downNow=water2HeldDir(f,'down') || hasCommand(['down'],650);
+      const forwardNow=water2HeldDir(f,'forward') || hasCommand([f.face>0?'right':'left'],650);
+      if(kind==='kick' && upNow)return specialRafaelVerticalBubbleMove(f,'up');
+      if(kind==='kick' && downNow)return specialRafaelVerticalBubbleMove(f,'down');
+      if(kind==='punch' && (upNow||downNow||forwardNow))return specialRafaelAirBlade(f);
+    }
+
     if(kind==='guard'&&f&&f.type==='satanael'&&water2HeldDir(f,'down')){clearCommand();return specialDarkPressure(f);}
     if(!f) return false;
     const forward=f.face>0?'right':'left';
@@ -5984,7 +6021,7 @@
             }
           }
 
-          // ラファエル：上＋ガードで高速バブル移動 / エアブースト。
+          // ラファエル：上＋ガードで高速バブル上下移動 / エアブースト。
           if(player.type==='yellow' && !player.throwState && input.y<-.35){
             input.simpleGuardTapTimes=[];
             if(specialRaphaelBubbleMove(player)){
@@ -6039,7 +6076,7 @@
             }
           }
 
-          // ラファエルさん：敵が右なら反時計回り1回転＋ガードで高速バブル移動
+          // ラファエルさん：敵が右なら反時計回り1回転＋ガードで高速バブル上下移動
           if(false && player.type==='yellow' && !player.throwState && hasFacingCircle(player,false,1150)){
             if(specialRaphaelBubbleMove(player)){
               btn.classList.remove('pressed');
@@ -6280,7 +6317,7 @@
         const away=-Math.sign(dx||enemy.face||1);
 
         if(dist<idealMin){
-          // 近づかれたらまず距離を取る。かなり近い時は高速バブル移動も使う。
+          // 近づかれたらまず距離を取る。かなり近い時は高速バブル上下移動も使う。
           enemy.vx += away*enemy.speed*1.75*diff.move*dt;
           enemy.vy += -Math.sign(dy||1)*enemy.speed*.42*diff.move*dt;
           if(dist<155 && enemy.specialT<=0 && Math.random()<dt*.42){
