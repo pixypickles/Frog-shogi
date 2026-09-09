@@ -153,6 +153,7 @@
     beelzebub:{speed: 154, tongue: 350, damage: 1.12, defense:1.10, sink:8, hue:0, scale:1.10},
     sariel:{speed:160,tongue:190,damage:1.01,defense:1.00,sink:7,hue:0,scale:1.02},
     kokabiel:{speed:152,tongue:190,damage:1.00,defense:1.04,sink:8,hue:0,scale:1.04},
+    awakenedKokabiel: { speed: 174, tongue: 230, damage: 1.16, defense:1.10, sink:6, hue:42, scale:1.04 },
     jihal:{speed:184,tongue:190,damage:1.02,defense:.97,sink:5,hue:0,scale:1.00},
     remiel:{speed: 170, tongue: 205, damage: .98, defense:1.00, sink:5, hue:0, scale:1.00},
     seraphiel:{speed: 178, tongue: 205, damage: 1.24, defense:.84, sink:5, hue:0, scale:1.02},
@@ -866,6 +867,7 @@
   }
 
   function fighterPalette(type){
+    if(type==='awakenedKokabiel') return {body:'#d6b83f',limb:'#9f8124',light:'#f2dc73',belly:'#f7edb8',eyeBump:'#c7a431'};
     if(type==='mob') return {body:'#79b85a',limb:'#5a9442',light:'#a9d97d',belly:'#eef7d8',eyeBump:'#8fc96a'};
     if(type==='flauros'){
       return {body:'#c92825',limb:'#b91f20',light:'#ff6a3d',belly:'#ef9b58',eyeBump:'#e64631'};
@@ -2705,6 +2707,7 @@
   function dashVector(dir){
     const s=Math.SQRT1_2;
     const map={
+      '覚醒コカビエル':'awakenedKokabiel',
       'モブ':'mob','モブさん':'mob',
       right:[1,0],
       downRight:[s,s],
@@ -3266,7 +3269,7 @@
       mob:'モブさん', green:'ミカエルさん', blue:'ガブリエルさん', black:'ルシファーさん',
       purple:'リリスさん', yellow:'ラファエルさん', orange:'ウリエルさん',
       piranha:'アザゼルさん', crayfish:'ベリアルさん',
-      beelzebub:'ベルゼブブさん', flauros:'フラウロスさん', satanael:'サタナエルさん', samael:'サマエルさん', seraphiel:'セラフィエルさん', remiel:'レミエルさん', jihal:'ジィハルさん', kokabiel:'コカビエルさん', sariel:'サリエルさん', kawazu:'カワズさん'
+      beelzebub:'ベルゼブブさん', flauros:'フラウロスさん', satanael:'サタナエルさん', samael:'サマエルさん', seraphiel:'セラフィエルさん', remiel:'レミエルさん', jihal:'ジィハルさん', awakenedKokabiel:'覚醒コカビエル', kokabiel:'コカビエルさん', sariel:'サリエルさん', kawazu:'カワズさん'
     }[type]||type;
   }
 
@@ -4776,7 +4779,7 @@
   function specialLunaSlash(f,arc){
     if(gameOver||!f||f.type!=='sariel'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
     f.specialType='lunaSlash';f.specialT=.50;f.attack='punch';f.attackT=.50;
-    lunarSlashes.push({owner:f,arc,dir:f.face,baseX:f.x,baseY:f.y,t:1.55,life:1.55,age:0,r:22,damage:6.2,hit:false});
+    lunarSlashes.push({owner:f,arc,dir:f.face,baseX:f.x,baseY:f.y,t:1.55,life:1.55,age:0,r:(f&&f.type==='awakenedKokabiel'?31:22),damage:6.2,hit:false});
     comboEl.textContent=arc==='up'?'ルナ・スラッシュ（上）!':'ルナ・スラッシュ（下）!';return true;
   }
   function specialEvilEye(f){
@@ -4797,6 +4800,7 @@
   }
 
   function specialGravityBall(f){
+    const specialGravityBall_awakenedBoost=(f&&f.type==='awakenedKokabiel')?1.65:1;
     if(gameOver||!f||f.type!=='kokabiel'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
     f.specialType='gravityBall';f.specialT=.54;f.attack='punch';f.attackT=.54;
     // JUMP版：横へ吸うより「下へ落とす」重力弾。
@@ -4804,6 +4808,7 @@
     comboEl.textContent='グラビティボール…';return true;
   }
   function specialGravityZone(f){
+    const specialGravityZone_awakenedBoost=(f&&f.type==='awakenedKokabiel')?1.65:1;
     if(gameOver||!f||f.type!=='kokabiel'||f.stun>0||f.specialT>0)return false;
     f.guard=false;f.specialType='gravityZone';f.specialT=.58;
     const t=f.isPlayer?enemy:player;
@@ -4815,6 +4820,7 @@
     comboEl.textContent='グラビティゾーン…';return true;
   }
   function specialMeteorRain(f){
+    const specialMeteorRain_awakenedBoost=(f&&f.type==='awakenedKokabiel')?1.65:1;
     if(gameOver||!f||f.type!=='kokabiel'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
     const t=f.isPlayer?enemy:player;if(!t)return false;
     f.specialType='meteorRain';f.specialT=.85;f.attack='punch';f.attackT=.42;
@@ -4829,6 +4835,7 @@
   }
 
   function specialGravityDive(f){
+    const specialGravityDive_awakenedBoost=(f&&f.type==='awakenedKokabiel')?1.65:1;
     if(gameOver||!f||f.type!=='kokabiel'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
     f.specialType='gravityDive';f.specialT=.58;f.attack='kick';f.attackT=.58;
     f.gravityDiveHit=false;f.vx=f.face*285;f.vy=430;
@@ -5336,7 +5343,7 @@
       if(kind==='kick'&&water2HeldDir(f,'up')){clearCommand();return specialMoonSaltKick(f);}
     }
 
-    if(f.type==='kokabiel'){
+    if((f.type==='kokabiel'||f.type==='awakenedKokabiel')){
       if(kind==='punch'&&water2HeldDir(f,'forward')){clearCommand();return specialGravityBall(f);}
       if(kind==='punch'&&water2HeldDir(f,'down')){clearCommand();return specialMeteorRain(f);}
       if(kind==='kick'&&water2HeldDir(f,'down')){clearCommand();return specialGravityDive(f);}
@@ -5481,7 +5488,7 @@
           style:'aquaPressure',
           speed:430,
           damage:4.2,
-          r:24,
+          r:(f&&f.type==='awakenedKokabiel'?34:24),
           charge:.30,
           wobble:.04,
           maxReflect:5
@@ -5523,7 +5530,7 @@
     }
     // リリス JUMP版：大きく遅い泡。後半は浮力で上へ持ち上がる。
     if(f.type==='purple' && kind==='punch' && water2HeldDir(f,'back')){
-      clearCommand(); return specialWater2Shot(f,{name:'バブルショット',attack:'punch',color:'bubble',style:'bubble',speed:145,damage:3.2,r:27,charge:.36,wobble:.18,maxReflect:4,riseAfter:.72,riseAccel:150});
+      clearCommand(); return specialWater2Shot(f,{name:'バブルショット',attack:'punch',color:'bubble',style:'bubble',speed:145,damage:(f&&f.type==='awakenedKokabiel'?5.2:3.2),r:27,charge:.36,wobble:.18,maxReflect:4,riseAfter:.72,riseAccel:150});
     }
     if(f.type==='purple' && kind==='punch' && water2HeldDir(f,'down')){
       clearCommand(); return specialWater2Shot(f,{name:'バブルショット',attack:'punch',color:'bubble',style:'bubble',speed:145,angle:30,damage:3.2,r:27,charge:.36,wobble:.18,maxReflect:4,riseAfter:.72,riseAccel:150});
@@ -6440,7 +6447,7 @@
       if(enemy.type==='satanael'&&enemy.specialT<=0){const r=Math.random();if(dist>190&&r<dt*.16){specialDisasterFlare(enemy);return;}if(dist>220&&r<dt*.28){specialDarkRay(enemy);return;}if(r<dt*.38){specialDarkPressure(enemy);return;}if(r<dt*.50){specialInfernoWave(enemy);return;}}
       if(enemy.type==='flauros'&&enemy.specialT<=0){const r=Math.random();if(dist>180&&r<dt*.20){specialHellFlame(enemy);return;}if(dist>170&&r<dt*.38){specialFlameClaw(enemy);return;}if(dist<250&&r<dt*.52){specialLeopardRush(enemy);return;}if(dist>130&&r<dt*.59){specialInfernoClaw(enemy);return;}}
       if(enemy.type==='sariel'&&enemy.specialT<=0){const r=Math.random();if(dist>170&&r<dt*.18){specialLunaSlash(enemy,Math.random()<.5?'up':'down');return;}if(dist<160&&r<dt*.12){specialMoonSaltKick(enemy);return;}if(dist<360&&r<dt*.07){specialEvilEye(enemy);return;}if(dist>180&&r<dt*.035){specialBloodMoon(enemy);return;}}
-      if(enemy.type==='kokabiel'&&enemy.specialT<=0){const r=Math.random();if(dist>180&&r<dt*.24){specialGravityBall(enemy);return;}if(dist<260&&r<dt*.10){specialGravityZone(enemy);return;}if(dist>130&&r<dt*.08){specialMeteorRain(enemy);return;}}
+      if((enemy.type==='kokabiel'||enemy.type==='awakenedKokabiel')&&enemy.specialT<=0){const r=Math.random();if(dist>180&&r<dt*.24){specialGravityBall(enemy);return;}if(dist<260&&r<dt*.10){specialGravityZone(enemy);return;}if(dist>130&&r<dt*.08){specialMeteorRain(enemy);return;}}
       if(enemy.type==='jihal'&&enemy.specialT<=0&&!enemy.jihalCharging){const r=Math.random();if(dist>210&&r<dt*.28){specialJihalBolt(enemy);return;}if(dist<175&&r<dt*.18){specialLightningDash(enemy);return;}if(dist<110&&r<dt*.10){specialSparkBurst(enemy);return;}if(dist>250&&r<dt*.05){startThunderCharge(enemy);setTimeout(()=>{if(enemy&&enemy.jihalCharging)releaseThunderCharge(enemy);},650);return;}}
       if(enemy.type==='remiel' && enemy.specialT<=0){const roll=Math.random();if(!remielMirages.some(m=>m.owner===enemy)&&roll<dt*.10){remielMakeMirage(enemy,Math.random()<.5?'up':'down');return;}if(dist>190&&roll<dt*.28){specialRemielFrostShot(enemy);return;}if(dist<150&&roll<dt*.18){specialMirageKick(enemy);return;}if(dist<115&&roll<dt*.10){specialAquaParry(enemy,false);return;}}
       if(enemy.type==='seraphiel' && enemy.specialT<=0){

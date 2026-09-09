@@ -239,3 +239,6 @@ html,body{background:linear-gradient(180deg,#10b6c5 0%,#0aa2b4 48%,#078fa4 100%)
 .result-toast span{font-size:11px;line-height:1.45}
 .result-toast.attack-win{background:#dfffe9;color:#145834}
 .result-toast.defense-win{background:#e5f0ff;color:#214f7d}
+
+/* v0.7.7 悪魔軍の成り専用キャラ */
+.promotion-reserve{border:1px solid rgba(115,83,18,.12)}

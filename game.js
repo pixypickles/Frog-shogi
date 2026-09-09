@@ -32,6 +32,7 @@
     'サマエル':{body:'#2a183b',limb:'#1c102a'},
     'フラウロス':{body:'#c92825',limb:'#96191a'},
     'カワズさん':{body:'#4fbd55',limb:'#388f3e',eye:'#d71920'},
+    '覚醒コカビエル':{body:'#d6b83f',limb:'#9f8124',eye:'#6d1a86'},
     'モブさん':{body:'#79b85a',limb:'#5a9442'}
   };
 
@@ -53,6 +54,7 @@
     'サマエル':['ポイズンゲート','ヴェノムタン','デッドリー・アクア'],
     'フラウロス':['ヘルフレイム','フレイムクロー','レオパードラッシュ','インフェルノクロー'],
     'カワズさん':['ファントムラッシュ','水圧ラッシュ','ミラージュキック','スピンキックカッター','方向キー1回転＋舌（隠し）'],
+    '覚醒コカビエル':['強化グラビティ球','覚醒グラビティゾーン','強化メテオレイン','グラビティダイブ改'],
     'モブさん':['前＋パンチ：バブルショット','上＋パンチ：かえる跳びアッパー','前＋キック：トリプルキック']
   };
 
@@ -72,7 +74,8 @@
   let assignments=JSON.parse(JSON.stringify(RECOMMENDED)), state;
   const emptyBoard=()=>Array.from({length:9},()=>Array(9).fill(null));
   const piece=(side,type)=>({side,type,name:type==='pawn'?'モブさん':assignments[side][type]});
-  function promotePawn(p){return {...p,type:'tokin',name:'カワズさん',promoted:true,baseType:'pawn'};}
+  function promotionFighter(side){return side==='angel'?'カワズさん':'覚醒コカビエル';}
+  function promotePawn(p){return {...p,type:'tokin',name:promotionFighter(p.side),promoted:true,baseType:'pawn'};}
   const PROMOTED_TYPE={rook:'dragon',bishop:'horse',silver:'proSilver',knight:'proKnight',lance:'proLance'};
   function inPromotionZone(side,row){return side==='angel'?row<=2:row>=6;}
   function canPromoteMove(p,fr,tr){
@@ -86,7 +89,7 @@
   }
   function promotePiece(p,useKawazu=false){
     const nt=PROMOTED_TYPE[p.type]; if(!nt)return p;
-    return {...p,type:nt,baseType:p.type,promoted:true,name:useKawazu?'カワズさん':p.name};
+    return {...p,type:nt,baseType:p.type,promoted:true,name:useKawazu?promotionFighter(p.side):p.name};
   }
 
   function initialState(){
@@ -182,11 +185,11 @@
   function completeBoardMove(fr,fc,tr,tc,a){
     if(a.type==='pawn' && inPromotionZone(a.side,tr)){
       const moved=promotePawn(a);state.board[tr][tc]=moved;state.board[fr][fc]=null;
-      finishTurn(`${a.name}がカワズさん（と）に成りました！`);return;
+      finishTurn(`${a.name}が${promotionFighter(a.side)}（と）に成りました！`);return;
     }
     if(canPromoteMove(a,fr,tr)){
       if(a.side==='angel'){openPromotionChoice({fr,fc,tr,tc,piece:a});return;}
-      const moved=promotePiece(a,false);state.board[tr][tc]=moved;state.board[fr][fc]=null;
+      const moved=promotePiece(a,a.side==='demon');state.board[tr][tc]=moved;state.board[fr][fc]=null;
       finishTurn(`${a.name}が${K[moved.type]}に成りました。`);return;
     }
     state.board[tr][tc]=a;state.board[fr][fc]=null;finishTurn(`${a.name}が移動しました。`);
@@ -197,6 +200,7 @@
     pendingPromotion=data;
     const p=data.piece, forced=mustPromote(p,data.tr);
     $('promotionText').textContent=`${p.name}（${K[p.type]}）をどうしますか？`;
+    $('promotionKawazu').textContent=`成る・${promotionFighter(p.side)}に交代`;
     $('promotionStay').hidden=forced;
     $('promotionModal').hidden=false;
   }
@@ -207,7 +211,7 @@
     if(mode==='stay'){msg=`${p.name}は成らずに進みました。`;}
     else{
       moved=promotePiece(p,mode==='kawazu');
-      msg=mode==='kawazu'?`${p.name}が${K[moved.type]}に成り、カワズさんへ交代しました！`:`${p.name}が${K[moved.type]}に成りました！`;
+      msg=mode==='kawazu'?`${p.name}が${K[moved.type]}に成り、${promotionFighter(p.side)}へ交代しました！`:`${p.name}が${K[moved.type]}に成りました！`;
     }
     state.board[tr][tc]=moved;if(!alreadyMoved || fr!==tr || fc!==tc)state.board[fr][fc]=null;finishTurn(msg);
   }
@@ -331,8 +335,8 @@
         state.board[b.tr][b.tc]=moved;state.board[b.fr][b.fc]=null;
         render();
         setTimeout(()=>animateCellPiece(b.tr,b.tc,'winner-pop'),30);
-        showResultToast('攻撃側勝利',`${defeatedName}は盤外へ。モブさんはカワズさん（と）に成りました！`,'attack-win');
-        setTimeout(()=>finishTurn(`${terrainName}戦：駒取り成立。モブさんがカワズさん（と）に成りました！`),700);
+        showResultToast('攻撃側勝利',`${defeatedName}は盤外へ。モブさんは${promotionFighter(b.attacker.side)}（と）に成りました！`,'attack-win');
+        setTimeout(()=>finishTurn(`${terrainName}戦：駒取り成立。モブさんが${promotionFighter(b.attacker.side)}（と）に成りました！`),700);
       }else if(canPromoteMove(b.attacker,b.fr,b.tr) && b.attacker.side==='angel'){
         state.board[b.tr][b.tc]=b.attacker;state.board[b.fr][b.fc]=null;
         render();
@@ -340,7 +344,7 @@
         showResultToast('攻撃側勝利',`${defeatedName}は盤外へ。続けて成りを選択します。`,'attack-win');
         setTimeout(()=>openPromotionChoice({fr:b.tr,fc:b.tc,tr:b.tr,tc:b.tc,piece:b.attacker,alreadyMoved:true}),700);
       }else{
-        const moved=canPromoteMove(b.attacker,b.fr,b.tr)?promotePiece(b.attacker,false):b.attacker;
+        const moved=canPromoteMove(b.attacker,b.fr,b.tr)?promotePiece(b.attacker,b.attacker.side==='demon'):b.attacker;
         state.board[b.tr][b.tc]=moved;state.board[b.fr][b.fc]=null;
         render();
         setTimeout(()=>animateCellPiece(b.tr,b.tc,'winner-pop'),30);
@@ -464,7 +468,11 @@
           sel.value=assignments[side][type];sel.onchange=()=>validateAndApplyEditor();row.appendChild(sel);}
         host.appendChild(row);
       });
-      if(side==='angel'){const note=document.createElement('div');note.className='promotion-reserve';note.textContent='カワズさん：成り交代専用（歩は自動／その他は成る時に選択）';host.appendChild(note);}
+      const note=document.createElement('div');note.className='promotion-reserve';
+      note.textContent=side==='angel'
+        ?'カワズさん：成り交代専用（歩は自動／その他は成る時に選択）'
+        :'覚醒コカビエル：成り交代専用（歩は自動／その他はCPUが成る時に交代）';
+      host.appendChild(note);
     });
   }
   function validateAndApplyEditor(){
@@ -472,7 +480,7 @@
     ['angel','demon'].forEach(side=>{const used=new Set();document.querySelectorAll(`select[data-side="${side}"]`).forEach(sel=>{next[side][sel.dataset.type]=sel.value;if(used.has(sel.value))ok=false;used.add(sel.value);});});
     $('editorWarning').hidden=ok;$('applyBtn').disabled=!ok;if(!ok)return;assignments=next;
   }
-  function updateRosterSummary(){['angel','demon'].forEach(side=>{$(`${side}Roster`).textContent=TYPES.map(t=>`${K[t]} ${t==='pawn'?'モブさん':assignments[side][t]}`).join(' / ')+(side==='angel'?' / 成り交代 カワズさん':'');});}
+  function updateRosterSummary(){['angel','demon'].forEach(side=>{$(`${side}Roster`).textContent=TYPES.map(t=>`${K[t]} ${t==='pawn'?'モブさん':assignments[side][t]}`).join(' / ')+(side==='angel'?' / 成り交代 カワズさん':' / 成り交代 覚醒コカビエル');});}
   $('promotionKeep').onclick=()=>resolvePromotion('keep');
   $('promotionKawazu').onclick=()=>resolvePromotion('kawazu');
   $('promotionStay').onclick=()=>resolvePromotion('stay');
