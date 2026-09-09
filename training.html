@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <title>戦闘練習 - 池将棋MIX</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;background:linear-gradient(180deg,#8ce8ec,#27b9c8 50%,#0b8297);color:#174e5c}
+    body{min-height:100svh;display:flex;justify-content:center}
+    .practice{width:min(100%,520px);padding:calc(18px + env(safe-area-inset-top)) 14px calc(22px + env(safe-area-inset-bottom))}
+    .card{background:rgba(248,255,255,.96);border-radius:24px;padding:20px;box-shadow:0 24px 60px rgba(0,0,0,.22)}
+    .kicker{font-size:10px;font-weight:900;letter-spacing:.14em;color:#63919a}
+    h1{margin:7px 0 4px;font-size:27px}
+    .sub{margin:0 0 18px;font-size:12px;color:#688d94}
+    .mode{padding:10px 12px;border-radius:13px;background:#dff8ff;margin-bottom:15px;font-weight:900;text-align:center}
+    label{display:block;font-size:11px;font-weight:900;margin:12px 0 6px}
+    select{width:100%;border:1px solid #b7d9de;border-radius:13px;padding:13px;background:#fff;color:#174e5c;font-size:16px;font-weight:800}
+    .enemy{padding:13px;border-radius:13px;background:#eff7df;font-weight:900}
+    .enemy small{display:block;font-size:10px;color:#6d8a55;margin-top:3px}
+    .start{width:100%;border:0;border-radius:15px;padding:15px;margin-top:17px;background:#164f61;color:#fff;font-size:17px;font-weight:1000}
+    .back{width:100%;border:0;border-radius:15px;padding:12px;margin-top:9px;background:#e6f1f3;color:#285d68;font-weight:900}
+    .hint{font-size:10px;line-height:1.6;color:#6a8b92;margin-top:13px}
+  </style>
+</head>
+<body>
+  <main class="practice">
+    <section class="card">
+      <div class="kicker">FROG FIGHTER 2 / TRAINING</div>
+      <h1>戦闘練習</h1>
+      <p class="sub">キャラクターを選んで、モブさん相手に技を練習できます。</p>
+
+      <div id="modeLabel" class="mode">蓮の葉バトル練習</div>
+
+      <label for="fighterSelect">自分のキャラクター</label>
+      <select id="fighterSelect">
+        <option value="ミカエル">ミカエル</option>
+<option value="ガブリエル">ガブリエル</option>
+<option value="ラファエル">ラファエル</option>
+<option value="ウリエル">ウリエル</option>
+<option value="レミエル">レミエル</option>
+<option value="ジィハル">ジィハル</option>
+<option value="セラフィエル">セラフィエル</option>
+<option value="カワズさん">カワズさん</option>
+<option value="ルシファー">ルシファー</option>
+<option value="リリス">リリス</option>
+<option value="ベルゼブブ">ベルゼブブ</option>
+<option value="サリエル">サリエル</option>
+<option value="コカビエル">コカビエル</option>
+<option value="フラウロス">フラウロス</option>
+<option value="サマエル">サマエル</option>
+<option value="サタナエル">サタナエル</option>
+<option value="覚醒コカビエル">覚醒コカビエル</option>
+      </select>
+
+      <label>相手</label>
+      <div class="enemy">
+        モブさん
+        <small>CPU固定 / HP 100%</small>
+      </div>
+
+      <button id="startPractice" class="start" type="button">練習開始</button>
+      <button id="backHome" class="back" type="button">モード選択へ戻る</button>
+
+      <p class="hint">練習では両者HP100%。将棋用の守備側1/3ハンデはありません。</p>
+    </section>
+  </main>
+
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const mode = params.get('mode') === 'water' ? 'water' : 'jump';
+  const modeLabel = document.getElementById('modeLabel');
+  modeLabel.textContent = mode === 'water' ? '水中バトル練習（縦型）' : '蓮の葉バトル練習';
+
+  const select = document.getElementById('fighterSelect');
+  const saved = localStorage.getItem('pondPracticeFighter');
+  if (saved && [...select.options].some(o => o.value === saved)) select.value = saved;
+
+  document.getElementById('startPractice').addEventListener('click', () => {
+    const fighter = select.value;
+    localStorage.setItem('pondPracticeFighter', fighter);
+    const context = {
+      source:'pond-training-v0.7.9',
+      practice:true,
+      attacker:fighter,
+      defender:'モブさん',
+      attackerType:fighter,
+      defenderType:'モブさん',
+      attackerHp:100,
+      defenderHp:100,
+      playerRole:'attacker',
+      terrain:mode === 'water' ? 'water' : 'lotus',
+      returnUrl:`./training.html?mode=${mode}`
+    };
+    sessionStorage.setItem('mixBattle', JSON.stringify(context));
+    sessionStorage.removeItem('mixBattleResult');
+    const page = mode === 'water' ? './water-battle.html' : './jump-battle.html';
+    location.href = `${page}?mix=1&battle=1&practice=1`;
+  });
+
+  document.getElementById('backHome').addEventListener('click', () => {
+    sessionStorage.removeItem('pondModeSelected');
+    location.href = './index.html';
+  });
+})();
+</script>
+</body>
+</html>

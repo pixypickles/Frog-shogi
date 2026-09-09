@@ -242,3 +242,46 @@ html,body{background:linear-gradient(180deg,#10b6c5 0%,#0aa2b4 48%,#078fa4 100%)
 
 /* v0.7.7 悪魔軍の成り専用キャラ */
 .promotion-reserve{border:1px solid rgba(115,83,18,.12)}
+
+/* v0.7.9 モード選択 */
+.mode-select{
+  position:fixed;
+  inset:0;
+  z-index:120;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:
+    radial-gradient(circle at 50% 15%,rgba(88,224,229,.96),rgba(11,126,145,.96) 47%,rgba(5,63,79,.98) 100%);
+}
+.mode-select.hidden{display:none}
+.mode-card{
+  width:min(94vw,460px);
+  padding:22px 18px;
+  border-radius:24px;
+  background:rgba(245,255,255,.96);
+  color:#164b58;
+  box-shadow:0 24px 70px rgba(0,0,0,.28);
+  border:2px solid rgba(255,255,255,.8);
+}
+.mode-kicker{font-size:10px;font-weight:1000;letter-spacing:.15em;color:#4f8e99}
+.mode-card h1{margin:6px 0 5px;font-size:28px}
+.mode-card>p{margin:0 0 16px;font-size:12px;color:#668a91}
+.mode-button{
+  width:100%;
+  text-align:left;
+  border:0;
+  border-radius:17px;
+  padding:15px 16px;
+  margin:8px 0 0;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  box-shadow:0 7px 18px rgba(0,0,0,.10);
+}
+.mode-button strong{font-size:17px}
+.mode-button span{font-size:10px;opacity:.78}
+.shogi-mode{background:#e5fff0;color:#155e3a}
+.jump-mode{background:#f2ffd9;color:#527019}
+.water-mode{background:#dff8ff;color:#175d78}

@@ -4,10 +4,34 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="theme-color" content="#0d6672" />
-  <title>池将棋MIX 試作 v0.7.8</title>
+  <title>池将棋MIX 試作 v0.7.9</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+  <div id="modeSelect" class="mode-select">
+    <section class="mode-card">
+      <div class="mode-kicker">FROG FIGHTER 2 / MIX</div>
+      <h1>モード選択</h1>
+      <p>遊ぶモードを選んでください。</p>
+
+      <button id="modeShogi" class="mode-button shogi-mode" type="button">
+        <strong>池将棋MIX</strong>
+        <span>将棋盤＋格闘戦の本編</span>
+      </button>
+
+      <button id="modeJumpPractice" class="mode-button jump-mode" type="button">
+        <strong>蓮の葉バトル練習</strong>
+        <span>JUMP戦をモブさん相手に練習</span>
+      </button>
+
+      <button id="modeWaterPractice" class="mode-button water-mode" type="button">
+        <strong>水中バトル練習</strong>
+        <span>縦型水中戦をモブさん相手に練習</span>
+      </button>
+    </section>
+  </div>
+
   <main class="app">
     <header class="topbar">
       <div>
@@ -57,7 +81,7 @@
 
     <section class="info-grid">
       <div class="mini-card">
-        <h2>v0.7.8</h2>
+        <h2>v0.7.9</h2>
         <p>明るい池デザインへ刷新。駒はキャラ色そのもののカエル型にし、陣営色ではなく各キャラの色を前面に出しました。</p>
       </div>
       <div class="mini-card">
@@ -148,6 +172,30 @@
     <strong id="resultTitle">戦闘結果</strong>
     <span id="resultText"></span>
   </div>
+
+
+  <script>
+  (() => {
+    const overlay = document.getElementById('modeSelect');
+    document.getElementById('modeShogi').addEventListener('click', () => {
+      overlay.classList.add('hidden');
+      sessionStorage.setItem('pondModeSelected','shogi');
+    });
+    document.getElementById('modeJumpPractice').addEventListener('click', () => {
+      location.href = './training.html?mode=jump';
+    });
+    document.getElementById('modeWaterPractice').addEventListener('click', () => {
+      location.href = './training.html?mode=water';
+    });
+
+    // 戦闘から将棋盤へ戻ってきた時は毎回モード選択を出さない
+    const snap = sessionStorage.getItem('pondShogiSnapshot');
+    const result = sessionStorage.getItem('mixBattleResult');
+    if (snap || result || sessionStorage.getItem('pondModeSelected') === 'shogi') {
+      overlay.classList.add('hidden');
+    }
+  })();
+  </script>
 
   <script src="game.js"></script>
 </body>
