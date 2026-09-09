@@ -762,6 +762,13 @@
     practiceExitButton.addEventListener('pointerup',(e)=>{
       e.preventDefault();
       e.stopPropagation();
+
+      // カエルしょうぎ側の練習から来た場合は、元の練習選択画面へ戻す。
+      if(mixBattleMode && mixBattleContext && mixBattleContext.practice){
+        location.href=new URL(mixBattleContext.returnUrl||'training.html?mode=water',location.href).href;
+        return;
+      }
+
       if(mixPracticeMode){
         location.href=new URL('index.html',location.href).href;
         return;
@@ -4336,20 +4343,42 @@
     return true;
   }
 
-  function specialRaphaelBubbleMove(f){
+  function specialRaphaelBubbleMove(f,verticalDir=null){
     if(gameOver || f.stun>0 || f.throwState || f.specialT>0) return false;
 
     f.guard=false;
     f.specialType='raphaelBubbleMove';
-    f.specialT=.92;
     f.attack=null;
     f.attackT=0;
     f.raphaelMoveElapsed=0;
-    f.raphaelMoveDuration=.82;
     f.raphaelMoveStartX=f.x;
     f.raphaelMoveStartY=f.y;
 
-    // 最初は斜め後ろ下へ、そこから大きく回り込んで前下へ。
+    if(portraitPlayMode){
+      // 縦型水中：全身を泡で包み、約0.30秒で大きく上下へ移動。
+      const dir=verticalDir || (input.y<0 ? 'up':'down');
+      const sign=dir==='up'?-1:1;
+      const other=f.isPlayer?enemy:player;
+      const sideShift=other?Math.max(-40,Math.min(40,(other.x-f.x)*.12)):0;
+
+      f.specialT=.42;
+      f.raphaelMoveDuration=.30;
+      f.raphaelMoveControlX=f.x+sideShift*.3;
+      f.raphaelMoveControlY=f.y+sign*Math.min(175,innerHeight*.18);
+      f.raphaelMoveEndX=Math.max(50,Math.min(innerWidth-50,f.x+sideShift));
+      f.raphaelMoveEndY=Math.max(70,Math.min(innerHeight-105,f.y+sign*Math.min(430,innerHeight*.40)));
+      f.vx=0;
+      f.vy=0;
+
+      comboEl.textContent=dir==='up'?'高速バブル上昇!':'高速バブル下降!';
+      setTimeout(()=>{if(comboEl.textContent.includes('高速バブル'))comboEl.textContent='';},520);
+      clearCommand();
+      return true;
+    }
+
+    // 横型の元技は従来挙動を維持。
+    f.specialT=.92;
+    f.raphaelMoveDuration=.82;
     const dir=f.face;
     f.raphaelMoveControlX=f.x-dir*Math.min(180,innerWidth*.18);
     f.raphaelMoveControlY=Math.min(innerHeight-70,f.y+Math.min(180,innerHeight*.30));
@@ -4358,9 +4387,9 @@
     f.vx=0;
     f.vy=0;
 
-    comboEl.textContent='高速バブル上下移動!';
+    comboEl.textContent='高速バブル移動!';
     setTimeout(()=>{
-      if(comboEl.textContent==='高速バブル上下移動!') comboEl.textContent='';
+      if(comboEl.textContent==='高速バブル移動!') comboEl.textContent='';
     },720);
     clearCommand();
     return true;
@@ -5540,64 +5569,45 @@
       if(kind==='kick' && hasCommand([back,'down'],850)){ clearCommand(); return specialCrayfishBottomSmash(f); }
     }
 
-    // 水中格闘2：ラファエル。4軌道の水圧カッターを方向＋攻撃で撃ち分け。
-    // v0.8.1 ラファエル：縦型水中専用
-    if(f.type==='yellow'){
+    // ラファエル：縦型水中専用。横型では従来技を維持。
+    if(f.type==='yellow' && portraitPlayMode){
       const rUp=water2HeldDir(f,'up') || hasCommand(['up'],700);
       const rDown=water2HeldDir(f,'down') || hasCommand(['down'],700);
       const rForward=water2HeldDir(f,'forward') || hasCommand([forward],700);
 
-      // 上下＋キック：本当に高速で、既存の泡エフェクト付き移動
-      if(kind==='kick' && rUp)return specialRafaelVerticalBubble(f,'up');
-      if(kind==='kick' && rDown)return specialRafaelVerticalBubble(f,'down');
+      // 上下＋キック：泡に包まれて高速上下移動
+      if(kind==='kick' && rUp) return specialRaphaelBubbleMove(f,'up');
+      if(kind==='kick' && rDown) return specialRaphaelBubbleMove(f,'down');
 
-      // 上＋パンチ：大型の全方向エア（水圧）ブレード
+      // 上＋パンチ：大型のエア（水圧）ブレード
       if(kind==='punch' && rUp){
-        const v=rafaelTargetVector(f); clearCommand();
-        return specialWater2Shot(f,{name:'エア（水圧）ブレード',attack:'punch',color:'water',style:'cutter',speed:285,damage:5.5,r:30,charge:.24,wobble:.02,maxReflect:3,aimX:v.x,aimY:v.y});
+        const v=rafaelTargetVector(f);
+        clearCommand();
+        return specialWater2Shot(f,{
+          name:'エア（水圧）ブレード',attack:'punch',
+          color:'water',style:'cutter',speed:300,damage:5.5,r:30,
+          charge:.22,wobble:.02,maxReflect:3,aimX:v.x,aimY:v.y
+        });
       }
 
-      // 下＋パンチ：上から落ちるエアギロチン
-      if(kind==='punch' && rDown)return specialRafaelVerticalGuillotine(f);
+      // 下＋パンチ：画面上方から相手位置へ落ちるエアギロチン
+      if(kind==='punch' && rDown){
+        return specialRafaelVerticalGuillotine(f);
+      }
 
       // 前＋パンチ：相手方向へ飛ぶ水圧カッター
       if(kind==='punch' && rForward){
-        const v=rafaelTargetVector(f); clearCommand();
-        return specialWater2Shot(f,{name:'水圧カッター',attack:'punch',color:'water',style:'cutter',speed:330,damage:4.2,r:19,charge:.16,wobble:.01,maxReflect:2,aimX:v.x,aimY:v.y});
+        const v=rafaelTargetVector(f);
+        clearCommand();
+        return specialWater2Shot(f,{
+          name:'水圧カッター',attack:'punch',
+          color:'water',style:'cutter',speed:345,damage:4.2,r:19,
+          charge:.14,wobble:.01,maxReflect:2,aimX:v.x,aimY:v.y
+        });
       }
     }
 
-    if(f.type==='yellow'){
-      const rUp=water2HeldDir(f,'up') || hasCommand(['up'],700);
-      const rDown=water2HeldDir(f,'down') || hasCommand(['down'],700);
-      const rForward=water2HeldDir(f,'forward') || hasCommand([forward],700);
-
-      if(kind==='kick' && (rUp||rDown)){
-        clearCommand();
-        f.specialType='bubbleVertical'; f.specialT=.50; f.attackT=.18;
-        f.vy=(rUp?-1:1)*430; f.vx*=.18;
-        comboEl.textContent=rUp?'高速バブル上昇!':'高速バブル下降!';
-        setTimeout(()=>{if(comboEl.textContent.includes('高速バブル'))comboEl.textContent='';},560);
-        return true;
-      }
-
-      if(kind==='punch' && rUp){
-        clearCommand();
-        return specialWater2Shot(f,{name:'エア（水圧）ブレード',attack:'punch',color:'water',style:'cutter',speed:245,damage:5.4,r:30,charge:.28,wobble:.04,maxReflect:3});
-      }
-
-      if(kind==='punch' && rDown){
-        clearCommand();
-        // 既存の縦長向きエアギロチン入力へ流す
-        if(typeof specialAirGuillotine==='function') return specialAirGuillotine(f);
-      }
-
-      if(kind==='punch' && rForward){
-        clearCommand();
-        return specialWater2Shot(f,{name:'水圧カッター',attack:'punch',color:'water',style:'cutter',speed:285,damage:4.2,r:18,charge:.16,wobble:.03,maxReflect:2});
-      }
-    }
-
+    // 横型水中では従来ラファエル技。
     if(f.type==='yellow' && !portraitPlayMode){
       if(kind==='punch' && water2HeldDir(f,'forward')){ clearCommand(); return specialPressureBlade(f,0,'punch'); }
       if(kind==='kick' && water2HeldDir(f,'forward')){ clearCommand(); return specialPressureBlade(f,15,'kick'); }
@@ -6116,8 +6126,9 @@
             }
           }
 
-          // ラファエル：上＋ガードで高速バブル上下移動 / エアブースト。
-          if(player.type==='yellow' && !player.throwState && input.y<-.35){
+          // ラファエル旧入力：横型水中だけ上＋ガードで高速バブル移動。
+          // 縦型では上/下＋キックに統一。
+          if(player.type==='yellow' && !portraitPlayMode && !player.throwState && input.y<-.35){
             input.simpleGuardTapTimes=[];
             if(specialRaphaelBubbleMove(player)){
               btn.classList.remove('pressed');

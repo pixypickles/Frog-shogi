@@ -3752,3 +3752,22 @@ body.portrait-play .practice-exit-btn{
   font-size:11px!important;
   font-weight:900!important;
 }
+
+/* v0.8.2 練習戻るボタンを確実に押せるように */
+body.portrait-play #practiceExitButton:not([hidden]){
+  display:block!important;
+  position:fixed!important;
+  left:10px!important;
+  top:max(10px,env(safe-area-inset-top))!important;
+  right:auto!important;
+  bottom:auto!important;
+  z-index:100!important;
+  min-width:88px!important;
+  padding:10px 12px!important;
+  background:rgba(7,73,88,.9)!important;
+  color:white!important;
+  border:2px solid rgba(255,255,255,.7)!important;
+  border-radius:13px!important;
+  font-size:12px!important;
+  font-weight:900!important;
+}
