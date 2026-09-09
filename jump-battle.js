@@ -3255,11 +3255,13 @@
       winner:attackerWon?'attacker':'defender',
       returnSide:String(mixBattleContext.attacker||'').startsWith('b')?'beel':'kawazu'
     };
-    sessionStorage.setItem('mixBattleResult',JSON.stringify(result));
+    if(!mixBattleContext.practice){
+      sessionStorage.setItem('mixBattleResult',JSON.stringify(result));
+    }
     sessionStorage.removeItem('mixBattle');
-    restartButton.textContent='戦略マップへ戻る';
+    restartButton.textContent=mixBattleContext.practice?'練習に戻る':'カエルしょうぎへ戻る';
     restartButton.hidden=false;
-    restartButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'index.html',location.href).href; };
+    restartButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||(mixBattleContext.practice?'training.html?mode=jump':'index.html'),location.href).href; };
     if(titleReturnButton)titleReturnButton.hidden=true;
     return true;
   }

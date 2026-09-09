@@ -3736,3 +3736,19 @@ body.portrait-play .punch{
   right:31% !important;
   bottom:4% !important;
 }
+
+/* v0.8.1 練習中はいつでも戻れる */
+body.portrait-play .practice-exit-btn{
+  position:fixed!important;
+  z-index:80!important;
+  left:10px!important;
+  top:max(10px,env(safe-area-inset-top))!important;
+  bottom:auto!important;
+  right:auto!important;
+  padding:9px 12px!important;
+  border-radius:12px!important;
+  background:rgba(9,72,88,.86)!important;
+  color:#fff!important;
+  font-size:11px!important;
+  font-weight:900!important;
+}

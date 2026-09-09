@@ -3187,7 +3187,7 @@
       mob:['前 ＋ パンチ：バブルショット','上 ＋ パンチ：かえる跳びアッパー','前 ＋ キック：トリプルキック'],
       green:['上 ＋ パンチ：バーニングアッパー','前 ＋ キック：バーニングキック','後ろ ＋ パンチ：バーニングショット','下 → 後ろ ＋ キック：バーニングサイクロン'],
       blue:['上 ＋ パンチ：アクアトルネード','下 ＋ キック：アクアストリーム','後ろ ＋ パンチ：アクアボルテックス','前 ＋ パンチ：アクアショット'],
-      yellow:['前 ＋ パンチ：水圧カッター（正面）','前 ＋ キック：水圧カッター（下15度）','後ろ ＋ パンチ：カープ水圧カッター（上から弧）','後ろ ＋ キック：カープ水圧カッター（下から弧）','ガード ×2：ヒーリングバブル','後ろ → 下 ＋ ガード：高速バブル上下移動'],
+      yellow:['前 ＋ パンチ：水圧カッター（相手方向）','上 ＋ パンチ：エア（水圧）ブレード','下 ＋ パンチ：エアギロチン','上 ＋ キック：高速バブル上昇','下 ＋ キック：高速バブル下降','ガード ×2：ヒーリングバブル'],
       orange:['下 → 後ろ ＋ ガード：ホワイトカウンター','後ろ → 前 ＋ ガード：ガーディアンタックル','ガード長押し：ホワイトオーラ','オーラ中 パンチ / キック：白い長リーチ攻撃','ガード ＋ パンチ：ホワイトショット'],
       black:['前 ＋ キック：ヘルクラッシュ（氷オーラの蹴り・特大ノックバック）','後ろ ＋ パンチ長押し → 離す：アビスチャージ（周囲を一瞬凍結）','前 ＋ パンチ：アイスショット','後ろ ＋ ガード：アイスウォール'],
       purple:['舌連打：舌ラッシュ','後ろ ＋ 舌：バブルショット','後ろ ＋ キック：バックスピンキック（追加入力で追加回転）','前 ＋ キック：ドロップキック'],
@@ -3286,12 +3286,19 @@
       winner:attackerWon?'attacker':'defender',
       returnSide:String(mixBattleContext.attacker||'').startsWith('b')?'beel':'kawazu'
     };
-    sessionStorage.setItem('mixBattleResult',JSON.stringify(result));
+    if(!mixBattleContext.practice){
+      sessionStorage.setItem('mixBattleResult',JSON.stringify(result));
+    }
     sessionStorage.removeItem('mixBattle');
-    restartButton.textContent='戦略マップへ戻る';
+    restartButton.textContent=mixBattleContext.practice?'練習に戻る':'カエルしょうぎへ戻る';
     restartButton.hidden=false;
-    restartButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'index.html',location.href).href; };
+    restartButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||(mixBattleContext.practice?'training.html?mode=water':'index.html'),location.href).href; };
     if(titleReturnButton)titleReturnButton.hidden=true;
+    if(practiceExitButton && mixBattleContext.practice){
+      practiceExitButton.hidden=false;
+      practiceExitButton.textContent='練習に戻る';
+      practiceExitButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'training.html?mode=water',location.href).href; };
+    }
     return true;
   }
 
@@ -5123,9 +5130,14 @@
       if(gameOver || !f) return;
       const speed=opts.speed||285;
       const angle=(opts.angle||0)*Math.PI/180;
+      const hasAim=Number.isFinite(opts.aimX)&&Number.isFinite(opts.aimY);
+      let ax=hasAim?opts.aimX:dir*Math.cos(angle);
+      let ay=hasAim?opts.aimY:Math.sin(angle);
+      const al=Math.hypot(ax,ay)||1; ax/=al; ay/=al;
+      const shotVx=ax*speed, shotVy=ay*speed;
       const shot={
-        owner:f, x:f.x+dir*(opts.offsetX||58), y:f.y+(opts.offsetY||0),
-        vx:dir*Math.cos(angle)*speed, vy:Math.sin(angle)*speed,
+        owner:f, x:f.x+ax*(opts.offsetX||58), y:f.y+ay*(opts.offsetY||0),
+        vx:shotVx, vy:shotVy,
         r:opts.r||13,
         // v0.4.2: 弾は速度差で不公平にならないよう、通常は時間切れで消さない。
         // maxAge は画面外に出られない等の異常時だけ使う長い安全寿命。
@@ -5138,7 +5150,7 @@
         // カープ水圧カッターの上/下で刃の絵も反転させる。
         arcFlip: opts.arcFlip || ((opts.curve||0) < 0 ? -1 : 1),
         wobble:opts.wobble||0,
-        baseVy:Math.sin(angle)*speed,
+        baseVy:shotVy,
         maxReflect:opts.maxReflect||5
       };
       water2Shots.push(shot);
@@ -5280,6 +5292,58 @@
     return true;
   }
 
+
+
+  function rafaelTargetVector(f){
+    const other=f.isPlayer?enemy:player;
+    if(!other)return {x:f.face,y:0};
+    const dx=other.x-f.x,dy=other.y-f.y,len=Math.hypot(dx,dy)||1;
+    return {x:dx/len,y:dy/len};
+  }
+
+  function specialRafaelVerticalBubble(f,dir){
+    if(gameOver||!f||f.type!=='yellow'||f.stun>0||f.guard||f.specialT>0)return false;
+    const sign=dir==='up'?-1:1;
+    f.guard=false;
+    f.specialType='raphaelBubbleMove';
+    f.specialT=.50;
+    f.attack=null;f.attackT=0;
+    f.raphaelMoveElapsed=0;
+    f.raphaelMoveDuration=.34;
+    f.raphaelMoveStartX=f.x;
+    f.raphaelMoveStartY=f.y;
+    // ほぼ縦一直線。少しだけ相手側へ寄る。
+    const other=f.isPlayer?enemy:player;
+    const sideShift=other?Math.max(-55,Math.min(55,(other.x-f.x)*.18)):0;
+    f.raphaelMoveControlX=f.x+sideShift*.35;
+    f.raphaelMoveControlY=f.y+sign*145;
+    f.raphaelMoveEndX=Math.max(48,Math.min(innerWidth-48,f.x+sideShift));
+    f.raphaelMoveEndY=Math.max(62,Math.min(innerHeight-86,f.y+sign*Math.min(360,innerHeight*.36)));
+    f.vx=0;f.vy=0;
+    comboEl.textContent=dir==='up'?'高速バブル上昇!':'高速バブル下降!';
+    setTimeout(()=>{if(comboEl.textContent.includes('高速バブル'))comboEl.textContent='';},520);
+    clearCommand();
+    return true;
+  }
+
+  function specialRafaelVerticalGuillotine(f){
+    if(gameOver||!f||f.type!=='yellow'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    const other=f.isPlayer?enemy:player;
+    const tx=Math.max(36,Math.min(innerWidth-36,other?other.x:f.x));
+    f.specialType='airGuillotineWater';f.specialT=.52;f.attack='punch';f.attackT=.52;
+    comboEl.textContent='エアギロチン…';
+    setTimeout(()=>{
+      if(gameOver||!f)return;
+      water2Shots.push({
+        owner:f,x:tx,y:-40,vx:0,vy:590,r:25,age:0,maxAge:3.2,t:1,life:1,
+        damage:4.8,name:'エアギロチン',color:'aqua',reflected:0,hit:false,spin:0,
+        style:'cutter',poisonDuration:0,curve:0,wobble:0,baseVy:590,maxReflect:5
+      });
+      comboEl.textContent='エアギロチン!';
+      setTimeout(()=>{if(comboEl.textContent==='エアギロチン!')comboEl.textContent='';},620);
+    },260);
+    clearCommand();return true;
+  }
 
   function trySpecial(f,kind){
     // ラファエル：縦型水中では上下機動と全方向射撃を優先
@@ -5477,7 +5541,32 @@
     }
 
     // 水中格闘2：ラファエル。4軌道の水圧カッターを方向＋攻撃で撃ち分け。
-    // v0.8.0 ラファエル：縦型水中専用技を先に判定
+    // v0.8.1 ラファエル：縦型水中専用
+    if(f.type==='yellow'){
+      const rUp=water2HeldDir(f,'up') || hasCommand(['up'],700);
+      const rDown=water2HeldDir(f,'down') || hasCommand(['down'],700);
+      const rForward=water2HeldDir(f,'forward') || hasCommand([forward],700);
+
+      // 上下＋キック：本当に高速で、既存の泡エフェクト付き移動
+      if(kind==='kick' && rUp)return specialRafaelVerticalBubble(f,'up');
+      if(kind==='kick' && rDown)return specialRafaelVerticalBubble(f,'down');
+
+      // 上＋パンチ：大型の全方向エア（水圧）ブレード
+      if(kind==='punch' && rUp){
+        const v=rafaelTargetVector(f); clearCommand();
+        return specialWater2Shot(f,{name:'エア（水圧）ブレード',attack:'punch',color:'water',style:'cutter',speed:285,damage:5.5,r:30,charge:.24,wobble:.02,maxReflect:3,aimX:v.x,aimY:v.y});
+      }
+
+      // 下＋パンチ：上から落ちるエアギロチン
+      if(kind==='punch' && rDown)return specialRafaelVerticalGuillotine(f);
+
+      // 前＋パンチ：相手方向へ飛ぶ水圧カッター
+      if(kind==='punch' && rForward){
+        const v=rafaelTargetVector(f); clearCommand();
+        return specialWater2Shot(f,{name:'水圧カッター',attack:'punch',color:'water',style:'cutter',speed:330,damage:4.2,r:19,charge:.16,wobble:.01,maxReflect:2,aimX:v.x,aimY:v.y});
+      }
+    }
+
     if(f.type==='yellow'){
       const rUp=water2HeldDir(f,'up') || hasCommand(['up'],700);
       const rDown=water2HeldDir(f,'down') || hasCommand(['down'],700);
@@ -5509,7 +5598,7 @@
       }
     }
 
-    if(f.type==='yellow'){
+    if(f.type==='yellow' && !portraitPlayMode){
       if(kind==='punch' && water2HeldDir(f,'forward')){ clearCommand(); return specialPressureBlade(f,0,'punch'); }
       if(kind==='kick' && water2HeldDir(f,'forward')){ clearCommand(); return specialPressureBlade(f,15,'kick'); }
       if(kind==='punch' && water2HeldDir(f,'back')){
@@ -9074,7 +9163,15 @@ function drawBackground(dt){
         enemy.bossSpecialCooldown=Math.max(enemy.bossSpecialCooldown||0,1.2);
       }
       updateHud();
-      if(practiceExitButton)practiceExitButton.hidden=true;
+      if(practiceExitButton){
+        if(mixBattleContext.practice){
+          practiceExitButton.hidden=false;
+          practiceExitButton.textContent='練習に戻る';
+          practiceExitButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'training.html?mode=water',location.href).href; };
+        }else{
+          practiceExitButton.hidden=true;
+        }
+      }
       if(mixMapReturn)mixMapReturn.style.display='none';
     });
   }
