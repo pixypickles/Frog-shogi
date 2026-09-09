@@ -68,7 +68,7 @@
     [8,0],[8,1],[8,2],[8,4],[8,6],[8,7],[8,8]
   ];
   const lotusSet=new Set(LOTUS.map(x=>x.join(',')));
-  const $=id=>document.getElementById(id), boardEl=$('board'), statusText=$('statusText'), turnBadge=$('turnBadge'), moveCountEl=$('moveCount'), modal=$('battleModal');
+  const $=id=>document.getElementById(id), boardEl=$('board'), statusText=$('statusText'), turnBadge=$('turnBadge'), moveCountEl=$('moveCount'), modal=$('battleModal'), encounterModal=$('encounterModal');
   let assignments=JSON.parse(JSON.stringify(RECOMMENDED)), state;
   const emptyBoard=()=>Array.from({length:9},()=>Array(9).fill(null));
   const piece=(side,type)=>({side,type,name:type==='pawn'?'モブさん':assignments[side][type]});
@@ -123,6 +123,12 @@
     const a=state.turn==='angel';
     turnBadge.textContent=a?'天使軍の手番':(state.cpuThinking?'悪魔軍 CPU 思考中…':'悪魔軍 CPU の手番');
     turnBadge.className=`turn-badge ${a?'angel':'demon'}`;
+    const tb=$('turnBanner');
+    if(tb){
+      tb.className=`turn-banner ${a?'angel':'demon'} ${state.cpuThinking?'thinking':''}`;
+      tb.querySelector('.turn-banner-side').textContent=a?'YOUR TURN':(state.cpuThinking?'CPU THINKING':'CPU TURN');
+      tb.querySelector('strong').textContent=a?'天使軍のターン':'悪魔軍のターン';
+    }
     moveCountEl.textContent=`${state.moves}手`; updateRosterSummary();
   }
 
@@ -220,7 +226,7 @@
     const dStart=Math.max(1,Math.round(dRoleHp/3));
     const playerRole=b.attacker.side==='angel'?'attacker':'defender';
     const context={
-      source:'pond-shogi-v0.6',
+      source:'pond-shogi-v0.7.6',
       attacker:b.attacker.name,
       defender:b.defender.name,
       attackerType:b.attacker.name,
@@ -232,21 +238,62 @@
       node:`${b.fr},${b.fc}->${b.tr},${b.tc}`,
       returnUrl:'./index.html'
     };
+
+    // まず「攻撃/守備」を見せる
+    $('encounterTerrain').textContent=terrain==='lotus'?'蓮の葉ジャンプバトル':'水中バトル';
+    $('encounterTerrain').className=`terrain-pill ${terrain==='lotus'?'lotus':''}`;
+    $('encounterAttacker').textContent=b.attacker.name;
+    $('encounterDefender').textContent=b.defender.name;
+    $('encounterAttackerRole').textContent=`${K[b.attacker.type]} / HP ${aHp}%`;
+    $('encounterDefenderRole').textContent=`${K[b.defender.type]} / HP 約${dStart}%`;
+    $('encounterRule').textContent=`攻撃：${b.attacker.name}　守備：${b.defender.name}。守備側は役割HPのおよそ1/3から開始します。`;
+
+    state.pendingBattleContext=context;
+    encounterModal.hidden=false;
+  }
+
+  function launchPendingBattle(){
+    const b=state.pendingBattle;
+    const context=state.pendingBattleContext;
+    if(!b||!context)return;
+    encounterModal.hidden=true;
     try{
       sessionStorage.removeItem('mixBattleResult');
       sessionStorage.setItem('mixBattle',JSON.stringify(context));
       saveBattleSnapshot();
     }catch(e){
       statusText.textContent='戦闘データの保存に失敗しました。';
-      state.pendingBattle=null;
-      render();
-      return;
+      state.pendingBattle=null;state.pendingBattleContext=null;
+      render();return;
     }
-    statusText.textContent=`${terrain==='lotus'?'蓮の葉ジャンプ':'水中'}バトルへ移動します…`;
+    statusText.textContent=`${context.terrain==='lotus'?'蓮の葉ジャンプ':'水中'}バトルへ移動します…`;
     render();
-    const battlePage=terrain==='lotus'?'./jump-battle.html':'./water-battle.html';
+    const battlePage=context.terrain==='lotus'?'./jump-battle.html':'./water-battle.html';
     location.href=`${battlePage}?mix=1&battle=1`;
   }
+
+  $('encounterStart').onclick=launchPendingBattle;
+
+  function showResultToast(title,text,kind=''){
+    const box=$('resultToast');
+    if(!box)return;
+    $('resultTitle').textContent=title;
+    $('resultText').textContent=text;
+    box.className=`result-toast ${kind}`;
+    box.hidden=false;
+    clearTimeout(showResultToast._t);
+    showResultToast._t=setTimeout(()=>{box.hidden=true;},1800);
+  }
+
+  function animateCellPiece(r,c,cls){
+    const cell=boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+    if(!cell)return;
+    const pieceEl=cell.querySelector('.piece');
+    if(!pieceEl)return;
+    pieceEl.classList.add(cls);
+    setTimeout(()=>pieceEl.classList.remove(cls),700);
+  }
+
 
   function loadSavedBattle(){
     let snap=null,result=null;
@@ -271,24 +318,44 @@
 
     if(result.winner==='attacker'){
       const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'水中';
+      const defeatedName=b.defender.name;
+
       if(b.defender.type==='king'){
         state.board[b.tr][b.tc]=b.attacker;state.board[b.fr][b.fc]=null;
-        setTimeout(()=>endGame(b.attacker.side,b.defender),0);
+        render();
+        setTimeout(()=>animateCellPiece(b.tr,b.tc,'winner-pop'),30);
+        showResultToast('攻撃側勝利',`${b.attacker.name}が${defeatedName}を撃破。王を倒しました！`,'attack-win');
+        setTimeout(()=>endGame(b.attacker.side,b.defender),650);
       }else if(b.attacker.type==='pawn' && inPromotionZone(b.attacker.side,b.tr)){
-        const moved=promotePawn(b.attacker);state.board[b.tr][b.tc]=moved;state.board[b.fr][b.fc]=null;
-        setTimeout(()=>finishTurn(`${terrainName}戦：駒取り成立。モブさんがカワズさん（と）に成りました！`),0);
+        const moved=promotePawn(b.attacker);
+        state.board[b.tr][b.tc]=moved;state.board[b.fr][b.fc]=null;
+        render();
+        setTimeout(()=>animateCellPiece(b.tr,b.tc,'winner-pop'),30);
+        showResultToast('攻撃側勝利',`${defeatedName}は盤外へ。モブさんはカワズさん（と）に成りました！`,'attack-win');
+        setTimeout(()=>finishTurn(`${terrainName}戦：駒取り成立。モブさんがカワズさん（と）に成りました！`),700);
       }else if(canPromoteMove(b.attacker,b.fr,b.tr) && b.attacker.side==='angel'){
         state.board[b.tr][b.tc]=b.attacker;state.board[b.fr][b.fc]=null;
-        setTimeout(()=>openPromotionChoice({fr:b.tr,fc:b.tc,tr:b.tr,tc:b.tc,piece:b.attacker,alreadyMoved:true}),0);
+        render();
+        setTimeout(()=>animateCellPiece(b.tr,b.tc,'winner-pop'),30);
+        showResultToast('攻撃側勝利',`${defeatedName}は盤外へ。続けて成りを選択します。`,'attack-win');
+        setTimeout(()=>openPromotionChoice({fr:b.tr,fc:b.tc,tr:b.tr,tc:b.tc,piece:b.attacker,alreadyMoved:true}),700);
       }else{
         const moved=canPromoteMove(b.attacker,b.fr,b.tr)?promotePiece(b.attacker,false):b.attacker;
         state.board[b.tr][b.tc]=moved;state.board[b.fr][b.fc]=null;
-        setTimeout(()=>finishTurn(`${terrainName}戦：${b.attacker.name}が${b.defender.name}を撃破。駒取り成立。${moved!==b.attacker?` ${K[moved.type]}に成りました。`:''}`),0);
+        render();
+        setTimeout(()=>animateCellPiece(b.tr,b.tc,'winner-pop'),30);
+        showResultToast('攻撃側勝利',`${defeatedName}は盤外へ弾き飛ばされました。`,'attack-win');
+        setTimeout(()=>finishTurn(`${terrainName}戦：${b.attacker.name}が${defeatedName}を撃破。駒取り成立。${moved!==b.attacker?` ${K[moved.type]}に成りました。`:''}`),700);
       }
     }else{
       const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'水中';
-      setTimeout(()=>finishTurn(`${terrainName}戦：${b.defender.name}が防衛成功。攻撃を阻止しました。`),0);
+      render();
+      setTimeout(()=>animateCellPiece(b.fr,b.fc,'retreat-shake'),40);
+      setTimeout(()=>animateCellPiece(b.tr,b.tc,'defender-glow'),40);
+      showResultToast('守備側勝利',`${b.attacker.name}の攻撃は失敗。攻め駒は元の位置へ戻されました。`,'defense-win');
+      setTimeout(()=>finishTurn(`${terrainName}戦：${b.defender.name}が防衛成功。${b.attacker.name}は元の位置へ戻されました。`),700);
     }
+
     return true;
   }
 
@@ -307,6 +374,8 @@
     statusText.textContent=`${defeatedKing.name}（王）が倒されました。${winner}の勝利！`;
     turnBadge.textContent=`${winner} 勝利`;
     turnBadge.className=`turn-badge ${winnerSide}`;
+    const tb=$('turnBanner');
+    if(tb){tb.className=`turn-banner ${winnerSide} victory`;tb.querySelector('.turn-banner-side').textContent='WINNER';tb.querySelector('strong').textContent=`${winner}の勝利`; }
     render();
     // render() が手番表示を上書きするため、最後に勝利表示を固定
     turnBadge.textContent=`${winner} 勝利`;
