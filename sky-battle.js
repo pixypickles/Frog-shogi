@@ -1020,99 +1020,119 @@
     const t=performance.now()/1000;
     const dropping=(f.skyDropT||0)>0;
     const phase=(f.skyWingPhase||0);
-    const flap=dropping ? -.18 : Math.sin(t*8.5+phase)*.22;
+    const flap=dropping ? -.16 : Math.sin(t*8.5+phase)*.18;
     const kind=f.wingKind||defaultWingKind(f.type);
 
     ctx.save();
-    ctx.globalAlpha=dropping?.62:.94;
+    ctx.globalAlpha=dropping?.60:.95;
 
     if(kind==='demon'){
       ctx.fillStyle='rgba(54,34,82,.82)';
       ctx.strokeStyle='rgba(28,15,48,.88)';
       ctx.lineWidth=2.2;
-
-      ctx.save();
-      ctx.rotate(-flap*.55);
-      ctx.beginPath();
-      ctx.moveTo(-22,-5);
-      ctx.quadraticCurveTo(-58,-42,-88,-22);
-      ctx.lineTo(-72,-2);
-      ctx.lineTo(-94,11);
-      ctx.lineTo(-67,18);
-      ctx.lineTo(-78,39);
-      ctx.quadraticCurveTo(-48,30,-22,13);
-      ctx.closePath();ctx.fill();ctx.stroke();
-      ctx.restore();
-
-      ctx.save();
-      ctx.scale(-1,1);
-      ctx.rotate(-flap*.55);
-      ctx.beginPath();
-      ctx.moveTo(-22,-5);
-      ctx.quadraticCurveTo(-58,-42,-88,-22);
-      ctx.lineTo(-72,-2);
-      ctx.lineTo(-94,11);
-      ctx.lineTo(-67,18);
-      ctx.lineTo(-78,39);
-      ctx.quadraticCurveTo(-48,30,-22,13);
-      ctx.closePath();ctx.fill();ctx.stroke();
-      ctx.restore();
+      const drawBatWing=(mirror)=>{
+        ctx.save();
+        if(mirror)ctx.scale(-1,1);
+        ctx.rotate(-flap*.55);
+        ctx.beginPath();
+        ctx.moveTo(-19,-4);
+        ctx.quadraticCurveTo(-54,-38,-82,-20);
+        ctx.lineTo(-68,-1);
+        ctx.lineTo(-88,10);
+        ctx.lineTo(-62,17);
+        ctx.lineTo(-72,35);
+        ctx.quadraticCurveTo(-44,27,-19,11);
+        ctx.closePath();
+        ctx.fill();ctx.stroke();
+        ctx.restore();
+      };
+      drawBatWing(false);drawBatWing(true);
     }else{
-      // 天使翼：大きな楕円ではなく、肩から生える小さめの羽根束。
-      // キャラ本体の後ろに収まり、羽ばたきで上下する。
-      const wingScale=.72;
-      ctx.scale(wingScale,wingScale);
       const drawAngelWing=(mirror)=>{
         ctx.save();
         if(mirror)ctx.scale(-1,1);
-        ctx.translate(-24,-3);
-        ctx.rotate(-.10 + flap*.55);
+        ctx.translate(-17,-2);
+        ctx.rotate(-.07 + flap*.7);
 
-        const feather=(x,y,rx,ry,rot,alpha)=>{
-          ctx.save();
-          ctx.translate(x,y);ctx.rotate(rot);
-          const gr=ctx.createLinearGradient(0,-ry,0,ry);
-          gr.addColorStop(0,`rgba(255,255,255,${alpha})`);
-          gr.addColorStop(1,`rgba(190,229,248,${alpha*.88})`);
-          ctx.fillStyle=gr;
-          ctx.strokeStyle='rgba(126,193,226,.78)';
-          ctx.lineWidth=1.7;
-          ctx.beginPath();
-          ctx.moveTo(0,0);
-          ctx.quadraticCurveTo(-rx,-ry*.45,-rx*.18,-ry);
-          ctx.quadraticCurveTo(rx*.45,-ry*.35,rx*.70,0);
-          ctx.quadraticCurveTo(rx*.28,ry*.42,0,0);
-          ctx.closePath();
-          ctx.fill();ctx.stroke();
-          ctx.restore();
-        };
+        const grad=ctx.createLinearGradient(-52,-26,-8,28);
+        grad.addColorStop(0,'rgba(255,255,255,.99)');
+        grad.addColorStop(.65,'rgba(245,252,255,.98)');
+        grad.addColorStop(1,'rgba(195,230,248,.92)');
+        ctx.fillStyle=grad;
+        ctx.strokeStyle='rgba(126,192,224,.84)';
+        ctx.lineWidth=2;
 
-        feather(-18,-14,25,20,-.42,.98);
-        feather(-32,-2,28,20,-.24,.94);
-        feather(-37,13,27,18,-.08,.88);
-        feather(-24,24,22,15,.10,.82);
-
-        // 翼の根元
-        ctx.fillStyle='rgba(245,252,255,.96)';
         ctx.beginPath();
-        ctx.ellipse(-4,3,18,23,-.18,0,Math.PI*2);
-        ctx.fill();
+        ctx.moveTo(-9,-4);
+        ctx.quadraticCurveTo(-27,-24,-50,-25);
+        ctx.quadraticCurveTo(-62,-25,-61,-15);
+        ctx.quadraticCurveTo(-59,-7,-48,-6);
+        ctx.quadraticCurveTo(-62,-1,-59,8);
+        ctx.quadraticCurveTo(-56,16,-45,14);
+        ctx.quadraticCurveTo(-54,20,-48,27);
+        ctx.quadraticCurveTo(-40,34,-29,26);
+        ctx.quadraticCurveTo(-17,18,-8,10);
+        ctx.quadraticCurveTo(-4,2,-9,-4);
+        ctx.closePath();
+        ctx.fill();ctx.stroke();
+
+        ctx.strokeStyle='rgba(152,207,234,.5)';
+        ctx.lineWidth=1.5;
+        ctx.beginPath();
+        ctx.moveTo(-14,2);ctx.quadraticCurveTo(-31,-1,-51,-7);ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-13,8);ctx.quadraticCurveTo(-30,10,-47,16);ctx.stroke();
+
         ctx.restore();
       };
-      drawAngelWing(false);
-      drawAngelWing(true);
+      drawAngelWing(false);drawAngelWing(true);
     }
     ctx.restore();
   }
+
+  function drawForegroundClouds(){
+    const w=innerWidth,h=innerHeight;
+    const t=performance.now()/1000;
+
+    const cloud=(x,y,scale,alpha)=>{
+      ctx.save();
+      ctx.translate(x,y);ctx.scale(scale,scale);
+      ctx.globalAlpha=alpha;
+      ctx.fillStyle='#ffffff';
+      const puffs=[
+        [-88,10,58,31],[-45,-3,64,39],[5,-14,70,43],[58,-5,64,38],[112,10,52,30]
+      ];
+      for(const [px,py,rx,ry] of puffs){
+        ctx.beginPath();ctx.ellipse(px,py,rx,ry,0,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
+    };
+
+    const cycle=12;
+    const bands=[
+      {offset:0.0,y:.30,scale:1.18,alpha:.46},
+      {offset:4.1,y:.55,scale:1.34,alpha:.55},
+      {offset:8.0,y:.76,scale:1.10,alpha:.43}
+    ];
+    ctx.save();
+    for(const b of bands){
+      const local=((t+b.offset)%cycle)/cycle;
+      const x=-300 + local*(w+600);
+      cloud(x,h*b.y,b.scale,b.alpha);
+      cloud(x-185,h*b.y+13,b.scale*.90,b.alpha*.80);
+    }
+    ctx.restore();
+  }
+
 
   class Fighter {
     constructor(x, y, isPlayer, type='green') {
       const s = stats[type] || stats.green;
       this.x=x; this.y=y; this.vx=0; this.vy=0; this.isPlayer=isPlayer;
       this.type=type; this.speed=s.speed; this.tongueRange=s.tongue; this.damageMul=s.damage;
-      this.defense=s.defense||1; this.bodyScale=(s.scale||1)*.82;
+      this.defense=s.defense||1; this.bodyScale=(s.scale||1)*.66;
       this.sink=s.sink; this.hue=s.hue;
-      this.radius=31*this.bodyScale; this.hp=100; this.face = isPlayer ? 1 : -1;
+      this.radius=29*this.bodyScale; this.hp=100; this.face = isPlayer ? 1 : -1;
       this.wingKind=defaultWingKind(type);
       this.skyWingPhase=Math.random()*Math.PI*2;
       this.skyDropT=0;
@@ -7938,6 +7958,8 @@ function drawBackground(dt){
     ctx.save();
     enemy.draw();
     ctx.restore();
+
+    drawForegroundClouds();
 
     // WATER HOCKEYのマリモは背景・キャラクターの後に描画。
     // update側で描くと次のdrawBackgroundで消えるため、必ずここで表示する。
