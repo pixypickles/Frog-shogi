@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="theme-color" content="#0d6672" />
-  <title>カエルしょうぎ 試作 v0.8.2</title>
+  <title>カエルしょうぎ 試作 v0.9.0</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -26,8 +26,8 @@
       </button>
 
       <button id="modeWaterPractice" class="mode-button water-mode" type="button">
-        <strong>水中バトル練習</strong>
-        <span>縦型水中戦をモブさん相手に練習</span>
+        <strong>雲上バトル練習</strong>
+        <span>翼で飛ぶ雲上戦をモブさん相手に練習</span>
       </button>
     </section>
   </div>
@@ -53,7 +53,7 @@
       <p id="statusText">天使軍がプレイヤーです。駒を動かすと、悪魔軍CPUが自動で指します。</p>
       <div class="legend">
         <span><i class="dot lotus"></i>蓮の葉＝ジャンプ戦</span>
-        <span><i class="dot water"></i>水中＝水中戦</span>
+        <span><i class="dot water"></i>空＝雲上戦</span>
       </div>
     </section>
 
@@ -81,7 +81,7 @@
 
     <section class="info-grid">
       <div class="mini-card">
-        <h2>v0.8.2</h2>
+        <h2>v0.9.0</h2>
         <p>明るい池デザインへ刷新。駒はキャラ色そのもののカエル型にし、陣営色ではなく各キャラの色を前面に出しました。</p>
       </div>
       <div class="mini-card">
@@ -144,7 +144,7 @@
   <div id="battleModal" class="modal" hidden>
     <div class="modal-backdrop"></div>
     <section class="battle-card" role="dialog" aria-modal="true" aria-labelledby="battleTitle">
-      <div id="terrainPill" class="terrain-pill">水中バトル</div>
+      <div id="terrainPill" class="terrain-pill">雲上バトル</div>
       <h2 id="battleTitle">戦闘発生</h2>
       <div class="versus">
         <div class="fighter attacker">
@@ -185,7 +185,7 @@
       location.href = './training.html?mode=jump';
     });
     document.getElementById('modeWaterPractice').addEventListener('click', () => {
-      location.href = './training.html?mode=water';
+      location.href = './training.html?mode=sky';
     });
 
     // 戦闘から将棋盤へ戻ってきた時は毎回モード選択を出さない

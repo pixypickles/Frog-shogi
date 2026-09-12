@@ -71,7 +71,7 @@
   const params = new URLSearchParams(location.search);
   const mode = params.get('mode') === 'water' ? 'water' : 'jump';
   const modeLabel = document.getElementById('modeLabel');
-  modeLabel.textContent = mode === 'water' ? '水中バトル練習（縦型）' : '蓮の葉バトル練習';
+  modeLabel.textContent = mode === 'sky' ? '雲上バトル練習（翼で飛行）' : '蓮の葉バトル練習';
 
   const select = document.getElementById('fighterSelect');
   const saved = localStorage.getItem('pondPracticeFighter');
@@ -81,21 +81,23 @@
     const fighter = select.value;
     localStorage.setItem('pondPracticeFighter', fighter);
     const context = {
-      source:'pond-training-v0.8.2',
+      source:'pond-training-v0.9.0',
       practice:true,
       attacker:fighter,
       defender:'モブさん',
       attackerType:fighter,
       defenderType:'モブさん',
+      attackerSide:fighterSide,
+      defenderSide:fighterSide==='angel'?'demon':'angel',
       attackerHp:100,
       defenderHp:100,
       playerRole:'attacker',
-      terrain:mode === 'water' ? 'water' : 'lotus',
+      terrain:mode === 'sky' ? 'sky' : 'lotus',
       returnUrl:`./training.html?mode=${mode}`
     };
     sessionStorage.setItem('mixBattle', JSON.stringify(context));
     sessionStorage.removeItem('mixBattleResult');
-    const page = mode === 'water' ? './water-battle.html' : './jump-battle.html';
+    const page = mode === 'sky' ? './sky-battle.html' : './jump-battle.html';
     location.href = `${page}?mix=1&battle=1&practice=1`;
   });
 

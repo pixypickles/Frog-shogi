@@ -23,7 +23,7 @@ button{font:inherit;color:inherit}
 .app{width:min(100%,620px);margin:0 auto;padding:calc(12px + env(safe-area-inset-top)) 10px calc(24px + env(safe-area-inset-bottom))}
 .topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:8px}.eyebrow{font-size:9px;letter-spacing:.15em;color:#80b8c1}.topbar h1{font-size:25px;line-height:1;margin:5px 0 0}.ghost,.secondary,.primary{border:0;border-radius:12px;padding:10px 13px;font-weight:800}.ghost{background:rgba(255,255,255,.09);border:1px solid var(--line)}
 .status-card,.mini-card,.roster,.selected-panel{background:var(--panel);border:1px solid var(--line);box-shadow:0 14px 40px rgba(0,0,0,.2);backdrop-filter:blur(8px)}
-.status-card{border-radius:16px;padding:10px 12px;margin-bottom:7px}.turn-row{display:flex;align-items:center;justify-content:space-between}.turn-badge{display:inline-flex;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900}.turn-badge.angel{background:var(--angel);color:var(--angel-ink)}.turn-badge.demon{background:var(--demon);color:var(--demon-ink)}.move-count{font-size:11px;color:var(--muted)}.status-card p{font-size:12px;margin:8px 0 7px;color:#dceff1}.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:var(--muted)}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}.dot.lotus{background:var(--lotus2)}.dot.water{background:#49b8d0}
+.status-card{border-radius:16px;padding:10px 12px;margin-bottom:7px}.turn-row{display:flex;align-items:center;justify-content:space-between}.turn-badge{display:inline-flex;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900}.turn-badge.angel{background:var(--angel);color:var(--angel-ink)}.turn-badge.demon{background:var(--demon);color:var(--demon-ink)}.move-count{font-size:11px;color:var(--muted)}.status-card p{font-size:12px;margin:8px 0 7px;color:#dceff1}.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:var(--muted)}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}.dot.lotus{background:var(--lotus2)}.dot.water{background:#ffffff;box-shadow:0 0 0 1px #75cce8}
 .board-wrap{position:relative;margin:0 auto 7px}.army-label{text-align:center;font-weight:900;font-size:11px;letter-spacing:.14em;padding:3px 0}.demon-label{color:#ffc0c5}.angel-label{color:#c6f4ff}
 
 /* 少し縦長：マス自体も縦長になる */
@@ -285,3 +285,21 @@ html,body{background:linear-gradient(180deg,#10b6c5 0%,#0aa2b4 48%,#078fa4 100%)
 .shogi-mode{background:#e5fff0;color:#155e3a}
 .jump-mode{background:#f2ffd9;color:#527019}
 .water-mode{background:#dff8ff;color:#175d78}
+
+/* v0.9.0 非蓮マスは水ではなく空 */
+.cell.water{
+  background:linear-gradient(145deg,#73d8f4,#bdefff)!important;
+}
+.cell.water::after{
+  content:"";
+  position:absolute;
+  width:76%;
+  height:24%;
+  top:34%;
+  left:12%;
+  border:0!important;
+  border-radius:50%;
+  background:rgba(255,255,255,.32);
+  box-shadow:15px 3px 0 rgba(255,255,255,.22),-13px 5px 0 rgba(255,255,255,.18);
+  transform:none!important;
+}

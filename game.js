@@ -235,6 +235,8 @@
       defender:b.defender.name,
       attackerType:b.attacker.name,
       defenderType:b.defender.name,
+      attackerSide:b.attacker.side,
+      defenderSide:b.defender.side,
       attackerHp:aHp,
       defenderHp:dStart,
       playerRole,
@@ -244,7 +246,7 @@
     };
 
     // まず「攻撃/守備」を見せる
-    $('encounterTerrain').textContent=terrain==='lotus'?'蓮の葉ジャンプバトル':'水中バトル';
+    $('encounterTerrain').textContent=terrain==='lotus'?'蓮の葉ジャンプバトル':'雲上バトル';
     $('encounterTerrain').className=`terrain-pill ${terrain==='lotus'?'lotus':''}`;
     $('encounterAttacker').textContent=b.attacker.name;
     $('encounterDefender').textContent=b.defender.name;
@@ -270,9 +272,9 @@
       state.pendingBattle=null;state.pendingBattleContext=null;
       render();return;
     }
-    statusText.textContent=`${context.terrain==='lotus'?'蓮の葉ジャンプ':'水中'}バトルへ移動します…`;
+    statusText.textContent=`${context.terrain==='lotus'?'蓮の葉ジャンプ':'雲上'}バトルへ移動します…`;
     render();
-    const battlePage=context.terrain==='lotus'?'./jump-battle.html':'./water-battle.html';
+    const battlePage=context.terrain==='lotus'?'./jump-battle.html':'./sky-battle.html';
     location.href=`${battlePage}?mix=1&battle=1`;
   }
 
@@ -321,7 +323,7 @@
     }catch(e){}
 
     if(result.winner==='attacker'){
-      const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'水中';
+      const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'雲上';
       const defeatedName=b.defender.name;
 
       if(b.defender.type==='king'){
@@ -352,7 +354,7 @@
         setTimeout(()=>finishTurn(`${terrainName}戦：${b.attacker.name}が${defeatedName}を撃破。駒取り成立。${moved!==b.attacker?` ${K[moved.type]}に成りました。`:''}`),700);
       }
     }else{
-      const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'水中';
+      const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'雲上';
       render();
       setTimeout(()=>animateCellPiece(b.fr,b.fc,'retreat-shake'),40);
       setTimeout(()=>animateCellPiece(b.tr,b.tc,'defender-glow'),40);
