@@ -92,6 +92,8 @@
   let engineerShots = [];
   let michaelAuraShots = [];
   let water2Shots = [];
+  let gabrielChargePreview=null;
+  let gabrielWaterfalls=[];
   let iceWalls = [];
   let samaelGates = [];
   let seraphielRays = [];
@@ -356,7 +358,7 @@
       'バーニングショット：後ろ ＋ パンチ',
       'バーニングサイクロン：下 → 後ろ ＋ キック'
     ],
-    blue:['ガード連打：ミストクラウド','上＋ガード：ウォータージェット上昇','上昇中＋パンチ：ジェットアッパー','上＋パンチ：スカイウォーターフォール','後ろ＋キック：クラウドレインショット','下＋キック：ファイブウォーターバースト','後ろ＋パンチ長押し：ウォーターマス'],
+    blue:['上＋ガード：ウォータージェット上昇','上昇中＋パンチ：ジェットアッパー','上＋パンチ：スカイウォーターフォール','後ろ＋キック：クラウドレインショット','下＋キック：スカイレインバースト','後ろ＋パンチ長押し：ウォーターマス'],
     yellow:[
       '水圧カッター（正面）：前 ＋ パンチ',
       '水圧カッター（下15度）：前 ＋ キック',
@@ -1192,8 +1194,6 @@
       this.wingKind=defaultWingKind(type);
       this.skyWingPhase=Math.random()*Math.PI*2;
       this.skyDropT=0;
-      this.gabMistT=0;
-      this.gabMistPuffs=[];
       this.gabJetT=0;
       this.gabJetUpperReady=false;
       this.gabCharging=false;
@@ -2835,23 +2835,6 @@
 
 
       if(this.type==='blue'){
-        if(this.gabMistT>0 && this.gabMistPuffs && this.gabMistPuffs.length){
-          ctx.save();
-          ctx.fillStyle='#ffffff';
-          for(const p of this.gabMistPuffs){
-            ctx.globalAlpha=p.a*Math.min(1,this.gabMistT/.22);
-            ctx.beginPath();
-            ctx.ellipse(p.x,p.y,p.r,p.r*.68,0,0,Math.PI*2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(p.x-p.r*.48,p.y+2,p.r*.62,p.r*.45,0,0,Math.PI*2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(p.x+p.r*.48,p.y+3,p.r*.66,p.r*.47,0,0,Math.PI*2);
-            ctx.fill();
-          }
-          ctx.restore();
-        }
 
         if(this.gabJetT>0){
           ctx.save();
@@ -2870,22 +2853,6 @@
           ctx.restore();
         }
 
-        if(this.gabCharging){
-          const ch=Math.max(.2,Math.min(2.8,this.gabChargeT||0));
-          const rr=18+ch*19;
-          ctx.save();
-          ctx.translate(0,-88-ch*11);
-          const gr=ctx.createRadialGradient(-rr*.24,-rr*.24,rr*.12,0,0,rr);
-          gr.addColorStop(0,'rgba(250,255,255,.99)');
-          gr.addColorStop(.32,'rgba(100,220,255,.97)');
-          gr.addColorStop(1,'rgba(22,105,215,.82)');
-          ctx.fillStyle=gr;
-          ctx.globalAlpha=.95;
-          ctx.beginPath();ctx.arc(0,0,rr,0,Math.PI*2);ctx.fill();
-          ctx.strokeStyle='rgba(255,255,255,.78)';
-          ctx.lineWidth=2;ctx.stroke();
-          ctx.restore();
-        }
       }
 
       ctx.restore();
@@ -2921,17 +2888,6 @@
     }
     update(dt){
       if(this.flash>0)this.flash-=dt;
-      if(this.gabMistT>0){
-        this.gabMistT=Math.max(0,this.gabMistT-dt);
-        if(this.gabMistPuffs){
-          for(const p of this.gabMistPuffs){
-            p.x+=p.vx*dt;
-            p.y+=p.vy*dt;
-            p.a=Math.max(0,p.a-dt*.16);
-          }
-        }
-        if(this.gabMistT<=0)this.gabMistPuffs=[];
-      }
       if(this.gabJetT>0){
         this.gabJetT=Math.max(0,this.gabJetT-dt);
         if(this.gabJetT<=0){
@@ -2948,6 +2904,13 @@
         this.attackT=Math.max(this.attackT,1);
         this.vx*=Math.pow(.16,dt);
         this.vy*=Math.pow(.16,dt);
+
+        if(gabrielChargePreview && gabrielChargePreview.owner===this){
+          const ch=Math.max(.2,Math.min(2.8,this.gabChargeT||0));
+          const target=this.isPlayer?enemy:player;
+          if(target)gabrielChargePreview.x=target.x;
+          gabrielChargePreview.r=30+ch*42;
+        }
       }
 
       if(this.stun>0)this.stun-=dt;
@@ -5713,27 +5676,7 @@
     return f.isPlayer?enemy:player;
   }
 
-  function gabrielMist(f){
-    if(gameOver||!f||f.type!=='blue')return false;
-    // ガブリエルの位置から雲を発生させ、そのまま横へ流す。
-    // 本体追従や独立した大量オブジェクト管理は行わない。
-    f.gabMistT=2.8;
-    f.gabMistPuffs=[];
-    const dir=f.face>=0?1:-1;
-    for(let i=0;i<7;i++){
-      f.gabMistPuffs.push({
-        x:(Math.random()-.5)*34,
-        y:(Math.random()-.5)*34,
-        vx:dir*(38+Math.random()*28),
-        vy:(Math.random()-.5)*8,
-        r:20+Math.random()*14,
-        a:.72+Math.random()*.18
-      });
-    }
-    comboEl.textContent='ミストクラウド!';
-    setTimeout(()=>{if(comboEl.textContent==='ミストクラウド!')comboEl.textContent='';},650);
-    return true;
-  }
+  function gabrielMist(f){ return false; }
 
   function gabrielJetRise(f){
     if(gameOver||!f||f.type!=='blue'||f.stun>0)return false;
@@ -5778,31 +5721,25 @@
     if(gameOver||!f||f.type!=='blue'||f.stun>0||f.specialT>0)return false;
     const target=gabrielTarget(f);
     if(!target)return false;
-    f.specialType='gabrielWaterfall';
-    f.specialT=.86;
-    f.attack='punch';f.attackT=.34;
-    comboEl.textContent='スカイウォーターフォール!';
 
-    const baseX=target.x;
-    for(let i=0;i<26;i++){
-      setTimeout(()=>{
-        if(gameOver||!target)return;
-        const px=Math.max(18,Math.min(innerWidth-18,baseX+(Math.random()-.5)*110));
-        const shot={
-          owner:f,x:px,y:-35-Math.random()*135,
-          vx:0,vy:520+Math.random()*130,
-          r:6+Math.random()*4,
-          age:0,maxAge:4,t:1,life:1,
-          damage:.48,name:'滝の水',
-          color:'aqua',reflected:0,hit:false,spin:0,
-          style:'aqua',poisonDuration:0,curve:0,wobble:.03,
-          baseVy:540,maxReflect:0
-        };
-        aimShotAtTarget(shot);
-        water2Shots.push(shot);
-      },i*30);
-    }
-    setTimeout(()=>{if(comboEl.textContent==='スカイウォーターフォール!')comboEl.textContent='';},980);
+    f.specialType='gabrielWaterfall';
+    f.specialT=.88;
+    f.attack='punch';
+    f.attackT=.34;
+
+    gabrielWaterfalls.push({
+      owner:f,
+      x:target.x,
+      top:-40,
+      bottom:target.y+170,
+      w:46,
+      t:1.20,
+      life:1.20,
+      hitCd:0
+    });
+
+    comboEl.textContent='スカイウォーターフォール!';
+    setTimeout(()=>{if(comboEl.textContent==='スカイウォーターフォール!')comboEl.textContent='';},900);
     clearCommand();
     return true;
   }
@@ -5848,27 +5785,40 @@
     if(gameOver||!f||f.type!=='blue'||f.stun>0||f.specialT>0)return false;
     const target=gabrielTarget(f);
     if(!target)return false;
-    f.specialType='gabrielFiveWay';
-    f.specialT=.46;
-    comboEl.textContent='ファイブウォーターバースト!';
 
-    const base=Math.atan2(target.y-f.y,target.x-f.x);
-    [-.44,-.22,0,.22,.44].forEach(off=>{
-      const a=base+off;
-      const shot={
-        owner:f,
-        x:f.x+Math.cos(a)*26,y:f.y+Math.sin(a)*26,
-        vx:Math.cos(a)*325,vy:Math.sin(a)*325,
-        r:5,age:0,maxAge:3.2,t:1,life:1,
-        damage:.20,name:'5WAY水弾',
-        color:'aqua',reflected:0,hit:false,spin:0,
-        style:'aqua',poisonDuration:0,curve:0,wobble:0,
-        baseVy:Math.sin(a)*325,maxReflect:0
-      };
-      // 5方向の見た目は残しつつ、その後は共通誘導で敵へ収束。
-      water2Shots.push(shot);
-    });
-    setTimeout(()=>{if(comboEl.textContent==='ファイブウォーターバースト!')comboEl.textContent='';},620);
+    f.specialType='gabrielSkyRain';
+    f.specialT=.92;
+    comboEl.textContent='スカイレインバースト!';
+
+    // クラウドレインショットと同じサイズ・同じ極小ダメージ。
+    for(let i=0;i<30;i++){
+      setTimeout(()=>{
+        if(gameOver||!target)return;
+        const sx=Math.max(20,Math.min(innerWidth-20,target.x+(Math.random()-.5)*190));
+        const sy=-30-Math.random()*120;
+        const dx=target.x-sx,dy=target.y-sy,len=Math.hypot(dx,dy)||1;
+        const speed=270+Math.random()*95;
+
+        water2Shots.push({
+          owner:f,
+          x:sx,y:sy,
+          vx:dx/len*speed,
+          vy:dy/len*speed,
+          r:4.2+Math.random()*1.8,
+          age:0,maxAge:4,t:1,life:1,
+          damage:.16,
+          name:'スカイレイン水弾',
+          color:'aqua',
+          reflected:0,hit:false,spin:0,
+          style:'aqua',
+          poisonDuration:0,curve:0,wobble:.02,
+          baseVy:dy/len*speed,
+          maxReflect:0
+        });
+      },i*38);
+    }
+
+    setTimeout(()=>{if(comboEl.textContent==='スカイレインバースト!')comboEl.textContent='';},1200);
     clearCommand();
     return true;
   }
@@ -5877,6 +5827,13 @@
     if(gameOver||!f||f.type!=='blue'||f.stun>0||f.guard||f.gabCharging)return false;
     f.gabCharging=true;
     f.gabChargeT=0;
+    const target=gabrielTarget(f);
+    gabrielChargePreview={
+      owner:f,
+      x:target?target.x:innerWidth*.5,
+      y:Math.max(58,innerHeight*.11),
+      r:22
+    };
     f.specialType='gabrielCharge';
     f.specialT=20;
     f.attack='punch';f.attackT=20;
@@ -5890,20 +5847,21 @@
     if(!f||f.type!=='blue'||!f.gabCharging)return false;
     const charge=Math.max(.20,Math.min(2.8,f.gabChargeT||0));
     f.gabCharging=false;
+    gabrielChargePreview=null;
     f.gabChargeT=0;
     f.specialType='gabrielChargeRelease';
     f.specialT=.42;f.attack='punch';f.attackT=.42;
 
     const target=gabrielTarget(f);
     const tx=target?target.x:f.x;
-    const radius=18+charge*19;
+    const radius=30+charge*42;
     const shot={
       owner:f,
       x:Math.max(radius,Math.min(innerWidth-radius,tx)),
-      y:-radius-28,
-      vx:0,vy:175+charge*62,
+      y:Math.max(radius+8,innerHeight*.11),
+      vx:0,vy:135+charge*38,
       r:radius,age:0,maxAge:5.2,t:1,life:1,
-      damage:2.0+charge*2.25,
+      damage:2.4+charge*2.7,
       name:'ウォーターマス',
       color:'aqua',reflected:0,hit:false,spin:0,
       style:'aqua',poisonDuration:0,curve:0,wobble:0,
@@ -6640,13 +6598,6 @@
             if(upHeld){
               if(gabrielJetRise(player)){btn.classList.remove('pressed');return;}
             }
-            const now=performance.now();
-            player._gabGuardTimes=(player._gabGuardTimes||[]).filter(t=>now-t<680);
-            player._gabGuardTimes.push(now);
-            if(player._gabGuardTimes.length>=3){
-              player._gabGuardTimes=[];
-              if(gabrielMist(player)){btn.classList.remove('pressed');return;}
-            }
           }
           if(player.type==='sariel'){
             const fwd=(player.face>0&&input.x>.35)||(player.face<0&&input.x<-.35);
@@ -6940,6 +6891,20 @@
   function incomingReflectableThreat(f){
     if(!f) return false;
     const threats=[];
+    gabrielWaterfalls.forEach(w=>{
+      w.t=Math.max(0,w.t-dt);
+      w.hitCd=Math.max(0,(w.hitCd||0)-dt);
+      const target=w.owner&&w.owner.isPlayer?enemy:player;
+      if(target && w.hitCd<=0){
+        const inside=Math.abs(target.x-w.x)<w.w*.62 && target.y>w.top && target.y<w.bottom;
+        if(inside){
+          damageHit(w.owner,target,.55*w.owner.damageMul,0,105);
+          w.hitCd=.12;
+        }
+      }
+    });
+    gabrielWaterfalls=gabrielWaterfalls.filter(w=>w.t>0);
+
     water2Shots.forEach(q=>{ if(q.owner && q.owner!==f && !q.hit) threats.push({x:q.x,y:q.y,vx:q.vx||0,vy:q.vy||0,r:q.r||14}); });
     pressureBlades.forEach(q=>{ if(q.owner && q.owner!==f && !q.hit) threats.push({x:q.x,y:q.y,vx:q.vx||0,vy:q.vy||0,r:30}); });
     return threats.some(q=>{
@@ -8397,6 +8362,73 @@ function drawBackground(dt){
     ctx.shadowColor='transparent';
 
     ctx.save();
+    gabrielWaterfalls.forEach(w=>{
+      const fade=Math.min(1,w.t/.18);
+      ctx.save();
+      ctx.globalAlpha=.88*fade;
+
+      const grad=ctx.createLinearGradient(w.x-w.w/2,0,w.x+w.w/2,0);
+      grad.addColorStop(0,'rgba(80,190,255,.18)');
+      grad.addColorStop(.20,'rgba(170,235,255,.88)');
+      grad.addColorStop(.50,'rgba(238,253,255,.98)');
+      grad.addColorStop(.80,'rgba(120,215,255,.90)');
+      grad.addColorStop(1,'rgba(40,145,240,.18)');
+      ctx.fillStyle=grad;
+      ctx.fillRect(w.x-w.w/2,w.top,w.w,w.bottom-w.top);
+
+      // 流れ筋
+      ctx.strokeStyle='rgba(255,255,255,.68)';
+      ctx.lineWidth=3;
+      for(let i=-1;i<=1;i++){
+        const xx=w.x+i*w.w*.24;
+        ctx.beginPath();
+        ctx.moveTo(xx,w.top);
+        ctx.bezierCurveTo(xx+8,w.top+120,xx-8,w.top+260,xx,w.bottom);
+        ctx.stroke();
+      }
+
+      // 下端の飛沫
+      ctx.globalAlpha=.55*fade;
+      ctx.fillStyle='#dff8ff';
+      for(let i=0;i<8;i++){
+        const a=i/8*Math.PI*2;
+        ctx.beginPath();
+        ctx.arc(w.x+Math.cos(a)*32,w.bottom+Math.sin(a)*10,5+(i%3),0,Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+
+    if(gabrielChargePreview){
+      const q=gabrielChargePreview;
+      ctx.save();
+      const rr=q.r;
+      const gr=ctx.createRadialGradient(q.x-rr*.25,q.y-rr*.25,rr*.12,q.x,q.y,rr);
+      gr.addColorStop(0,'rgba(250,255,255,.99)');
+      gr.addColorStop(.28,'rgba(130,230,255,.98)');
+      gr.addColorStop(.66,'rgba(45,150,240,.92)');
+      gr.addColorStop(1,'rgba(10,70,180,.82)');
+      ctx.fillStyle=gr;
+      ctx.globalAlpha=.95;
+      ctx.beginPath();
+      ctx.arc(q.x,q.y,rr,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.strokeStyle='rgba(255,255,255,.82)';
+      ctx.lineWidth=3;
+      ctx.stroke();
+
+      // 外周の水の揺らぎ
+      ctx.strokeStyle='rgba(90,210,255,.55)';
+      ctx.lineWidth=2;
+      for(let i=0;i<3;i++){
+        ctx.beginPath();
+        ctx.arc(q.x,q.y,rr+6+i*7,0,Math.PI*2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     player.draw();
     ctx.restore();
 
