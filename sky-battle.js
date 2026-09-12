@@ -1110,9 +1110,9 @@
 
     const cycle=12;
     const bands=[
-      {offset:0.0,y:.30,scale:1.18,alpha:.46},
-      {offset:4.1,y:.55,scale:1.34,alpha:.55},
-      {offset:8.0,y:.76,scale:1.10,alpha:.43}
+      {offset:0.0,y:.30,scale:1.18,alpha:.38},
+      {offset:4.1,y:.55,scale:1.34,alpha:.45},
+      {offset:8.0,y:.76,scale:1.10,alpha:.35}
     ];
     ctx.save();
     for(const b of bands){
@@ -1191,9 +1191,9 @@
       const s = stats[type] || stats.green;
       this.x=x; this.y=y; this.vx=0; this.vy=0; this.isPlayer=isPlayer;
       this.type=type; this.speed=s.speed; this.tongueRange=s.tongue; this.damageMul=s.damage;
-      this.defense=s.defense||1; this.bodyScale=(s.scale||1)*.66;
+      this.defense=s.defense||1; this.bodyScale=(s.scale||1)*.54;
       this.sink=s.sink; this.hue=s.hue;
-      this.radius=29*this.bodyScale; this.hp=100; this.face = isPlayer ? 1 : -1;
+      this.radius=27*this.bodyScale; this.hp=100; this.face = isPlayer ? 1 : -1;
       this.wingKind=defaultWingKind(type);
       this.skyWingPhase=Math.random()*Math.PI*2;
       this.skyDropT=0;
@@ -4273,18 +4273,24 @@
     f.attackVariant='mid';
     f.attackT=.62;
 
-    // 水中なので超高速ではなく、少し溜めてから強く前進
+    // 雲上戦：発動時の敵位置へ向かって斜めにも突進。
     setTimeout(()=>{
       if(!f || gameOver) return;
-      f.vx += f.face*470;
-      // 水中でもわずかに上向きへ。地上版より控えめ。
-      f.vy=Math.min(f.vy,-85);
+      const target=f.isPlayer?enemy:player;
+      const dx=target?target.x-f.x:f.face;
+      const dy=target?target.y-f.y:0;
+      const len=Math.hypot(dx,dy)||1;
+      const nx=dx/len, ny=dy/len;
+
+      f.face=dx>=0?1:-1;
+      f.vx=nx*500;
+      f.vy=ny*500;
 
       comboEl.textContent='バーニングキック!';
       setTimeout(()=>{
         if(comboEl.textContent==='バーニングキック!') comboEl.textContent='';
       },600);
-    },145);
+    },120);
 
     return true;
   }
@@ -8638,14 +8644,30 @@ function drawBackground(dt){
 
       if(q.style==='flameClaw'){ctx.rotate(q.spin||0);ctx.shadowColor='#ff3a20';ctx.shadowBlur=20;ctx.strokeStyle='#ff4028';ctx.lineWidth=6;for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(-18,i*8);ctx.quadraticCurveTo(0,-15+i*7,24,i*5);ctx.stroke();}ctx.strokeStyle='#ffd05a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(27,0);ctx.stroke();
       }else if(q.style==='burning'){
-        // 円形の核＋後方へ長く伸びる炎オーラ。
-        const tail=34+Math.min(26,(q.reflected||0)*5);
+        // バーニングショット：雲に埋もれないよう濃い赤主体。
+        const tail=38+Math.min(28,(q.reflected||0)*5);
         const g=ctx.createLinearGradient(-tail,0,q.r,0);
-        g.addColorStop(0,'rgba(255,70,20,0)'); g.addColorStop(.45,'rgba(255,95,22,.48)'); g.addColorStop(1,'rgba(255,232,118,.95)');
+        g.addColorStop(0,'rgba(150,0,0,0)');
+        g.addColorStop(.34,'rgba(210,0,0,.62)');
+        g.addColorStop(.72,'rgba(255,35,0,.92)');
+        g.addColorStop(1,'rgba(255,135,20,1)');
         ctx.fillStyle=g; ctx.beginPath();
-        ctx.moveTo(-tail,0); ctx.quadraticCurveTo(-q.r,-q.r*.85,q.r*.7,-q.r*.45); ctx.arc(q.r*.15,0,q.r*.9,-.5,.5); ctx.quadraticCurveTo(-q.r,q.r*.85,-tail,0); ctx.fill();
-        ctx.shadowColor='#ff9a38';ctx.shadowBlur=20;ctx.fillStyle='#ffb13b';ctx.beginPath();ctx.arc(0,0,q.r,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#fff1a1';ctx.beginPath();ctx.arc(q.r*.18,-q.r*.12,q.r*.48,0,Math.PI*2);ctx.fill();
+        ctx.moveTo(-tail,0); ctx.quadraticCurveTo(-q.r,-q.r*.95,q.r*.72,-q.r*.50); ctx.arc(q.r*.15,0,q.r*.95,-.5,.5); ctx.quadraticCurveTo(-q.r,q.r*.95,-tail,0); ctx.fill();
+
+        ctx.shadowColor='#ff0000';
+        ctx.shadowBlur=24;
+        ctx.fillStyle='#e00000';
+        ctx.beginPath();ctx.arc(0,0,q.r*1.08,0,Math.PI*2);ctx.fill();
+
+        ctx.strokeStyle='#7a0000';
+        ctx.lineWidth=2.5;
+        ctx.stroke();
+
+        ctx.fillStyle='#ff5a16';
+        ctx.beginPath();ctx.arc(q.r*.14,-q.r*.10,q.r*.58,0,Math.PI*2);ctx.fill();
+
+        ctx.fillStyle='#ffd06a';
+        ctx.beginPath();ctx.arc(q.r*.23,-q.r*.16,q.r*.27,0,Math.PI*2);ctx.fill();
       }else if(q.style==='aquaSpin'){
         ctx.rotate(q.spin||0); ctx.shadowColor='#8feeff';ctx.shadowBlur=18;
         ctx.strokeStyle='#bffaff';ctx.lineWidth=4;
