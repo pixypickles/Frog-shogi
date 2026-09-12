@@ -1126,6 +1126,27 @@
 
 
 
+
+  function aimShotAtTarget(shot){
+    if(!shot || !shot.owner) return shot;
+    const target=shot.owner.isPlayer ? enemy : player;
+    if(!target || target.hp<=0) return shot;
+
+    let speed=Math.hypot(Number(shot.vx)||0,Number(shot.vy)||0);
+    if(speed<1){
+      speed=Number(shot.speed)||260;
+    }
+
+    const dx=target.x-shot.x;
+    const dy=target.y-shot.y;
+    const len=Math.hypot(dx,dy)||1;
+
+    shot.vx=dx/len*speed;
+    shot.vy=dy/len*speed;
+    shot.homing=true;
+    return shot;
+  }
+
   function applyUniversalHoming(shot,dt){
     if(!shot || !shot.owner) return;
     const target=shot.owner.isPlayer ? enemy : player;
@@ -1647,16 +1668,16 @@
         if(elapsed%.14<.025)ctx.globalAlpha=.72;
       }
       const pal=fighterPalette(this.type);
-      drawSkyWings(this);
 
-      // ムーンサルトキックは本体そのものが高速縦回転する。
+      // 全身回転系は翼も含めて回すため、翼を描く前に座標系を回す。
       if(this.type==='sariel'&&this.specialType==='moonSalt'&&this.specialT>0){
         ctx.rotate(this.moonSaltSpin||0);
       }
-
       if(this.specialType==='burningCyclone'){
         ctx.rotate(burningCycloneAngle(this));
       }
+
+      drawSkyWings(this);
       if(this.specialType==='lilithBackSpin'){
         const elapsed=(performance.now()-(this.lilithSpinStartTime||performance.now()))/1000;
         ctx.rotate(elapsed*18*(this.face>0?-1:1));
@@ -4912,7 +4933,7 @@
 
         // 3発ともほぼ正面。わずかに高さをずらして刃が重なり過ぎないようにする。
         const speed=390+i*16;
-        water2Shots.push({
+        water2Shots.push(aimShotAtTarget({
           owner:f,
           x:f.x+dir*62,
           y:f.y-4+(i-1)*9,
@@ -4933,7 +4954,7 @@
           wobble:0,
           baseVy:(i-1)*10,
           maxReflect:4
-        });
+        }));
         spawnImpact(f.x+dir*54,f.y+8,'guard');
       },delay);
     });
@@ -5028,7 +5049,7 @@
     const specialGravityBall_awakenedBoost=(f&&f.type==='awakenedKokabiel')?1.65:1;
     if(gameOver||!f||f.type!=='kokabiel'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
     f.specialType='gravityBall';f.specialT=.54;f.attack='punch';f.attackT=.54;
-    gravityBalls.push({owner:f,x:f.x+f.face*48,y:f.y-8,vx:f.face*185,vy:0,r:20,t:4,damage:4.4,reflects:0,maxReflect:4,pull:210});
+    gravityBalls.push(aimShotAtTarget({owner:f,x:f.x+f.face*48,y:f.y-8,vx:f.face*185,vy:0,r:20,t:4,damage:4.4,reflects:0,maxReflect:4,pull:210}));
     comboEl.textContent='グラビティボール…';return true;
   }
   function specialGravityZone(f){
@@ -5352,12 +5373,12 @@
       const sy=f.y+8+(f.bossTongueAimY||0);
       const dx=target.x-sx,dy=target.y-sy,d=Math.hypot(dx,dy)||1;
       const speed=245;
-      water2Shots.push({
+      water2Shots.push(aimShotAtTarget({
         owner:f,x:sx,y:sy,vx:dx/d*speed,vy:dy/d*speed,r:15,
         age:0,maxAge:18,t:1,life:1,damage:4.3,name:'ヴェノムタン',
         color:'samaelVenom',reflected:0,hit:false,spin:0,style:'samaelVenom',
         poisonDuration:2.0,curve:0,arcFlip:1,wobble:0,baseVy:dy/d*speed,maxReflect:4
-      });
+      }));
       comboEl.textContent='ヴェノムタン!';
       setTimeout(()=>{if(comboEl.textContent==='ヴェノムタン!')comboEl.textContent='';},520);
     },260);
@@ -5402,6 +5423,7 @@
         baseVy:shotVy,
         maxReflect:opts.maxReflect||5
       };
+      aimShotAtTarget(shot);
       water2Shots.push(shot);
       comboEl.textContent=name+'!';
       setTimeout(()=>{if(comboEl.textContent===name+'!')comboEl.textContent='';},520);
@@ -5436,7 +5458,7 @@
     const power=Math.max(.25,Math.min(1,held/1200));
     f.specialType='iceChargeRelease'; f.specialT=.42; f.attack='kick'; f.attackT=.42;
     const r=20+12*power, speed=225+65*power;
-    water2Shots.push({owner:f,x:f.x+f.face*62,y:f.y+22,vx:f.face*speed,vy:0,r,age:0,maxAge:18,damage:6.0+5.0*power,name:'アイスチャージショット',color:'ice',reflected:0,hit:false,spin:0,style:'iceChargeOrb',poisonDuration:0,curve:0,wobble:0,baseVy:0,maxReflect:5,trail:[]});
+    water2Shots.push(aimShotAtTarget({owner:f,x:f.x+f.face*62,y:f.y+22,vx:f.face*speed,vy:0,r,age:0,maxAge:18,damage:6.0+5.0*power,name:'アイスチャージショット',color:'ice',reflected:0,hit:false,spin:0,style:'iceChargeOrb',poisonDuration:0,curve:0,wobble:0,baseVy:0,maxReflect:5,trail:[]}));
     comboEl.textContent='アイスチャージショット!';
     setTimeout(()=>{if(comboEl.textContent==='アイスチャージショット!')comboEl.textContent='';},650);
     return true;
@@ -5470,7 +5492,7 @@
     const fireOne=(deg)=>{
       if(gameOver||!f)return;
       const dir=f.face, speed=315, angle=deg*Math.PI/180;
-      water2Shots.push({owner:f,x:f.x+dir*58,y:f.y,vx:dir*Math.cos(angle)*speed,vy:Math.sin(angle)*speed,r:16,age:0,maxAge:18,t:1,life:1,damage:3.1,name:'フレイムクロー',color:'fire',reflected:0,hit:false,spin:0,style:'flameClaw',poisonDuration:0,curve:0,arcFlip:1,wobble:0,baseVy:Math.sin(angle)*speed,maxReflect:4});
+      water2Shots.push(aimShotAtTarget({owner:f,x:f.x+dir*58,y:f.y,vx:dir*Math.cos(angle)*speed,vy:Math.sin(angle)*speed,r:16,age:0,maxAge:18,t:1,life:1,damage:3.1,name:'フレイムクロー',color:'fire',reflected:0,hit:false,spin:0,style:'flameClaw',poisonDuration:0,curve:0,arcFlip:1,wobble:0,baseVy:Math.sin(angle)*speed,maxReflect:4}));
     };
     setTimeout(()=>{[-20,0,20].forEach((a,i)=>setTimeout(()=>fireOne(a),i*65));comboEl.textContent='フレイムクロー!';},180);
     return true;
@@ -5583,11 +5605,11 @@
     comboEl.textContent='エアギロチン…';
     setTimeout(()=>{
       if(gameOver||!f)return;
-      water2Shots.push({
+      water2Shots.push(aimShotAtTarget({
         owner:f,x:tx,y:-40,vx:0,vy:590,r:25,age:0,maxAge:3.2,t:1,life:1,
         damage:4.8,name:'エアギロチン',color:'aqua',reflected:0,hit:false,spin:0,
         style:'cutter',poisonDuration:0,curve:0,wobble:0,baseVy:590,maxReflect:5
-      });
+      }));
       comboEl.textContent='エアギロチン!';
       setTimeout(()=>{if(comboEl.textContent==='エアギロチン!')comboEl.textContent='';},620);
     },260);
@@ -7539,12 +7561,12 @@ function drawBackground(dt){
           if(target){
             const dx=target.x-g.x,dy=target.y-g.y,d=Math.hypot(dx,dy)||1;
             const speed=g.deadly?225:252;
-            water2Shots.push({
+            water2Shots.push(aimShotAtTarget({
               owner:g.owner,x:g.x,y:g.y,vx:dx/d*speed,vy:dy/d*speed,r:g.deadly?19:16,
               age:0,maxAge:18,t:1,life:1,damage:g.deadly?5.6:4.7,name:g.deadly?'デッドリー・アクア':'ポイズンゲート',
               color:'samaelVenom',reflected:0,hit:false,spin:0,style:'samaelVenom',
               poisonDuration:g.deadly?2.8:2.2,curve:0,arcFlip:1,wobble:g.deadly?.08:.04,baseVy:dy/d*speed,maxReflect:g.deadly?3:4
-            });
+            }));
             comboEl.textContent='ポイズンゲート!';
             setTimeout(()=>{if(comboEl.textContent==='ポイズンゲート!')comboEl.textContent='';},480);
           }
