@@ -92,7 +92,6 @@
   let engineerShots = [];
   let michaelAuraShots = [];
   let water2Shots = [];
-  let gabrielMistClouds=[];
   let iceWalls = [];
   let samaelGates = [];
   let seraphielRays = [];
@@ -1144,7 +1143,6 @@
   }
 
   function applyUniversalHoming(shot,dt){
-    if(shot && (shot.name==='5WAY水弾'||shot.name==='滝の水')) return;
     if(!shot || !shot.owner) return;
     const target=shot.owner.isPlayer ? enemy : player;
     if(!target || target.hp<=0) return;
@@ -1195,6 +1193,7 @@
       this.skyWingPhase=Math.random()*Math.PI*2;
       this.skyDropT=0;
       this.gabMistT=0;
+      this.gabMistPuffs=[];
       this.gabJetT=0;
       this.gabJetUpperReady=false;
       this.gabCharging=false;
@@ -2836,21 +2835,38 @@
 
 
       if(this.type==='blue'){
+        if(this.gabMistT>0 && this.gabMistPuffs && this.gabMistPuffs.length){
+          ctx.save();
+          ctx.fillStyle='#ffffff';
+          for(const p of this.gabMistPuffs){
+            ctx.globalAlpha=p.a*Math.min(1,this.gabMistT/.22);
+            ctx.beginPath();
+            ctx.ellipse(p.x,p.y,p.r,p.r*.68,0,0,Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(p.x-p.r*.48,p.y+2,p.r*.62,p.r*.45,0,0,Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(p.x+p.r*.48,p.y+3,p.r*.66,p.r*.47,0,0,Math.PI*2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
         if(this.gabJetT>0){
           ctx.save();
-          const pulse=.88+Math.sin(performance.now()/38)*.12;
-          const gr=ctx.createLinearGradient(0,20,0,132);
-          gr.addColorStop(0,'rgba(250,255,255,1)');
-          gr.addColorStop(.22,'rgba(95,225,255,.98)');
-          gr.addColorStop(.62,'rgba(35,145,255,.72)');
-          gr.addColorStop(1,'rgba(15,90,230,0)');
+          const pulse=.86+Math.sin(performance.now()/42)*.14;
+          const gr=ctx.createLinearGradient(0,24,0,110);
+          gr.addColorStop(0,'rgba(245,255,255,.98)');
+          gr.addColorStop(.25,'rgba(85,215,255,.95)');
+          gr.addColorStop(1,'rgba(15,105,235,0)');
           ctx.fillStyle=gr;
-          for(const fx of [-12,12]){
-            ctx.beginPath();ctx.moveTo(fx-5,22);
-            ctx.quadraticCurveTo(fx-13,70,fx-7,128*pulse);
-            ctx.quadraticCurveTo(fx+12,76,fx+5,22);
-            ctx.closePath();ctx.fill();
-          }
+          ctx.beginPath();
+          ctx.moveTo(-14,22);ctx.quadraticCurveTo(-26,64,-10,105*pulse);
+          ctx.quadraticCurveTo(-1,62,-4,23);ctx.closePath();ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(14,22);ctx.quadraticCurveTo(26,64,10,105*pulse);
+          ctx.quadraticCurveTo(1,62,4,23);ctx.closePath();ctx.fill();
           ctx.restore();
         }
 
@@ -2905,10 +2921,26 @@
     }
     update(dt){
       if(this.flash>0)this.flash-=dt;
-      if(this.gabMistT>0)this.gabMistT=Math.max(0,this.gabMistT-dt);
+      if(this.gabMistT>0){
+        this.gabMistT=Math.max(0,this.gabMistT-dt);
+        if(this.gabMistPuffs){
+          for(const p of this.gabMistPuffs){
+            p.x+=p.vx*dt;
+            p.y+=p.vy*dt;
+            p.a=Math.max(0,p.a-dt*.16);
+          }
+        }
+        if(this.gabMistT<=0)this.gabMistPuffs=[];
+      }
       if(this.gabJetT>0){
         this.gabJetT=Math.max(0,this.gabJetT-dt);
-        if(this.gabJetT<=0)this.gabJetUpperReady=false;
+        if(this.gabJetT<=0){
+          this.gabJetT=0;
+          this.gabJetUpperReady=false;
+        }
+      }
+      if(this.specialType!=='gabrielJetRise' && this.specialType!=='gabrielJetUpper'){
+        this.gabJetT=0;
       }
       if(this.gabCharging){
         this.gabChargeT=Math.min(3.2,(this.gabChargeT||0)+dt);
@@ -4321,7 +4353,7 @@
 
     const other=f.isPlayer?enemy:player;
     f.specialType='dropkick';
-    f.specialT=.62;
+    f.specialT=.46;
     f.specialHitDone=false;
     f.attack='kick';
     f.attackVariant='mid';
@@ -5683,8 +5715,21 @@
 
   function gabrielMist(f){
     if(gameOver||!f||f.type!=='blue')return false;
-    gabrielMistClouds.push({owner:f,x:f.x,y:f.y,t:8,life:8,phase:Math.random()*Math.PI*2});
-    gabrielMistClouds=gabrielMistClouds.slice(-4);
+    // ガブリエルの位置から雲を発生させ、そのまま横へ流す。
+    // 本体追従や独立した大量オブジェクト管理は行わない。
+    f.gabMistT=2.8;
+    f.gabMistPuffs=[];
+    const dir=f.face>=0?1:-1;
+    for(let i=0;i<7;i++){
+      f.gabMistPuffs.push({
+        x:(Math.random()-.5)*34,
+        y:(Math.random()-.5)*34,
+        vx:dir*(38+Math.random()*28),
+        vy:(Math.random()-.5)*8,
+        r:20+Math.random()*14,
+        a:.72+Math.random()*.18
+      });
+    }
     comboEl.textContent='ミストクラウド!';
     setTimeout(()=>{if(comboEl.textContent==='ミストクラウド!')comboEl.textContent='';},650);
     return true;
@@ -5693,7 +5738,7 @@
   function gabrielJetRise(f){
     if(gameOver||!f||f.type!=='blue'||f.stun>0)return false;
     f.guard=false;
-    f.gabJetT=.62;
+    f.gabJetT=.46;
     f.gabJetUpperReady=true;
     f.specialType='gabrielJetRise';
     f.specialT=.62;
@@ -5710,7 +5755,7 @@
     if(gameOver||!f||f.type!=='blue'||!f.gabJetUpperReady)return false;
     const target=gabrielTarget(f);
     f.gabJetUpperReady=false;
-    f.gabJetT=.28;
+    f.gabJetT=0;
     f.specialType='gabrielJetUpper';
     f.specialT=.44;
     f.attack='punch';
@@ -5742,18 +5787,18 @@
     for(let i=0;i<26;i++){
       setTimeout(()=>{
         if(gameOver||!target)return;
-        const px=Math.max(24,Math.min(innerWidth-24,baseX+(Math.random()-.5)*105));
-        const py=Math.max(32,target.y-260-Math.random()*85);
+        const px=Math.max(18,Math.min(innerWidth-18,baseX+(Math.random()-.5)*110));
         const shot={
-          owner:f,x:px,y:py,
-          vx:0,vy:440+Math.random()*120,
-          r:10+Math.random()*7,
+          owner:f,x:px,y:-35-Math.random()*135,
+          vx:0,vy:520+Math.random()*130,
+          r:6+Math.random()*4,
           age:0,maxAge:4,t:1,life:1,
           damage:.48,name:'滝の水',
           color:'aqua',reflected:0,hit:false,spin:0,
           style:'aqua',poisonDuration:0,curve:0,wobble:.03,
           baseVy:540,maxReflect:0
         };
+        aimShotAtTarget(shot);
         water2Shots.push(shot);
       },i*30);
     }
@@ -5773,9 +5818,12 @@
     for(let i=0;i<32;i++){
       setTimeout(()=>{
         if(gameOver||!target)return;
-        const cloud=[...gabrielMistClouds].reverse().find(c=>c.owner===f&&c.t>0);
-        const sx=cloud?cloud.x+(Math.random()-.5)*58:f.x+(Math.random()-.5)*30;
-        const sy=cloud?cloud.y+(Math.random()-.5)*36:f.y+(Math.random()-.5)*24;
+        // 最初から流れている背景雲の位置をイメージし、画面上部〜中段の
+        // 左右端から水弾を撃ち込む。ミストクラウドとは連動しない。
+        const fromLeft=i%2===0;
+        const sx=fromLeft?-24:innerWidth+24;
+        const cloudBand=[.24,.42,.60][i%3];
+        const sy=Math.max(70,Math.min(innerHeight-130,innerHeight*cloudBand+(Math.random()-.5)*46));
         const dx=target.x-sx,dy=target.y-sy,len=Math.hypot(dx,dy)||1;
         const speed=270+Math.random()*95;
         const shot={
@@ -5804,8 +5852,8 @@
     f.specialT=.46;
     comboEl.textContent='ファイブウォーターバースト!';
 
-    const base=Math.PI/2;
-    [-.52,-.26,0,.26,.52].forEach(off=>{
+    const base=Math.atan2(target.y-f.y,target.x-f.x);
+    [-.44,-.22,0,.22,.44].forEach(off=>{
       const a=base+off;
       const shot={
         owner:f,
@@ -5817,7 +5865,7 @@
         style:'aqua',poisonDuration:0,curve:0,wobble:0,
         baseVy:Math.sin(a)*325,maxReflect:0
       };
-      // 下方向5WAY。この技は発射方向を維持。
+      // 5方向の見た目は残しつつ、その後は共通誘導で敵へ収束。
       water2Shots.push(shot);
     });
     setTimeout(()=>{if(comboEl.textContent==='ファイブウォーターバースト!')comboEl.textContent='';},620);
@@ -6892,8 +6940,6 @@
   function incomingReflectableThreat(f){
     if(!f) return false;
     const threats=[];
-    gabrielMistClouds.forEach(c=>c.t=Math.max(0,c.t-dt));
-    gabrielMistClouds=gabrielMistClouds.filter(c=>c.t>0);
     water2Shots.forEach(q=>{ if(q.owner && q.owner!==f && !q.hit) threats.push({x:q.x,y:q.y,vx:q.vx||0,vy:q.vy||0,r:q.r||14}); });
     pressureBlades.forEach(q=>{ if(q.owner && q.owner!==f && !q.hit) threats.push({x:q.x,y:q.y,vx:q.vx||0,vy:q.vy||0,r:30}); });
     return threats.some(q=>{
@@ -8351,18 +8397,6 @@ function drawBackground(dt){
     ctx.shadowColor='transparent';
 
     ctx.save();
-    gabrielMistClouds.forEach(c=>{
-      const now=performance.now()/1000,fade=Math.min(1,c.t/.35);
-      ctx.save();ctx.globalAlpha=.72*fade;ctx.fillStyle='#fff';
-      for(let i=0;i<12;i++){
-        const a=i/12*Math.PI*2+c.phase,rr=25+(i%4)*10;
-        const x=c.x+Math.cos(a)*rr+Math.sin(now*.8+i)*4;
-        const y=c.y+Math.sin(a)*rr*.66+Math.cos(now*.7+i)*3;
-        ctx.beginPath();ctx.ellipse(x,y,24+(i%3)*7,16+(i%2)*5,0,0,Math.PI*2);ctx.fill();
-      }
-      ctx.restore();
-    });
-
     player.draw();
     ctx.restore();
 
