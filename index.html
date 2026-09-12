@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="theme-color" content="#0d6672" />
-  <title>カエルしょうぎ 試作 v0.9.0</title>
+  <title>カエルしょうぎ 試作 v0.9.1</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -19,13 +19,7 @@
         <strong>カエルしょうぎ</strong>
         <span>将棋盤＋格闘戦の本編</span>
       </button>
-
-      <button id="modeJumpPractice" class="mode-button jump-mode" type="button">
-        <strong>蓮の葉バトル練習</strong>
-        <span>JUMP戦をモブさん相手に練習</span>
-      </button>
-
-      <button id="modeWaterPractice" class="mode-button water-mode" type="button">
+<button id="modeSkyPractice" class="mode-button sky-mode" type="button">
         <strong>雲上バトル練習</strong>
         <span>翼で飛ぶ雲上戦をモブさん相手に練習</span>
       </button>
@@ -52,8 +46,7 @@
       </div>
       <p id="statusText">天使軍がプレイヤーです。駒を動かすと、悪魔軍CPUが自動で指します。</p>
       <div class="legend">
-        <span><i class="dot lotus"></i>蓮の葉＝ジャンプ戦</span>
-        <span><i class="dot water"></i>空＝雲上戦</span>
+        <span><i class="dot water"></i>すべての駒取り＝雲上バトル</span>
       </div>
     </section>
 
@@ -81,7 +74,7 @@
 
     <section class="info-grid">
       <div class="mini-card">
-        <h2>v0.9.0</h2>
+        <h2>v0.9.1</h2>
         <p>明るい池デザインへ刷新。駒はキャラ色そのもののカエル型にし、陣営色ではなく各キャラの色を前面に出しました。</p>
       </div>
       <div class="mini-card">
@@ -181,11 +174,8 @@
       overlay.classList.add('hidden');
       sessionStorage.setItem('pondModeSelected','shogi');
     });
-    document.getElementById('modeJumpPractice').addEventListener('click', () => {
-      location.href = './training.html?mode=jump';
-    });
-    document.getElementById('modeWaterPractice').addEventListener('click', () => {
-      location.href = './training.html?mode=sky';
+        document.getElementById('modeSkyPractice').addEventListener('click', () => {
+      location.href = './training.html';
     });
 
     // 戦闘から将棋盤へ戻ってきた時は毎回モード選択を出さない

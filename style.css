@@ -303,3 +303,9 @@ html,body{background:linear-gradient(180deg,#10b6c5 0%,#0aa2b4 48%,#078fa4 100%)
   box-shadow:15px 3px 0 rgba(255,255,255,.22),-13px 5px 0 rgba(255,255,255,.18);
   transform:none!important;
 }
+
+/* v0.9.1 盤面から蓮の葉を完全撤去 */
+.cell.lotus{background:linear-gradient(145deg,#73d8f4,#bdefff)!important}
+.cell.lotus::before,.cell.lotus::after{display:none!important}
+.dot.lotus{display:none!important}
+.sky-mode{background:#e4f7ff;color:#175d78}

@@ -58,18 +58,8 @@
     'モブさん':['前＋パンチ：バブルショット','上＋パンチ：かえる跳びアッパー','前＋キック：トリプルキック']
   };
 
-  const LOTUS=[
-    [0,0],[0,1],[0,2],[0,4],[0,6],[0,7],[0,8],
-    [1,0],[1,1],[1,2],[1,3],[1,5],[1,6],[1,7],[1,8],
-    [2,0],[2,1],[2,3],[2,4],[2,5],[2,7],[2,8],
-    [3,0],[3,2],[3,3],[3,4],[3,5],[3,6],[3,8],
-    [4,0],[4,1],[4,2],[4,4],[4,6],[4,7],[4,8],
-    [5,0],[5,2],[5,3],[5,4],[5,5],[5,6],[5,8],
-    [6,0],[6,1],[6,3],[6,4],[6,5],[6,7],[6,8],
-    [7,0],[7,1],[7,2],[7,4],[7,6],[7,7],[7,8],
-    [8,0],[8,1],[8,2],[8,4],[8,6],[8,7],[8,8]
-  ];
-  const lotusSet=new Set(LOTUS.map(x=>x.join(',')));
+  const LOTUS=[];
+  const lotusSet=new Set();
   const $=id=>document.getElementById(id), boardEl=$('board'), statusText=$('statusText'), turnBadge=$('turnBadge'), moveCountEl=$('moveCount'), modal=$('battleModal'), encounterModal=$('encounterModal');
   let assignments=JSON.parse(JSON.stringify(RECOMMENDED)), state;
   const emptyBoard=()=>Array.from({length:9},()=>Array(9).fill(null));
@@ -117,7 +107,7 @@
     boardEl.innerHTML='';
     // 大葉は撤去。小さい蓮の葉のみ。
     for(let r=0;r<9;r++)for(let c=0;c<9;c++){
-      const cell=document.createElement('button'); cell.type='button'; cell.className=`cell ${lotusSet.has(`${r},${c}`)?'lotus':'water'}`; cell.style.setProperty('--leaf-rot',`${((r*17+c*29)%70)-35}deg`); cell.dataset.r=r;cell.dataset.c=c;
+      const cell=document.createElement('button'); cell.type='button'; cell.className='cell water'; cell.style.setProperty('--leaf-rot',`${((r*17+c*29)%70)-35}deg`); cell.dataset.r=r;cell.dataset.c=c;
       const legal=state.legal.find(m=>m.r===r&&m.c===c); if(state.selected&&state.selected.r===r&&state.selected.c===c)cell.classList.add('selected'); if(legal)cell.classList.add(legal.capture?'capture':'legal');
       const marker=document.createElement('span');marker.className='move-dot';cell.appendChild(marker); const p=state.board[r][c];
       if(p)cell.insertAdjacentHTML('beforeend',frogMarkup(p));
@@ -224,13 +214,13 @@
   }
 
   function openBattle(b){
-    const terrain=lotusSet.has(`${b.tr},${b.tc}`)?'lotus':'water';
+    const terrain='sky';
     const aHp=ROLE_HP[b.attacker.type];
     const dRoleHp=ROLE_HP[b.defender.type];
     const dStart=Math.max(1,Math.round(dRoleHp/3));
     const playerRole=b.attacker.side==='angel'?'attacker':'defender';
     const context={
-      source:'pond-shogi-v0.7.6',
+      source:'kaeru-shogi-v0.9.1',
       attacker:b.attacker.name,
       defender:b.defender.name,
       attackerType:b.attacker.name,
@@ -246,8 +236,8 @@
     };
 
     // まず「攻撃/守備」を見せる
-    $('encounterTerrain').textContent=terrain==='lotus'?'蓮の葉ジャンプバトル':'雲上バトル';
-    $('encounterTerrain').className=`terrain-pill ${terrain==='lotus'?'lotus':''}`;
+    $('encounterTerrain').textContent='雲上バトル';
+    $('encounterTerrain').className='terrain-pill';
     $('encounterAttacker').textContent=b.attacker.name;
     $('encounterDefender').textContent=b.defender.name;
     $('encounterAttackerRole').textContent=`${K[b.attacker.type]} / HP ${aHp}%`;
@@ -272,9 +262,9 @@
       state.pendingBattle=null;state.pendingBattleContext=null;
       render();return;
     }
-    statusText.textContent=`${context.terrain==='lotus'?'蓮の葉ジャンプ':'雲上'}バトルへ移動します…`;
+    statusText.textContent='雲上バトルへ移動します…';
     render();
-    const battlePage=context.terrain==='lotus'?'./jump-battle.html':'./sky-battle.html';
+    const battlePage='./sky-battle.html';
     location.href=`${battlePage}?mix=1&battle=1`;
   }
 
@@ -323,7 +313,7 @@
     }catch(e){}
 
     if(result.winner==='attacker'){
-      const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'雲上';
+      const terrainName='雲上';
       const defeatedName=b.defender.name;
 
       if(b.defender.type==='king'){
@@ -354,7 +344,7 @@
         setTimeout(()=>finishTurn(`${terrainName}戦：${b.attacker.name}が${defeatedName}を撃破。駒取り成立。${moved!==b.attacker?` ${K[moved.type]}に成りました。`:''}`),700);
       }
     }else{
-      const terrainName=lotusSet.has(`${b.tr},${b.tc}`)?'蓮の葉':'雲上';
+      const terrainName='雲上';
       render();
       setTimeout(()=>animateCellPiece(b.fr,b.fc,'retreat-shake'),40);
       setTimeout(()=>animateCellPiece(b.tr,b.tc,'defender-glow'),40);

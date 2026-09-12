@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-  <title>戦闘練習 - カエルしょうぎ</title>
+  <title>雲上バトル練習 - カエルしょうぎ</title>
   <style>
     *{box-sizing:border-box}
     html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;background:linear-gradient(180deg,#8ce8ec,#27b9c8 50%,#0b8297);color:#174e5c}
@@ -27,10 +27,10 @@
   <main class="practice">
     <section class="card">
       <div class="kicker">FROG FIGHTER 2 / TRAINING</div>
-      <h1>戦闘練習</h1>
-      <p class="sub">キャラクターを選んで、モブさん相手に技を練習できます。</p>
+      <h1>雲上バトル練習</h1>
+      <p class="sub">翼で飛ぶ雲上戦を、モブさん相手に練習できます。</p>
 
-      <div id="modeLabel" class="mode">蓮の葉バトル練習</div>
+      <div id="modeLabel" class="mode">雲上バトル練習（翼で飛行）</div>
 
       <label for="fighterSelect">自分のキャラクター</label>
       <select id="fighterSelect">
@@ -69,9 +69,9 @@
 <script>
 (() => {
   const params = new URLSearchParams(location.search);
-  const mode = params.get('mode') === 'water' ? 'water' : 'jump';
+  const mode = 'sky';
   const modeLabel = document.getElementById('modeLabel');
-  modeLabel.textContent = mode === 'sky' ? '雲上バトル練習（翼で飛行）' : '蓮の葉バトル練習';
+  modeLabel.textContent = '雲上バトル練習（翼で飛行）';
 
   const select = document.getElementById('fighterSelect');
   const saved = localStorage.getItem('pondPracticeFighter');
@@ -80,8 +80,10 @@
   document.getElementById('startPractice').addEventListener('click', () => {
     const fighter = select.value;
     localStorage.setItem('pondPracticeFighter', fighter);
+    const demonNames=new Set(['ルシファー','リリス','ベルゼブブ','サリエル','コカビエル','フラウロス','サマエル','サタナエル','覚醒コカビエル']);
+    const fighterSide=demonNames.has(fighter)?'demon':'angel';
     const context = {
-      source:'pond-training-v0.9.0',
+      source:'pond-training-v0.9.1',
       practice:true,
       attacker:fighter,
       defender:'モブさん',
@@ -92,12 +94,12 @@
       attackerHp:100,
       defenderHp:100,
       playerRole:'attacker',
-      terrain:mode === 'sky' ? 'sky' : 'lotus',
-      returnUrl:`./training.html?mode=${mode}`
+      terrain:'sky',
+      returnUrl:'./training.html'
     };
     sessionStorage.setItem('mixBattle', JSON.stringify(context));
     sessionStorage.removeItem('mixBattleResult');
-    const page = mode === 'sky' ? './sky-battle.html' : './jump-battle.html';
+    const page = './sky-battle.html';
     location.href = `${page}?mix=1&battle=1&practice=1`;
   });
 

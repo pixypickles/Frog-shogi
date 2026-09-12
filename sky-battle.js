@@ -765,7 +765,7 @@
 
       // カエルしょうぎ側の練習から来た場合は、元の練習選択画面へ戻す。
       if(mixBattleMode && mixBattleContext && mixBattleContext.practice){
-        location.href=new URL(mixBattleContext.returnUrl||'training.html?mode=sky',location.href).href;
+        location.href=new URL(mixBattleContext.returnUrl||'training.html',location.href).href;
         return;
       }
 
@@ -1020,18 +1020,17 @@
     const t=performance.now()/1000;
     const dropping=(f.skyDropT||0)>0;
     const phase=(f.skyWingPhase||0);
-    const flap=dropping ? -.22 : Math.sin(t*8.5+phase)*.34;
+    const flap=dropping ? -.18 : Math.sin(t*8.5+phase)*.22;
     const kind=f.wingKind||defaultWingKind(f.type);
 
     ctx.save();
-    ctx.globalAlpha=dropping?.62:.92;
+    ctx.globalAlpha=dropping?.62:.94;
 
     if(kind==='demon'){
       ctx.fillStyle='rgba(54,34,82,.82)';
       ctx.strokeStyle='rgba(28,15,48,.88)';
       ctx.lineWidth=2.2;
 
-      // 左のコウモリ翼
       ctx.save();
       ctx.rotate(-flap*.55);
       ctx.beginPath();
@@ -1042,11 +1041,9 @@
       ctx.lineTo(-67,18);
       ctx.lineTo(-78,39);
       ctx.quadraticCurveTo(-48,30,-22,13);
-      ctx.closePath();
-      ctx.fill();ctx.stroke();
+      ctx.closePath();ctx.fill();ctx.stroke();
       ctx.restore();
 
-      // 右
       ctx.save();
       ctx.scale(-1,1);
       ctx.rotate(-flap*.55);
@@ -1058,37 +1055,52 @@
       ctx.lineTo(-67,18);
       ctx.lineTo(-78,39);
       ctx.quadraticCurveTo(-48,30,-22,13);
-      ctx.closePath();
-      ctx.fill();ctx.stroke();
+      ctx.closePath();ctx.fill();ctx.stroke();
       ctx.restore();
     }else{
-      const grad=ctx.createLinearGradient(0,-45,0,40);
-      grad.addColorStop(0,'rgba(255,255,255,.98)');
-      grad.addColorStop(1,'rgba(205,238,255,.72)');
-      ctx.fillStyle=grad;
-      ctx.strokeStyle='rgba(151,211,241,.88)';
-      ctx.lineWidth=2;
+      // 天使翼：大きな楕円ではなく、肩から生える小さめの羽根束。
+      // キャラ本体の後ろに収まり、羽ばたきで上下する。
+      const wingScale=.72;
+      ctx.scale(wingScale,wingScale);
+      const drawAngelWing=(mirror)=>{
+        ctx.save();
+        if(mirror)ctx.scale(-1,1);
+        ctx.translate(-24,-3);
+        ctx.rotate(-.10 + flap*.55);
 
-      ctx.save();
-      ctx.rotate(flap*.58);
-      ctx.beginPath();
-      ctx.ellipse(-54,-4,34,17,-.45,0,Math.PI*2);
-      ctx.fill();ctx.stroke();
-      ctx.beginPath();
-      ctx.ellipse(-69,10,31,13,-.2,0,Math.PI*2);
-      ctx.fill();ctx.stroke();
-      ctx.restore();
+        const feather=(x,y,rx,ry,rot,alpha)=>{
+          ctx.save();
+          ctx.translate(x,y);ctx.rotate(rot);
+          const gr=ctx.createLinearGradient(0,-ry,0,ry);
+          gr.addColorStop(0,`rgba(255,255,255,${alpha})`);
+          gr.addColorStop(1,`rgba(190,229,248,${alpha*.88})`);
+          ctx.fillStyle=gr;
+          ctx.strokeStyle='rgba(126,193,226,.78)';
+          ctx.lineWidth=1.7;
+          ctx.beginPath();
+          ctx.moveTo(0,0);
+          ctx.quadraticCurveTo(-rx,-ry*.45,-rx*.18,-ry);
+          ctx.quadraticCurveTo(rx*.45,-ry*.35,rx*.70,0);
+          ctx.quadraticCurveTo(rx*.28,ry*.42,0,0);
+          ctx.closePath();
+          ctx.fill();ctx.stroke();
+          ctx.restore();
+        };
 
-      ctx.save();
-      ctx.scale(-1,1);
-      ctx.rotate(flap*.58);
-      ctx.beginPath();
-      ctx.ellipse(-54,-4,34,17,-.45,0,Math.PI*2);
-      ctx.fill();ctx.stroke();
-      ctx.beginPath();
-      ctx.ellipse(-69,10,31,13,-.2,0,Math.PI*2);
-      ctx.fill();ctx.stroke();
-      ctx.restore();
+        feather(-18,-14,25,20,-.42,.98);
+        feather(-32,-2,28,20,-.24,.94);
+        feather(-37,13,27,18,-.08,.88);
+        feather(-24,24,22,15,.10,.82);
+
+        // 翼の根元
+        ctx.fillStyle='rgba(245,252,255,.96)';
+        ctx.beginPath();
+        ctx.ellipse(-4,3,18,23,-.18,0,Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+      };
+      drawAngelWing(false);
+      drawAngelWing(true);
     }
     ctx.restore();
   }
@@ -3401,12 +3413,12 @@
     sessionStorage.removeItem('mixBattle');
     restartButton.textContent=mixBattleContext.practice?'練習に戻る':'カエルしょうぎへ戻る';
     restartButton.hidden=false;
-    restartButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||(mixBattleContext.practice?'training.html?mode=sky':'index.html'),location.href).href; };
+    restartButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||(mixBattleContext.practice?'training.html':'index.html'),location.href).href; };
     if(titleReturnButton)titleReturnButton.hidden=true;
     if(practiceExitButton && mixBattleContext.practice){
       practiceExitButton.hidden=false;
       practiceExitButton.textContent='練習に戻る';
-      practiceExitButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'training.html?mode=sky',location.href).href; };
+      practiceExitButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'training.html',location.href).href; };
     }
     return true;
   }
@@ -8947,7 +8959,7 @@ function drawBackground(dt){
         if(mixBattleContext.practice){
           practiceExitButton.hidden=false;
           practiceExitButton.textContent='練習に戻る';
-          practiceExitButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'training.html?mode=sky',location.href).href; };
+          practiceExitButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'training.html',location.href).href; };
         }else{
           practiceExitButton.hidden=true;
         }
