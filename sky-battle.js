@@ -358,7 +358,7 @@
       'バーニングショット：後ろ ＋ パンチ',
       'バーニングサイクロン：下 → 後ろ ＋ キック'
     ],
-    blue:['上＋ガード：ウォータージェット上昇','上昇中＋パンチ：ジェットアッパー','上＋パンチ：スカイウォーターフォール','後ろ＋キック：クラウドレインショット','下＋キック：スカイレインバースト','後ろ＋パンチ長押し：ウォーターマス'],
+    blue:['上＋ガード：ウォータージェット上昇','上昇中＋パンチ：ジェットアッパー','上＋パンチ：ビッグウォータードロップ','後ろ＋キック：クラウドレインショット','下＋キック：スカイレインバースト','下→前＋パンチ：ギガウォーターキャノン'],
     yellow:[
       '水圧カッター（正面）：前 ＋ パンチ',
       '水圧カッター（下15度）：前 ＋ キック',
@@ -2898,7 +2898,7 @@
       if(this.specialType!=='gabrielJetRise' && this.specialType!=='gabrielJetUpper'){
         this.gabJetT=0;
       }
-      if(this.gabCharging){
+      if(false && this.gabCharging){
         this.gabChargeT=Math.min(3.2,(this.gabChargeT||0)+dt);
         this.specialT=Math.max(this.specialT,1);
         this.attackT=Math.max(this.attackT,1);
@@ -5697,49 +5697,71 @@
   function gabrielJetUppercut(f){
     if(gameOver||!f||f.type!=='blue'||!f.gabJetUpperReady)return false;
     const target=gabrielTarget(f);
+
     f.gabJetUpperReady=false;
     f.gabJetT=0;
     f.specialType='gabrielJetUpper';
-    f.specialT=.44;
+    f.specialT=.50;
     f.attack='punch';
     f.attackVariant='upper';
-    f.attackT=.44;
+    f.attackT=.50;
+
     if(target){
       const dx=target.x-f.x,dy=target.y-f.y,len=Math.hypot(dx,dy)||1;
       f.face=dx>=0?1:-1;
-      f.vx=dx/len*310;
-      f.vy=Math.min(-390,dy/len*310-235);
+      f.vx=dx/len*360;
+      f.vy=Math.min(-455,dy/len*360-280);
+
+      // 3段階の攻撃判定。かなり当てやすくする。
+      [60,145,235].forEach((delay,idx)=>{
+        setTimeout(()=>{
+          if(gameOver||!target||target.hp<=0)return;
+          const dist=Math.hypot(target.x-f.x,target.y-f.y);
+          if(dist<102){
+            const dmg=idx===2?5.8:3.0;
+            damageHit(f,target,dmg*f.damageMul,110*f.face,-165);
+            spawnImpact(target.x,target.y,'hit');
+          }
+        },delay);
+      });
     }else{
-      f.vy=-450;
+      f.vy=-500;
     }
+
     comboEl.textContent='ジェットアッパー!';
-    setTimeout(()=>{if(comboEl.textContent==='ジェットアッパー!')comboEl.textContent='';},620);
+    setTimeout(()=>{if(comboEl.textContent==='ジェットアッパー!')comboEl.textContent='';},680);
     return true;
   }
 
-  function gabrielWaterfall(f){
+  function gabrielBigDrop(f){
     if(gameOver||!f||f.type!=='blue'||f.stun>0||f.specialT>0)return false;
     const target=gabrielTarget(f);
     if(!target)return false;
 
-    f.specialType='gabrielWaterfall';
-    f.specialT=.88;
+    f.specialType='gabrielBigDrop';
+    f.specialT=.60;
     f.attack='punch';
-    f.attackT=.34;
+    f.attackT=.36;
 
-    gabrielWaterfalls.push({
+    water2Shots.push({
       owner:f,
-      x:target.x,
-      top:-40,
-      bottom:target.y+170,
-      w:46,
-      t:1.20,
-      life:1.20,
-      hitCd:0
+      x:Math.max(38,Math.min(innerWidth-38,target.x)),
+      y:Math.max(45,target.y-245),
+      vx:0,
+      vy:350,
+      r:36,
+      age:0,maxAge:4.2,t:1,life:1,
+      damage:6.2,
+      name:'ビッグウォータードロップ',
+      color:'aqua',
+      reflected:0,hit:false,spin:0,
+      style:'aqua',
+      poisonDuration:0,curve:0,wobble:0,
+      baseVy:350,maxReflect:2
     });
 
-    comboEl.textContent='スカイウォーターフォール!';
-    setTimeout(()=>{if(comboEl.textContent==='スカイウォーターフォール!')comboEl.textContent='';},900);
+    comboEl.textContent='ビッグウォータードロップ!';
+    setTimeout(()=>{if(comboEl.textContent==='ビッグウォータードロップ!')comboEl.textContent='';},760);
     clearCommand();
     return true;
   }
@@ -5823,66 +5845,79 @@
     return true;
   }
 
-  function gabrielStartCharge(f){
-    if(gameOver||!f||f.type!=='blue'||f.stun>0||f.guard||f.gabCharging)return false;
-    f.gabCharging=true;
-    f.gabChargeT=0;
+  function gabrielGiantWaterCannon(f){
+    if(gameOver||!f||f.type!=='blue'||f.stun>0||f.specialT>0)return false;
     const target=gabrielTarget(f);
-    gabrielChargePreview={
-      owner:f,
-      x:target?target.x:innerWidth*.5,
-      y:Math.max(58,innerHeight*.11),
-      r:22
-    };
-    f.specialType='gabrielCharge';
-    f.specialT=20;
-    f.attack='punch';f.attackT=20;
-    f.vx*=.2;f.vy*=.2;
-    comboEl.textContent='ウォーターマス チャージ…';
+    if(!target)return false;
+
+    f.specialType='gabrielGiantWaterCannon';
+    f.specialT=.82;
+    f.attack='punch';
+    f.attackT=.46;
+
+    const dx=target.x-f.x;
+    const dy=target.y-f.y;
+    const forward=dx>=0?1:-1;
+    f.face=forward;
+
+    setTimeout(()=>{
+      if(gameOver||!f)return;
+
+      let nx=forward;
+      let ny=Math.max(-.32,Math.min(.32,dy/Math.max(150,Math.abs(dx))));
+      const nl=Math.hypot(nx,ny)||1;
+      nx/=nl;ny/=nl;
+
+      const speed=320;
+      water2Shots.push({
+        owner:f,
+        x:f.x+nx*58,
+        y:f.y+ny*28,
+        vx:nx*speed,
+        vy:ny*speed,
+        r:58,
+        age:0,maxAge:5.5,t:1,life:1,
+        damage:9.2,
+        name:'ギガウォーターキャノン',
+        color:'aqua',
+        reflected:0,hit:false,spin:0,
+        style:'aqua',
+        poisonDuration:0,curve:0,wobble:0,
+        baseVy:ny*speed,maxReflect:3
+      });
+
+      // 反動
+      f.vx=-nx*390;
+      f.vy=-ny*140;
+
+      comboEl.textContent='ギガウォーターキャノン!';
+      setTimeout(()=>{if(comboEl.textContent==='ギガウォーターキャノン!')comboEl.textContent='';},850);
+    },170);
+
     clearCommand();
     return true;
   }
 
-  function gabrielReleaseCharge(f){
-    if(!f||f.type!=='blue'||!f.gabCharging)return false;
-    const charge=Math.max(.20,Math.min(2.8,f.gabChargeT||0));
-    f.gabCharging=false;
-    gabrielChargePreview=null;
-    f.gabChargeT=0;
-    f.specialType='gabrielChargeRelease';
-    f.specialT=.42;f.attack='punch';f.attackT=.42;
-
-    const target=gabrielTarget(f);
-    const tx=target?target.x:f.x;
-    const radius=30+charge*42;
-    const shot={
-      owner:f,
-      x:Math.max(radius,Math.min(innerWidth-radius,tx)),
-      y:Math.max(radius+8,innerHeight*.11),
-      vx:0,vy:135+charge*38,
-      r:radius,age:0,maxAge:5.2,t:1,life:1,
-      damage:2.4+charge*2.7,
-      name:'ウォーターマス',
-      color:'aqua',reflected:0,hit:false,spin:0,
-      style:'aqua',poisonDuration:0,curve:0,wobble:0,
-      baseVy:180,maxReflect:2
-    };
-    aimShotAtTarget(shot);
-    water2Shots.push(shot);
-
-    comboEl.textContent='ウォーターマス落下!';
-    setTimeout(()=>{if(comboEl.textContent==='ウォーターマス落下!')comboEl.textContent='';},820);
-    return true;
-  }
+  function gabrielReleaseCharge(f){ return false; }
 
   function trySpecial(f,kind){
     if(f && f.type==='blue'){
       const upNow=water2HeldDir(f,'up') || hasCommand(['up'],700);
       const downNow=water2HeldDir(f,'down') || hasCommand(['down'],700);
       const backNow=water2HeldDir(f,'back') || hasCommand([f.face>0?'left':'right'],700);
+      const forward=f.face>0?'right':'left';
 
       if(kind==='punch' && f.gabJetUpperReady && f.gabJetT>0)return gabrielJetUppercut(f);
-      if(kind==='punch' && upNow)return gabrielWaterfall(f);
+
+      // 下→前＋パンチ：巨大水弾
+      if(kind==='punch' && hasCommand(['down',forward],850)){
+        clearCommand();
+        return gabrielGiantWaterCannon(f);
+      }
+
+      // 上＋パンチ：大きな水弾を落とす
+      if(kind==='punch' && upNow)return gabrielBigDrop(f);
+
       if(kind==='kick' && backNow)return gabrielCloudBarrage(f);
       if(kind==='kick' && downNow)return gabrielFiveWay(f);
     }
@@ -6771,14 +6806,6 @@
           }
         }
       }
-      else if(action==='punch' && player && player.type==='blue'){
-        const backHeld=(player.face>0 && input.x<-.35)||(player.face<0 && input.x>.35);
-        if(backHeld && !player.throwState){
-          player.attackT=0;player.attack=null;
-          if(gabrielStartCharge(player)){btn.dataset.gabCharge='1';return;}
-        }
-        attack(player,action);
-      }
       else if(action==='punch' && player && player.type==='black'){
         const backHeld=(player.face>0 && input.x<-.35) || (player.face<0 && input.x>.35);
         if(backHeld && !player.throwState){
@@ -6796,10 +6823,6 @@
     };
     const up=e=>{
       e.preventDefault(); btn.classList.remove('pressed');
-      if(action==='punch'&&player&&btn.dataset.gabCharge==='1'){
-        btn.dataset.gabCharge='';
-        gabrielReleaseCharge(player);
-      }
       if(action==='kick'&&player&&btn.dataset.jihalCharge==='1'){
         btn.dataset.jihalCharge='';releaseThunderCharge(player);
       }
