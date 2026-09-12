@@ -1035,13 +1035,13 @@
         if(mirror)ctx.scale(-1,1);
         ctx.rotate(-flap*.55);
         ctx.beginPath();
-        ctx.moveTo(-19,-4);
-        ctx.quadraticCurveTo(-54,-38,-82,-20);
+        ctx.moveTo(-9,3);
+        ctx.quadraticCurveTo(-46,-35,-77,-18);
         ctx.lineTo(-68,-1);
         ctx.lineTo(-88,10);
         ctx.lineTo(-62,17);
-        ctx.lineTo(-72,35);
-        ctx.quadraticCurveTo(-44,27,-19,11);
+        ctx.lineTo(-68,33);
+        ctx.quadraticCurveTo(-40,26,-9,14);
         ctx.closePath();
         ctx.fill();ctx.stroke();
         ctx.restore();
@@ -1051,7 +1051,7 @@
       const drawAngelWing=(mirror)=>{
         ctx.save();
         if(mirror)ctx.scale(-1,1);
-        ctx.translate(-17,-2);
+        ctx.translate(-8,4);
         ctx.rotate(-.07 + flap*.7);
 
         const grad=ctx.createLinearGradient(-52,-26,-8,28);
@@ -1063,7 +1063,7 @@
         ctx.lineWidth=2;
 
         ctx.beginPath();
-        ctx.moveTo(-9,-4);
+        ctx.moveTo(-3,0);
         ctx.quadraticCurveTo(-27,-24,-50,-25);
         ctx.quadraticCurveTo(-62,-25,-61,-15);
         ctx.quadraticCurveTo(-59,-7,-48,-6);
@@ -1071,8 +1071,8 @@
         ctx.quadraticCurveTo(-56,16,-45,14);
         ctx.quadraticCurveTo(-54,20,-48,27);
         ctx.quadraticCurveTo(-40,34,-29,26);
-        ctx.quadraticCurveTo(-17,18,-8,10);
-        ctx.quadraticCurveTo(-4,2,-9,-4);
+        ctx.quadraticCurveTo(-15,18,-4,11);
+        ctx.quadraticCurveTo(0,4,-3,0);
         ctx.closePath();
         ctx.fill();ctx.stroke();
 
@@ -1124,6 +1124,46 @@
     ctx.restore();
   }
 
+
+
+  function applyUniversalHoming(shot,dt){
+    if(!shot || !shot.owner) return;
+    const target=shot.owner.isPlayer ? enemy : player;
+    if(!target || target.hp<=0) return;
+
+    // 近距離で急旋回しすぎないよう、弾速を保ったまま少しずつ相手へ向ける。
+    const dx=target.x-shot.x;
+    const dy=target.y-shot.y;
+    const len=Math.hypot(dx,dy)||1;
+    const tx=dx/len, ty=dy/len;
+
+    let vx=Number.isFinite(shot.vx)?shot.vx:0;
+    let vy=Number.isFinite(shot.vy)?shot.vy:0;
+    let speed=Math.hypot(vx,vy);
+
+    // 静止系の弾・設置技は無理に動かさない。
+    if(speed<28) return;
+
+    // 大きい弾ほどやや鈍く、小さい弾ほど追尾が強い。
+    const size=Math.max(8,shot.r||16);
+    let turn=2.35*(18/size);
+    turn=Math.max(.65,Math.min(2.9,turn));
+
+    // 一部高速弾は少しだけ追尾を弱くして自然な軌道にする。
+    if(speed>420) turn*=.72;
+
+    const blend=Math.min(1,turn*dt);
+    let nx=(vx/speed)*(1-blend)+tx*blend;
+    let ny=(vy/speed)*(1-blend)+ty*blend;
+    const nl=Math.hypot(nx,ny)||1;
+    nx/=nl; ny/=nl;
+
+    shot.vx=nx*speed;
+    shot.vy=ny*speed;
+
+    // 射撃側が向きを変えても、弾は現在の標的を追い続ける。
+    shot.homing=true;
+  }
 
   class Fighter {
     constructor(x, y, isPlayer, type='green') {
