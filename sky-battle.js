@@ -356,12 +356,7 @@
       'バーニングショット：後ろ ＋ パンチ',
       'バーニングサイクロン：下 → 後ろ ＋ キック'
     ],
-    blue:[
-      'アクアトルネード：上 ＋ パンチ',
-      'アクアストリーム：下 ＋ キック',
-      'アクアボルテックス：後ろ ＋ パンチ',
-      'アクアショット：前 ＋ パンチ'
-    ],
+    blue:['ガード連打：ミストクラウド','上＋ガード：ウォータージェット上昇','上昇中＋パンチ：ジェットアッパー','上＋パンチ：スカイウォーターフォール','後ろ＋キック：クラウドレインショット','下＋キック：ファイブウォーターバースト','後ろ＋パンチ長押し：ウォーターマス'],
     yellow:[
       '水圧カッター（正面）：前 ＋ パンチ',
       '水圧カッター（下15度）：前 ＋ キック',
@@ -1197,6 +1192,12 @@
       this.wingKind=defaultWingKind(type);
       this.skyWingPhase=Math.random()*Math.PI*2;
       this.skyDropT=0;
+      this.gabMistT=0;
+      this.gabJetT=0;
+      this.gabJetUpperReady=false;
+      this.gabCharging=false;
+      this.gabChargeT=0;
+
       this.skyDropSpin=0;
       this.skyDropSpinSpeed=0;
       this.skyDropMaxT=0;
@@ -2831,6 +2832,60 @@
         ctx.restore();
       }
 
+
+      if(this.type==='blue'){
+        if(this.gabMistT>0){
+          const now=performance.now()/1000;
+          ctx.save();
+          ctx.globalAlpha=.76*Math.min(1,this.gabMistT/.18);
+          ctx.fillStyle='#ffffff';
+          for(let i=0;i<12;i++){
+            const a=i/12*Math.PI*2+now*.58;
+            const rr=24+(i%4)*10;
+            const x=Math.cos(a)*rr+Math.sin(now*1.7+i)*5;
+            const y=Math.sin(a)*rr*.72+Math.cos(now*1.25+i)*4;
+            ctx.beginPath();
+            ctx.ellipse(x,y,23+(i%3)*7,15+(i%2)*5,0,0,Math.PI*2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
+        if(this.gabJetT>0){
+          ctx.save();
+          const pulse=.86+Math.sin(performance.now()/42)*.14;
+          const gr=ctx.createLinearGradient(0,24,0,110);
+          gr.addColorStop(0,'rgba(245,255,255,.98)');
+          gr.addColorStop(.25,'rgba(85,215,255,.95)');
+          gr.addColorStop(1,'rgba(15,105,235,0)');
+          ctx.fillStyle=gr;
+          ctx.beginPath();
+          ctx.moveTo(-14,22);ctx.quadraticCurveTo(-26,64,-10,105*pulse);
+          ctx.quadraticCurveTo(-1,62,-4,23);ctx.closePath();ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(14,22);ctx.quadraticCurveTo(26,64,10,105*pulse);
+          ctx.quadraticCurveTo(1,62,4,23);ctx.closePath();ctx.fill();
+          ctx.restore();
+        }
+
+        if(this.gabCharging){
+          const ch=Math.max(.2,Math.min(2.8,this.gabChargeT||0));
+          const rr=18+ch*19;
+          ctx.save();
+          ctx.translate(0,-88-ch*11);
+          const gr=ctx.createRadialGradient(-rr*.24,-rr*.24,rr*.12,0,0,rr);
+          gr.addColorStop(0,'rgba(250,255,255,.99)');
+          gr.addColorStop(.32,'rgba(100,220,255,.97)');
+          gr.addColorStop(1,'rgba(22,105,215,.82)');
+          ctx.fillStyle=gr;
+          ctx.globalAlpha=.95;
+          ctx.beginPath();ctx.arc(0,0,rr,0,Math.PI*2);ctx.fill();
+          ctx.strokeStyle='rgba(255,255,255,.78)';
+          ctx.lineWidth=2;ctx.stroke();
+          ctx.restore();
+        }
+      }
+
       ctx.restore();
     }
   }
@@ -2864,6 +2919,19 @@
     }
     update(dt){
       if(this.flash>0)this.flash-=dt;
+      if(this.gabMistT>0)this.gabMistT=Math.max(0,this.gabMistT-dt);
+      if(this.gabJetT>0){
+        this.gabJetT=Math.max(0,this.gabJetT-dt);
+        if(this.gabJetT<=0)this.gabJetUpperReady=false;
+      }
+      if(this.gabCharging){
+        this.gabChargeT=Math.min(3.2,(this.gabChargeT||0)+dt);
+        this.specialT=Math.max(this.specialT,1);
+        this.attackT=Math.max(this.attackT,1);
+        this.vx*=Math.pow(.16,dt);
+        this.vy*=Math.pow(.16,dt);
+      }
+
       if(this.stun>0)this.stun-=dt;
       // 葉っぱなのでゆっくり元の高さへ漂う
       this.vy += Math.sin(performance.now()/650)*5*dt;
@@ -5622,7 +5690,210 @@
     clearCommand();return true;
   }
 
+
+  function gabrielTarget(f){
+    return f.isPlayer?enemy:player;
+  }
+
+  function gabrielMist(f){
+    if(gameOver||!f||f.type!=='blue')return false;
+    f.gabMistT=1.55;
+    comboEl.textContent='ミストクラウド!';
+    setTimeout(()=>{if(comboEl.textContent==='ミストクラウド!')comboEl.textContent='';},650);
+    return true;
+  }
+
+  function gabrielJetRise(f){
+    if(gameOver||!f||f.type!=='blue'||f.stun>0)return false;
+    f.guard=false;
+    f.gabJetT=.62;
+    f.gabJetUpperReady=true;
+    f.specialType='gabrielJetRise';
+    f.specialT=.62;
+    f.attack=null;f.attackT=0;
+    f.vx*=.15;
+    f.vy=-600;
+    comboEl.textContent='ウォータージェット上昇!';
+    setTimeout(()=>{if(comboEl.textContent==='ウォータージェット上昇!')comboEl.textContent='';},560);
+    clearCommand();
+    return true;
+  }
+
+  function gabrielJetUppercut(f){
+    if(gameOver||!f||f.type!=='blue'||!f.gabJetUpperReady)return false;
+    const target=gabrielTarget(f);
+    f.gabJetUpperReady=false;
+    f.gabJetT=.28;
+    f.specialType='gabrielJetUpper';
+    f.specialT=.44;
+    f.attack='punch';
+    f.attackVariant='upper';
+    f.attackT=.44;
+    if(target){
+      const dx=target.x-f.x,dy=target.y-f.y,len=Math.hypot(dx,dy)||1;
+      f.face=dx>=0?1:-1;
+      f.vx=dx/len*310;
+      f.vy=Math.min(-390,dy/len*310-235);
+    }else{
+      f.vy=-450;
+    }
+    comboEl.textContent='ジェットアッパー!';
+    setTimeout(()=>{if(comboEl.textContent==='ジェットアッパー!')comboEl.textContent='';},620);
+    return true;
+  }
+
+  function gabrielWaterfall(f){
+    if(gameOver||!f||f.type!=='blue'||f.stun>0||f.specialT>0)return false;
+    const target=gabrielTarget(f);
+    if(!target)return false;
+    f.specialType='gabrielWaterfall';
+    f.specialT=.86;
+    f.attack='punch';f.attackT=.34;
+    comboEl.textContent='スカイウォーターフォール!';
+
+    const baseX=target.x;
+    for(let i=0;i<26;i++){
+      setTimeout(()=>{
+        if(gameOver||!target)return;
+        const px=Math.max(18,Math.min(innerWidth-18,baseX+(Math.random()-.5)*110));
+        const shot={
+          owner:f,x:px,y:-35-Math.random()*135,
+          vx:0,vy:520+Math.random()*130,
+          r:6+Math.random()*4,
+          age:0,maxAge:4,t:1,life:1,
+          damage:.48,name:'滝の水',
+          color:'aqua',reflected:0,hit:false,spin:0,
+          style:'aqua',poisonDuration:0,curve:0,wobble:.03,
+          baseVy:540,maxReflect:0
+        };
+        aimShotAtTarget(shot);
+        water2Shots.push(shot);
+      },i*30);
+    }
+    setTimeout(()=>{if(comboEl.textContent==='スカイウォーターフォール!')comboEl.textContent='';},980);
+    clearCommand();
+    return true;
+  }
+
+  function gabrielCloudBarrage(f){
+    if(gameOver||!f||f.type!=='blue'||f.stun>0||f.specialT>0)return false;
+    const target=gabrielTarget(f);
+    if(!target)return false;
+    f.specialType='gabrielCloudBarrage';
+    f.specialT=.92;
+    comboEl.textContent='クラウドレインショット!';
+
+    for(let i=0;i<32;i++){
+      setTimeout(()=>{
+        if(gameOver||!target)return;
+        const fromLeft=i%2===0;
+        const sx=fromLeft?-26:innerWidth+26;
+        const sy=Math.max(60,Math.min(innerHeight-110,target.y+(Math.random()-.5)*190));
+        const dx=target.x-sx,dy=target.y-sy,len=Math.hypot(dx,dy)||1;
+        const speed=270+Math.random()*95;
+        const shot={
+          owner:f,x:sx,y:sy,
+          vx:dx/len*speed,vy:dy/len*speed,
+          r:4.2+Math.random()*1.8,
+          age:0,maxAge:4,t:1,life:1,
+          damage:.16,name:'雲の水弾',
+          color:'aqua',reflected:0,hit:false,spin:0,
+          style:'aqua',poisonDuration:0,curve:0,wobble:.02,
+          baseVy:dy/len*speed,maxReflect:0
+        };
+        water2Shots.push(shot);
+      },i*38);
+    }
+    setTimeout(()=>{if(comboEl.textContent==='クラウドレインショット!')comboEl.textContent='';},1250);
+    clearCommand();
+    return true;
+  }
+
+  function gabrielFiveWay(f){
+    if(gameOver||!f||f.type!=='blue'||f.stun>0||f.specialT>0)return false;
+    const target=gabrielTarget(f);
+    if(!target)return false;
+    f.specialType='gabrielFiveWay';
+    f.specialT=.46;
+    comboEl.textContent='ファイブウォーターバースト!';
+
+    const base=Math.atan2(target.y-f.y,target.x-f.x);
+    [-.44,-.22,0,.22,.44].forEach(off=>{
+      const a=base+off;
+      const shot={
+        owner:f,
+        x:f.x+Math.cos(a)*26,y:f.y+Math.sin(a)*26,
+        vx:Math.cos(a)*325,vy:Math.sin(a)*325,
+        r:5,age:0,maxAge:3.2,t:1,life:1,
+        damage:.20,name:'5WAY水弾',
+        color:'aqua',reflected:0,hit:false,spin:0,
+        style:'aqua',poisonDuration:0,curve:0,wobble:0,
+        baseVy:Math.sin(a)*325,maxReflect:0
+      };
+      // 5方向の見た目は残しつつ、その後は共通誘導で敵へ収束。
+      water2Shots.push(shot);
+    });
+    setTimeout(()=>{if(comboEl.textContent==='ファイブウォーターバースト!')comboEl.textContent='';},620);
+    clearCommand();
+    return true;
+  }
+
+  function gabrielStartCharge(f){
+    if(gameOver||!f||f.type!=='blue'||f.stun>0||f.guard||f.gabCharging)return false;
+    f.gabCharging=true;
+    f.gabChargeT=0;
+    f.specialType='gabrielCharge';
+    f.specialT=20;
+    f.attack='punch';f.attackT=20;
+    f.vx*=.2;f.vy*=.2;
+    comboEl.textContent='ウォーターマス チャージ…';
+    clearCommand();
+    return true;
+  }
+
+  function gabrielReleaseCharge(f){
+    if(!f||f.type!=='blue'||!f.gabCharging)return false;
+    const charge=Math.max(.20,Math.min(2.8,f.gabChargeT||0));
+    f.gabCharging=false;
+    f.gabChargeT=0;
+    f.specialType='gabrielChargeRelease';
+    f.specialT=.42;f.attack='punch';f.attackT=.42;
+
+    const target=gabrielTarget(f);
+    const tx=target?target.x:f.x;
+    const radius=18+charge*19;
+    const shot={
+      owner:f,
+      x:Math.max(radius,Math.min(innerWidth-radius,tx)),
+      y:-radius-28,
+      vx:0,vy:175+charge*62,
+      r:radius,age:0,maxAge:5.2,t:1,life:1,
+      damage:2.0+charge*2.25,
+      name:'ウォーターマス',
+      color:'aqua',reflected:0,hit:false,spin:0,
+      style:'aqua',poisonDuration:0,curve:0,wobble:0,
+      baseVy:180,maxReflect:2
+    };
+    aimShotAtTarget(shot);
+    water2Shots.push(shot);
+
+    comboEl.textContent='ウォーターマス落下!';
+    setTimeout(()=>{if(comboEl.textContent==='ウォーターマス落下!')comboEl.textContent='';},820);
+    return true;
+  }
+
   function trySpecial(f,kind){
+    if(f && f.type==='blue'){
+      const upNow=water2HeldDir(f,'up') || hasCommand(['up'],700);
+      const downNow=water2HeldDir(f,'down') || hasCommand(['down'],700);
+      const backNow=water2HeldDir(f,'back') || hasCommand([f.face>0?'left':'right'],700);
+
+      if(kind==='punch' && f.gabJetUpperReady && f.gabJetT>0)return gabrielJetUppercut(f);
+      if(kind==='punch' && upNow)return gabrielWaterfall(f);
+      if(kind==='kick' && backNow)return gabrielCloudBarrage(f);
+      if(kind==='kick' && downNow)return gabrielFiveWay(f);
+    }
+
     // ラファエル：縦型水中では上下機動と全方向射撃を優先
     if(f && f.type==='yellow'){
       const upNow=water2HeldDir(f,'up') || hasCommand(['up'],650);
@@ -6329,6 +6600,19 @@
       e.preventDefault();btn.classList.add('pressed');
       if(action==='guard'){
         if(player){
+          if(player.type==='blue'){
+            const upHeld=input.y<-.35;
+            if(upHeld){
+              if(gabrielJetRise(player)){btn.classList.remove('pressed');return;}
+            }
+            const now=performance.now();
+            player._gabGuardTimes=(player._gabGuardTimes||[]).filter(t=>now-t<680);
+            player._gabGuardTimes.push(now);
+            if(player._gabGuardTimes.length>=3){
+              player._gabGuardTimes=[];
+              if(gabrielMist(player)){btn.classList.remove('pressed');return;}
+            }
+          }
           if(player.type==='sariel'){
             const fwd=(player.face>0&&input.x>.35)||(player.face<0&&input.x<-.35);
             const back=(player.face>0&&input.x<-.35)||(player.face<0&&input.x>.35);
@@ -6501,6 +6785,14 @@
           }
         }
       }
+      else if(action==='punch' && player && player.type==='blue'){
+        const backHeld=(player.face>0 && input.x<-.35)||(player.face<0 && input.x>.35);
+        if(backHeld && !player.throwState){
+          player.attackT=0;player.attack=null;
+          if(gabrielStartCharge(player)){btn.dataset.gabCharge='1';return;}
+        }
+        attack(player,action);
+      }
       else if(action==='punch' && player && player.type==='black'){
         const backHeld=(player.face>0 && input.x<-.35) || (player.face<0 && input.x>.35);
         if(backHeld && !player.throwState){
@@ -6518,6 +6810,10 @@
     };
     const up=e=>{
       e.preventDefault(); btn.classList.remove('pressed');
+      if(action==='punch'&&player&&btn.dataset.gabCharge==='1'){
+        btn.dataset.gabCharge='';
+        gabrielReleaseCharge(player);
+      }
       if(action==='kick'&&player&&btn.dataset.jihalCharge==='1'){
         btn.dataset.jihalCharge='';releaseThunderCharge(player);
       }
