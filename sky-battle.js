@@ -92,6 +92,7 @@
   let engineerShots = [];
   let michaelAuraShots = [];
   let water2Shots = [];
+  let gabrielMistClouds=[];
   let iceWalls = [];
   let samaelGates = [];
   let seraphielRays = [];
@@ -1143,6 +1144,7 @@
   }
 
   function applyUniversalHoming(shot,dt){
+    if(shot && (shot.name==='5WAY水弾'||shot.name==='滝の水')) return;
     if(!shot || !shot.owner) return;
     const target=shot.owner.isPlayer ? enemy : player;
     if(!target || target.hp<=0) return;
@@ -2834,37 +2836,21 @@
 
 
       if(this.type==='blue'){
-        if(this.gabMistT>0){
-          const now=performance.now()/1000;
-          ctx.save();
-          ctx.globalAlpha=.76*Math.min(1,this.gabMistT/.18);
-          ctx.fillStyle='#ffffff';
-          for(let i=0;i<12;i++){
-            const a=i/12*Math.PI*2+now*.58;
-            const rr=24+(i%4)*10;
-            const x=Math.cos(a)*rr+Math.sin(now*1.7+i)*5;
-            const y=Math.sin(a)*rr*.72+Math.cos(now*1.25+i)*4;
-            ctx.beginPath();
-            ctx.ellipse(x,y,23+(i%3)*7,15+(i%2)*5,0,0,Math.PI*2);
-            ctx.fill();
-          }
-          ctx.restore();
-        }
-
         if(this.gabJetT>0){
           ctx.save();
-          const pulse=.86+Math.sin(performance.now()/42)*.14;
-          const gr=ctx.createLinearGradient(0,24,0,110);
-          gr.addColorStop(0,'rgba(245,255,255,.98)');
-          gr.addColorStop(.25,'rgba(85,215,255,.95)');
-          gr.addColorStop(1,'rgba(15,105,235,0)');
+          const pulse=.88+Math.sin(performance.now()/38)*.12;
+          const gr=ctx.createLinearGradient(0,20,0,132);
+          gr.addColorStop(0,'rgba(250,255,255,1)');
+          gr.addColorStop(.22,'rgba(95,225,255,.98)');
+          gr.addColorStop(.62,'rgba(35,145,255,.72)');
+          gr.addColorStop(1,'rgba(15,90,230,0)');
           ctx.fillStyle=gr;
-          ctx.beginPath();
-          ctx.moveTo(-14,22);ctx.quadraticCurveTo(-26,64,-10,105*pulse);
-          ctx.quadraticCurveTo(-1,62,-4,23);ctx.closePath();ctx.fill();
-          ctx.beginPath();
-          ctx.moveTo(14,22);ctx.quadraticCurveTo(26,64,10,105*pulse);
-          ctx.quadraticCurveTo(1,62,4,23);ctx.closePath();ctx.fill();
+          for(const fx of [-12,12]){
+            ctx.beginPath();ctx.moveTo(fx-5,22);
+            ctx.quadraticCurveTo(fx-13,70,fx-7,128*pulse);
+            ctx.quadraticCurveTo(fx+12,76,fx+5,22);
+            ctx.closePath();ctx.fill();
+          }
           ctx.restore();
         }
 
@@ -5697,7 +5683,8 @@
 
   function gabrielMist(f){
     if(gameOver||!f||f.type!=='blue')return false;
-    f.gabMistT=1.55;
+    gabrielMistClouds.push({owner:f,x:f.x,y:f.y,t:8,life:8,phase:Math.random()*Math.PI*2});
+    gabrielMistClouds=gabrielMistClouds.slice(-4);
     comboEl.textContent='ミストクラウド!';
     setTimeout(()=>{if(comboEl.textContent==='ミストクラウド!')comboEl.textContent='';},650);
     return true;
@@ -5755,18 +5742,18 @@
     for(let i=0;i<26;i++){
       setTimeout(()=>{
         if(gameOver||!target)return;
-        const px=Math.max(18,Math.min(innerWidth-18,baseX+(Math.random()-.5)*110));
+        const px=Math.max(24,Math.min(innerWidth-24,baseX+(Math.random()-.5)*105));
+        const py=Math.max(32,target.y-260-Math.random()*85);
         const shot={
-          owner:f,x:px,y:-35-Math.random()*135,
-          vx:0,vy:520+Math.random()*130,
-          r:6+Math.random()*4,
+          owner:f,x:px,y:py,
+          vx:0,vy:440+Math.random()*120,
+          r:10+Math.random()*7,
           age:0,maxAge:4,t:1,life:1,
           damage:.48,name:'滝の水',
           color:'aqua',reflected:0,hit:false,spin:0,
           style:'aqua',poisonDuration:0,curve:0,wobble:.03,
           baseVy:540,maxReflect:0
         };
-        aimShotAtTarget(shot);
         water2Shots.push(shot);
       },i*30);
     }
@@ -5786,9 +5773,9 @@
     for(let i=0;i<32;i++){
       setTimeout(()=>{
         if(gameOver||!target)return;
-        const fromLeft=i%2===0;
-        const sx=fromLeft?-26:innerWidth+26;
-        const sy=Math.max(60,Math.min(innerHeight-110,target.y+(Math.random()-.5)*190));
+        const cloud=[...gabrielMistClouds].reverse().find(c=>c.owner===f&&c.t>0);
+        const sx=cloud?cloud.x+(Math.random()-.5)*58:f.x+(Math.random()-.5)*30;
+        const sy=cloud?cloud.y+(Math.random()-.5)*36:f.y+(Math.random()-.5)*24;
         const dx=target.x-sx,dy=target.y-sy,len=Math.hypot(dx,dy)||1;
         const speed=270+Math.random()*95;
         const shot={
@@ -5817,8 +5804,8 @@
     f.specialT=.46;
     comboEl.textContent='ファイブウォーターバースト!';
 
-    const base=Math.atan2(target.y-f.y,target.x-f.x);
-    [-.44,-.22,0,.22,.44].forEach(off=>{
+    const base=Math.PI/2;
+    [-.52,-.26,0,.26,.52].forEach(off=>{
       const a=base+off;
       const shot={
         owner:f,
@@ -5830,7 +5817,7 @@
         style:'aqua',poisonDuration:0,curve:0,wobble:0,
         baseVy:Math.sin(a)*325,maxReflect:0
       };
-      // 5方向の見た目は残しつつ、その後は共通誘導で敵へ収束。
+      // 下方向5WAY。この技は発射方向を維持。
       water2Shots.push(shot);
     });
     setTimeout(()=>{if(comboEl.textContent==='ファイブウォーターバースト!')comboEl.textContent='';},620);
@@ -6905,6 +6892,8 @@
   function incomingReflectableThreat(f){
     if(!f) return false;
     const threats=[];
+    gabrielMistClouds.forEach(c=>c.t=Math.max(0,c.t-dt));
+    gabrielMistClouds=gabrielMistClouds.filter(c=>c.t>0);
     water2Shots.forEach(q=>{ if(q.owner && q.owner!==f && !q.hit) threats.push({x:q.x,y:q.y,vx:q.vx||0,vy:q.vy||0,r:q.r||14}); });
     pressureBlades.forEach(q=>{ if(q.owner && q.owner!==f && !q.hit) threats.push({x:q.x,y:q.y,vx:q.vx||0,vy:q.vy||0,r:30}); });
     return threats.some(q=>{
@@ -8362,6 +8351,18 @@ function drawBackground(dt){
     ctx.shadowColor='transparent';
 
     ctx.save();
+    gabrielMistClouds.forEach(c=>{
+      const now=performance.now()/1000,fade=Math.min(1,c.t/.35);
+      ctx.save();ctx.globalAlpha=.72*fade;ctx.fillStyle='#fff';
+      for(let i=0;i<12;i++){
+        const a=i/12*Math.PI*2+c.phase,rr=25+(i%4)*10;
+        const x=c.x+Math.cos(a)*rr+Math.sin(now*.8+i)*4;
+        const y=c.y+Math.sin(a)*rr*.66+Math.cos(now*.7+i)*3;
+        ctx.beginPath();ctx.ellipse(x,y,24+(i%3)*7,16+(i%2)*5,0,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
+    });
+
     player.draw();
     ctx.restore();
 
