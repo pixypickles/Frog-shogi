@@ -1176,6 +1176,9 @@
       this.wingKind=defaultWingKind(type);
       this.skyWingPhase=Math.random()*Math.PI*2;
       this.skyDropT=0;
+      this.skyDropSpin=0;
+      this.skyDropSpinSpeed=0;
+      this.skyDropMaxT=0;
       this.attack=null; this.attackT=0; this.attackVariant='mid'; this.stun=0; this.guard=false; this.tongueT=0;
       this.flash=0;
       this.hurtFaceT=0;
@@ -1326,8 +1329,24 @@
       // 雲上戦：通常は翼で浮遊。大ダメージ時だけガクッと落下。
       if(this.skyDropT>0){
         this.skyDropT=Math.max(0,this.skyDropT-dt);
-        this.vy += 520*dt;
+        this.vy += 590*dt;
+
+        const elapsed=Math.max(0,(this.skyDropMaxT||0)-this.skyDropT);
+        if(elapsed<.22){
+          // 被弾直後は勢いよく一回転する。
+          this.skyDropSpin+=this.skyDropSpinSpeed*dt;
+        }else{
+          // その後は頭が真下になる姿勢へ収束。
+          const target=Math.PI;
+          const diff=Math.atan2(Math.sin(target-this.skyDropSpin),Math.cos(target-this.skyDropSpin));
+          this.skyDropSpin+=diff*Math.min(1,8.5*dt);
+        }
       }else{
+        // 落下終了後は正位置へ戻って羽ばたきを再開。
+        const diff=Math.atan2(Math.sin(-this.skyDropSpin),Math.cos(-this.skyDropSpin));
+        this.skyDropSpin+=diff*Math.min(1,8*dt);
+        if(Math.abs(diff)<.015)this.skyDropSpin=0;
+        this.skyDropMaxT=0;
         const hover=Math.sin(performance.now()/430 + this.skyWingPhase)*7;
         this.vy += hover*dt;
       }
@@ -1608,14 +1627,19 @@
       this.hp=Math.max(0,this.hp-dmg);
       this.vx += kx; this.vy += ky;
       if(!this.guard && dmg>=7.0){
-        this.skyDropT=Math.max(this.skyDropT,.58);
-        this.vy=Math.max(this.vy,250+dmg*7);
-        this.stun=Math.max(this.stun,.34);
+        const dropDuration=Math.min(.96,.60+(dmg-7)*.018);
+        this.skyDropT=Math.max(this.skyDropT,dropDuration);
+        this.skyDropMaxT=Math.max(this.skyDropMaxT,dropDuration);
+        this.skyDropSpinSpeed=(Math.random()<.5?-1:1)*(10.5+Math.min(7,dmg*.30));
+        this.vy=Math.max(this.vy,285+dmg*8);
+        this.vx+=(Math.random()-.5)*90;
+        this.stun=Math.max(this.stun,.40);
       }
     }
     draw() {
       ctx.save();
       ctx.translate(this.x,this.y);
+      if(Math.abs(this.skyDropSpin||0)>.001) ctx.rotate(this.skyDropSpin);
       if(this.type==='remiel'&&this.specialType==='mirageKick'&&this.specialT>0&&this.remielKickStartX!=null){
         const elapsed=Math.max(0,.72-this.specialT),step=Math.min(4,Math.floor(elapsed/.14));
         const jumps=[0,58,122,190,255],visualX=this.remielKickStartX+this.face*jumps[step];
@@ -2761,6 +2785,28 @@
         ctx.arc(-5,16,6,0,Math.PI*2);
         ctx.fill();
 
+        ctx.restore();
+      }
+
+
+      if((this.skyDropT||0)>0){
+        ctx.save();
+        // 通常の瞳を隠して、落下中の閉じ目へ差し替える。
+        ctx.fillStyle='#ffffff';
+        ctx.beginPath();
+        ctx.arc(-19,-30,11.2,0,Math.PI*2);
+        ctx.arc(19,-30,11.2,0,Math.PI*2);
+        ctx.fill();
+
+        ctx.strokeStyle='#203531';
+        ctx.lineWidth=4;
+        ctx.lineCap='round';
+        for(const ex of [-19,19]){
+          ctx.beginPath();
+          ctx.moveTo(ex-8,-30);
+          ctx.quadraticCurveTo(ex,-24,ex+8,-30);
+          ctx.stroke();
+        }
         ctx.restore();
       }
 
