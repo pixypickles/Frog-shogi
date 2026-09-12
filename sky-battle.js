@@ -92,6 +92,7 @@
   let engineerShots = [];
   let michaelAuraShots = [];
   let water2Shots = [];
+  let raphaelTornadoes=[];
   let gabrielChargePreview=null;
   let gabrielWaterfalls=[];
   let iceWalls = [];
@@ -359,7 +360,7 @@
       'バーニングサイクロン：下 → 後ろ ＋ キック'
     ],
     blue:['上＋ガード：ウォータージェット上昇','上昇中＋パンチ：ジェットアッパー','上＋パンチ：ビッグウォータードロップ','後ろ＋キック：クラウドレインショット','下＋キック：スカイレインバースト','下→前＋パンチ：ギガウォーターキャノン'],
-    yellow:['方向＋パンチ：逃げながら逆方向へ強追尾エアカッター','方向＋キック：ウィンドタックル','ガード×2：ヒールウィンド（徐々に回復＋少し速度UP）'],
+    yellow:['方向＋パンチ：逃げながら逆方向へ三日月エアカッター（強追尾）','方向＋キック：ウィンドタックル','ガード×2：ヒールウィンド（徐々に回復＋少し速度UP）','隠し：方向キー1回転＋パンチ：グランドトルネード'],
     orange:[
       'ホワイトカウンター：下 → 後ろ ＋ ガード',
       'ガーディアンタックル：後ろ → 前 ＋ ガード',
@@ -1157,8 +1158,8 @@
 
     // 大きい弾ほどやや鈍く、小さい弾ほど追尾が強い。
     const size=Math.max(8,shot.r||16);
-    let turn=(shot.raphaelStrongHoming?7.2:2.35)*(18/size);
-    turn=shot.raphaelStrongHoming?Math.max(3.8,Math.min(8.5,turn)):Math.max(.65,Math.min(2.9,turn));
+    let turn=(shot.raphaelStrongHoming?10.5:2.35)*(18/size);
+    turn=shot.raphaelStrongHoming?Math.max(5.5,Math.min(12.0,turn)):Math.max(.65,Math.min(2.9,turn));
 
     // 一部高速弾は少しだけ追尾を弱くして自然な軌道にする。
     if(speed>420) turn*=.72;
@@ -5935,7 +5936,26 @@
   function raphaelAirCutterEscape(f,dirName){
     if(gameOver||!f||f.type!=='yellow'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
     const move=raphaelDirVector(dirName);
-    const shotDir={x:-move.x,y:-move.y};
+    const baseX=-move.x, baseY=-move.y;
+    // 基本は「逃げる方向の真逆」へ発射。
+    // ただし敵の位置に応じて最大45度だけ自動補正する。
+    // 例：上＋パンチなら基本は真下。
+    // 敵が右側なら右下へ最大45度、左側なら左下へ最大45度。
+    const target=f.isPlayer?enemy:player;
+    let shotX=baseX, shotY=baseY;
+
+    if(target){
+      const baseAng=Math.atan2(baseY,baseX);
+      const targetAng=Math.atan2(target.y-f.y,target.x-f.x);
+      let diff=Math.atan2(Math.sin(targetAng-baseAng),Math.cos(targetAng-baseAng));
+      const maxAssist=Math.PI/4;
+      diff=Math.max(-maxAssist,Math.min(maxAssist,diff));
+      const assisted=baseAng+diff;
+      shotX=Math.cos(assisted);
+      shotY=Math.sin(assisted);
+    }
+
+    const shotDir={x:shotX,y:shotY};
     f.specialType='raphaelAirCutterEscape';
     f.specialT=.34; f.attack='punch'; f.attackVariant='mid'; f.attackT=.34;
     f.vx=move.x*360; f.vy=move.y*360;
@@ -5965,7 +5985,43 @@
     return true;
   }
 
+
+  function raphaelHasFullCircle(maxMs=1250){
+    const now=performance.now();
+    const hist=(input.commandHistory||[]).filter(v=>now-v.time<=maxMs);
+    if(hist.length<6)return false;
+    const dirs=['right','downRight','down','downLeft','left','upLeft','up','upRight'];
+    const vals=hist.map(v=>dirs.indexOf(v.dir)).filter(v=>v>=0);
+    if(vals.length<6)return false;
+    let cw=0,ccw=0;
+    for(let i=1;i<vals.length;i++){
+      const d=(vals[i]-vals[i-1]+8)%8;
+      const r=(vals[i-1]-vals[i]+8)%8;
+      if(d===1||d===2)cw++;
+      if(r===1||r===2)ccw++;
+    }
+    return cw>=5||ccw>=5;
+  }
+
+  function raphaelGiantTornado(f){
+    if(gameOver||!f||f.type!=='yellow'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    const target=f.isPlayer?enemy:player;
+    const tx=target?target.x:f.x+f.face*120;
+    const ty=target?target.y:f.y;
+    f.specialType='raphaelGiantTornado';
+    f.specialT=1.05;f.attack='punch';f.attackT=.46;
+    raphaelTornadoes.push({owner:f,x:tx,y:ty,r:96,h:200,t:2.2,life:2.2,hitCd:0});
+    comboEl.textContent='グランドトルネード!';
+    setTimeout(()=>{if(comboEl.textContent==='グランドトルネード!')comboEl.textContent='';},900);
+    clearCommand();
+    return true;
+  }
+
   function trySpecial(f,kind){
+    if(f && f.type==='yellow' && kind==='punch' && raphaelHasFullCircle(1250)){
+      return raphaelGiantTornado(f);
+    }
+
     if(f && f.type==='yellow'){
       const dirName=raphaelPressedCardinal();
       if(kind==='punch' && dirName)return raphaelAirCutterEscape(f,dirName);
@@ -6985,6 +7041,25 @@
       }
     });
     gabrielWaterfalls=gabrielWaterfalls.filter(w=>w.t>0);
+
+    raphaelTornadoes.forEach(t=>{
+      t.t=Math.max(0,t.t-dt);
+      t.hitCd=Math.max(0,(t.hitCd||0)-dt);
+      const target=t.owner&&t.owner.isPlayer?enemy:player;
+      if(target){
+        const dx=t.x-target.x,dy=t.y-target.y;
+        const dist=Math.hypot(dx,dy)||1;
+        if(dist<t.r*1.7){
+          target.vx+=dx/dist*280*dt;
+          target.vy+=dy/dist*235*dt;
+        }
+        if(dist<t.r*.95 && Math.abs(dy)<t.h*.64 && t.hitCd<=0){
+          damageHit(t.owner,target,1.45*t.owner.damageMul,(target.x-t.x)*1.1,-42);
+          t.hitCd=.16;
+        }
+      }
+    });
+    raphaelTornadoes=raphaelTornadoes.filter(t=>t.t>0);
 
     water2Shots.forEach(q=>{ if(q.owner && q.owner!==f && !q.hit) threats.push({x:q.x,y:q.y,vx:q.vx||0,vy:q.vy||0,r:q.r||14}); });
     pressureBlades.forEach(q=>{ if(q.owner && q.owner!==f && !q.hit) threats.push({x:q.x,y:q.y,vx:q.vx||0,vy:q.vy||0,r:30}); });
@@ -8510,6 +8585,28 @@ function drawBackground(dt){
       ctx.restore();
     }
 
+    raphaelTornadoes.forEach(t=>{
+      const now=performance.now()/1000;
+      const fade=Math.min(1,t.t/.22);
+      ctx.save();ctx.globalAlpha=.80*fade;ctx.translate(t.x,t.y);
+      for(let i=0;i<8;i++){
+        const yy=-t.h*.5+i*(t.h/8);
+        const width=t.r*(.36+i*.085);
+        const phase=now*5.6+i*.82;
+        ctx.strokeStyle=`rgba(225,252,255,${.70-i*.045})`;
+        ctx.lineWidth=6-i*.42;
+        ctx.beginPath();
+        ctx.ellipse(Math.sin(phase)*width*.15,yy,width,16+i*1.5,phase*.18,0,Math.PI*2);
+        ctx.stroke();
+      }
+      ctx.strokeStyle='rgba(110,220,255,.44)';ctx.lineWidth=4;
+      for(let i=0;i<4;i++){
+        const rr=t.r*(.80+i*.11);
+        ctx.beginPath();ctx.arc(0,0,rr,now*2+i,now*2+i+1.9);ctx.stroke();
+      }
+      ctx.restore();
+    });
+
     player.draw();
     ctx.restore();
 
@@ -9087,6 +9184,24 @@ function drawBackground(dt){
       ctx.rotate(ang);
 
       if(q.style==='flameClaw'){ctx.rotate(q.spin||0);ctx.shadowColor='#ff3a20';ctx.shadowBlur=20;ctx.strokeStyle='#ff4028';ctx.lineWidth=6;for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(-18,i*8);ctx.quadraticCurveTo(0,-15+i*7,24,i*5);ctx.stroke();}ctx.strokeStyle='#ffd05a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(27,0);ctx.stroke();
+      }else if(q.style==='crescentAir'){
+        ctx.save();
+        ctx.translate(q.x,q.y);
+        ctx.rotate(Math.atan2(q.vy,q.vx)+Math.PI/2);
+        const rr=q.r*1.45;
+        ctx.shadowColor='rgba(210,250,255,.95)';
+        ctx.shadowBlur=16;
+        ctx.fillStyle='rgba(224,252,255,.96)';
+        ctx.beginPath();
+        ctx.arc(0,0,rr,-Math.PI*.68,Math.PI*.68,false);
+        ctx.arc(rr*.48,0,rr*.76,Math.PI*.68,-Math.PI*.68,true);
+        ctx.closePath();ctx.fill();
+        ctx.strokeStyle='rgba(95,205,245,.95)';
+        ctx.lineWidth=2.2;ctx.stroke();
+        ctx.strokeStyle='rgba(255,255,255,.72)';
+        ctx.lineWidth=1.4;
+        ctx.beginPath();ctx.arc(-rr*.08,0,rr*.82,-Math.PI*.56,Math.PI*.56);ctx.stroke();
+        ctx.restore();
       }else if(q.style==='burning'){
         // バーニングショット：雲に埋もれないよう濃い赤主体。
         const tail=38+Math.min(28,(q.reflected||0)*5);
