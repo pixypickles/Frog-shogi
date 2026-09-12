@@ -359,14 +359,7 @@
       'バーニングサイクロン：下 → 後ろ ＋ キック'
     ],
     blue:['上＋ガード：ウォータージェット上昇','上昇中＋パンチ：ジェットアッパー','上＋パンチ：ビッグウォータードロップ','後ろ＋キック：クラウドレインショット','下＋キック：スカイレインバースト','下→前＋パンチ：ギガウォーターキャノン'],
-    yellow:[
-      '水圧カッター（正面）：前 ＋ パンチ',
-      '水圧カッター（下15度）：前 ＋ キック',
-      'カープ水圧カッター（上から弧）：後ろ ＋ パンチ',
-      'カープ水圧カッター（下から弧）：後ろ ＋ キック',
-      'ヒーリングバブル：ガード ×2',
-      '高速バブル上下移動：後ろ → 下 ＋ ガード'
-    ],
+    yellow:['方向＋パンチ：逃げながら逆方向へ強追尾エアカッター','方向＋キック：ウィンドタックル','ガード×2：ヒールウィンド（徐々に回復＋少し速度UP）'],
     orange:[
       'ホワイトカウンター：下 → 後ろ ＋ ガード',
       'ガーディアンタックル：後ろ → 前 ＋ ガード',
@@ -1164,8 +1157,8 @@
 
     // 大きい弾ほどやや鈍く、小さい弾ほど追尾が強い。
     const size=Math.max(8,shot.r||16);
-    let turn=2.35*(18/size);
-    turn=Math.max(.65,Math.min(2.9,turn));
+    let turn=(shot.raphaelStrongHoming?7.2:2.35)*(18/size);
+    turn=shot.raphaelStrongHoming?Math.max(3.8,Math.min(8.5,turn)):Math.max(.65,Math.min(2.9,turn));
 
     // 一部高速弾は少しだけ追尾を弱くして自然な軌道にする。
     if(speed>420) turn*=.72;
@@ -1194,6 +1187,10 @@
       this.wingKind=defaultWingKind(type);
       this.skyWingPhase=Math.random()*Math.PI*2;
       this.skyDropT=0;
+      this.raphaelHealWindT=0;
+      this.raphaelHealTick=0;
+      this.raphaelSpeedBoostT=0;
+      this.raphaelWindTackleT=0;
       this.gabJetT=0;
       this.gabJetUpperReady=false;
       this.gabCharging=false;
@@ -2855,6 +2852,16 @@
 
       }
 
+
+      if(this.type==='yellow'){
+        if(this.raphaelHealWindT>0){
+          const now=performance.now()/1000; ctx.save(); ctx.globalAlpha=.58; ctx.strokeStyle='rgba(165,255,205,.95)'; ctx.lineWidth=3;
+          for(let i=0;i<3;i++){const a=now*2.4+i*Math.PI*2/3,rr=34+i*7;ctx.beginPath();ctx.arc(0,0,rr,a,a+1.65);ctx.stroke();}
+          ctx.fillStyle='rgba(215,255,232,.85)'; for(let i=0;i<5;i++){const a=now*2+i*1.26;ctx.beginPath();ctx.arc(Math.cos(a)*42,Math.sin(a)*26,3.5,0,Math.PI*2);ctx.fill();} ctx.restore();
+        }
+        if(this.raphaelWindTackleT>0){ctx.save();ctx.globalAlpha=.55;ctx.strokeStyle='rgba(225,255,255,.95)';ctx.lineWidth=4;for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(0,0,28+i*8,18+i*5,0,0,Math.PI*2);ctx.stroke();}ctx.restore();}
+      }
+
       ctx.restore();
     }
   }
@@ -2888,6 +2895,14 @@
     }
     update(dt){
       if(this.flash>0)this.flash-=dt;
+      if(this.raphaelHealWindT>0){
+        this.raphaelHealWindT=Math.max(0,this.raphaelHealWindT-dt);
+        this.raphaelHealTick=(this.raphaelHealTick||0)+dt;
+        while(this.raphaelHealTick>=.32){ this.raphaelHealTick-=.32; this.hp=Math.min(100,this.hp+.62); }
+      }
+      if(this.raphaelSpeedBoostT>0)this.raphaelSpeedBoostT=Math.max(0,this.raphaelSpeedBoostT-dt);
+      if(this.raphaelWindTackleT>0)this.raphaelWindTackleT=Math.max(0,this.raphaelWindTackleT-dt);
+
       if(this.gabJetT>0){
         this.gabJetT=Math.max(0,this.gabJetT-dt);
         if(this.gabJetT<=0){
@@ -5900,7 +5915,63 @@
 
   function gabrielReleaseCharge(f){ return false; }
 
+
+  function raphaelDirVector(dirName){
+    if(dirName==='up')return {x:0,y:-1};
+    if(dirName==='down')return {x:0,y:1};
+    if(dirName==='left')return {x:-1,y:0};
+    if(dirName==='right')return {x:1,y:0};
+    return {x:0,y:0};
+  }
+
+  function raphaelPressedCardinal(){
+    if(input.y<-.35)return 'up';
+    if(input.y>.35)return 'down';
+    if(input.x<-.35)return 'left';
+    if(input.x>.35)return 'right';
+    return null;
+  }
+
+  function raphaelAirCutterEscape(f,dirName){
+    if(gameOver||!f||f.type!=='yellow'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    const move=raphaelDirVector(dirName);
+    const shotDir={x:-move.x,y:-move.y};
+    f.specialType='raphaelAirCutterEscape';
+    f.specialT=.34; f.attack='punch'; f.attackVariant='mid'; f.attackT=.34;
+    f.vx=move.x*360; f.vy=move.y*360;
+    water2Shots.push({owner:f,x:f.x+shotDir.x*30,y:f.y+shotDir.y*30,vx:shotDir.x*300,vy:shotDir.y*300,r:18,age:0,maxAge:4,t:1,life:1,damage:3.4,name:'エアカッター',color:'aqua',reflected:0,hit:false,spin:0,style:'cutter',poisonDuration:0,curve:0,wobble:.01,baseVy:shotDir.y*300,maxReflect:2,raphaelStrongHoming:true});
+    comboEl.textContent='エアカッター!';
+    setTimeout(()=>{if(comboEl.textContent==='エアカッター!')comboEl.textContent='';},520);
+    clearCommand(); return true;
+  }
+
+  function raphaelWindTackle(f,dirName){
+    if(gameOver||!f||f.type!=='yellow'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    const v=raphaelDirVector(dirName);
+    f.specialType='raphaelWindTackle'; f.specialT=.46; f.attack='kick'; f.attackVariant='mid'; f.attackT=.46; f.raphaelWindTackleT=.46;
+    f.vx=v.x*470; f.vy=v.y*470;
+    const target=f.isPlayer?enemy:player;
+    [70,165,265].forEach(delay=>setTimeout(()=>{if(gameOver||!target||target.hp<=0||f.specialType!=='raphaelWindTackle')return; const dist=Math.hypot(target.x-f.x,target.y-f.y); if(dist<74){const dx=target.x-f.x,dy=target.y-f.y,len=Math.hypot(dx,dy)||1; damageHit(f,target,1.45*f.damageMul,(dx/len)*90,(dy/len)*90); spawnImpact(target.x,target.y,'guard');}},delay));
+    comboEl.textContent='ウィンドタックル!';
+    setTimeout(()=>{if(comboEl.textContent==='ウィンドタックル!')comboEl.textContent='';},560);
+    clearCommand(); return true;
+  }
+
+  function raphaelHealWind(f){
+    if(gameOver||!f||f.type!=='yellow'||f.stun>0)return false;
+    f.guard=false; f.raphaelHealWindT=4.8; f.raphaelHealTick=0; f.raphaelSpeedBoostT=4.8; f.specialType='raphaelHealWind'; f.specialT=.34;
+    comboEl.textContent='ヒールウィンド!';
+    setTimeout(()=>{if(comboEl.textContent==='ヒールウィンド!')comboEl.textContent='';},700);
+    return true;
+  }
+
   function trySpecial(f,kind){
+    if(f && f.type==='yellow'){
+      const dirName=raphaelPressedCardinal();
+      if(kind==='punch' && dirName)return raphaelAirCutterEscape(f,dirName);
+      if(kind==='kick' && dirName)return raphaelWindTackle(f,dirName);
+    }
+
     if(f && f.type==='blue'){
       const upNow=water2HeldDir(f,'up') || hasCommand(['up'],700);
       const downNow=water2HeldDir(f,'down') || hasCommand(['down'],700);
@@ -5922,15 +5993,6 @@
       if(kind==='kick' && downNow)return gabrielFiveWay(f);
     }
 
-    // ラファエル：縦型水中では上下機動と全方向射撃を優先
-    if(f && f.type==='yellow'){
-      const upNow=water2HeldDir(f,'up') || hasCommand(['up'],650);
-      const downNow=water2HeldDir(f,'down') || hasCommand(['down'],650);
-      const forwardNow=water2HeldDir(f,'forward') || hasCommand([f.face>0?'right':'left'],650);
-      if(kind==='kick' && upNow)return specialRafaelVerticalBubbleMove(f,'up');
-      if(kind==='kick' && downNow)return specialRafaelVerticalBubbleMove(f,'down');
-      if(kind==='punch' && (upNow||downNow||forwardNow))return specialRafaelAirBlade(f);
-    }
 
     if(kind==='guard'&&f&&f.type==='satanael'&&water2HeldDir(f,'down')){clearCommand();return specialDarkPressure(f);}
     if(!f) return false;
@@ -6689,14 +6751,10 @@
             }
           }
 
-          // ラファエル：ガード×2でヒーリングバブル。
+          // ラファエル：ガード×2でヒールウィンド。
           if(player.type==='yellow' && !player.throwState && input.simpleGuardTapTimes.length>=2){
-            input.simpleGuardTapTimes=[];
-            input.lastSimpleGuardTapTime=0;
-            if(specialHealingBubble(player)){
-              btn.classList.remove('pressed');
-              return;
-            }
+            input.simpleGuardTapTimes=[]; input.lastSimpleGuardTapTime=0;
+            if(raphaelHealWind(player)){btn.classList.remove('pressed');return;}
           }
 
           // ウリエル：ガード×2でホワイトカウンター。
