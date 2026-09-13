@@ -6045,6 +6045,11 @@
       vy:0,
       r:24,
 
+      // 発生地点と、成長後に収まる安全な中心Y
+      tornadoSpawnY:Math.max(90,Math.min(innerHeight-120,f.y)),
+      tornadoCenterY:Math.max(finalH*.50+28,
+        Math.min(innerHeight-finalH*.50-36, innerHeight*.50)),
+
       // 成長演出
       tornadoGrowT:0,
       tornadoGrowDuration:.34,
@@ -8145,6 +8150,12 @@ function drawBackground(dt){
           q.tornadoTopW=24+((q.tornadoFinalTopW||58)-24)*ease;
           q.tornadoBottomW=6+((q.tornadoFinalBottomW||10)-6)*ease;
 
+          // 高い/低い位置から出しても、成長しながら画面内に収まる中心へ移動。
+          // 向きは常に「上が太い・下が細い」で固定。
+          const sy=(q.tornadoSpawnY??q.y);
+          const cy=(q.tornadoCenterY??innerHeight*.5);
+          q.y=sy+(cy-sy)*ease;
+
           // 成長がほぼ終わってから横移動開始
           if(gt>=.96){
             q.tornadoMoving=true;
@@ -9302,7 +9313,7 @@ function drawBackground(dt){
         const growRatio=Math.min(1,(q.tornadoGrowT||0)/(q.tornadoGrowDuration||.34));
         const top=-h*(.72-.22*growRatio);
         const bottom=h*(.28+.22*growRatio);
-        const layers=13;
+        const layers=24;
 
         // 輪郭用の左右ポイント。
         const leftPts=[];
@@ -9312,11 +9323,11 @@ function drawBackground(dt){
           const t=i/(layers-1);
           const y=top+t*h;
           // 下へ行くほど細くなる。途中に少し膨らみを残す。
-          const taper=Math.pow(1-t,.72);
+          const taper=Math.pow(1-t,.68);
           const w=bottomW+(topW-bottomW)*taper;
-          // うねり。下ほど少し細かく曲がる。
-          const cx=Math.sin(now*2.1+i*.92)*5.5 +
-                   Math.sin(now*.8+i*1.67)*3.2*(.35+t*.65);
+          // うねり。上から下まで同じ向きの漏斗を保ちつつ、中心だけ蛇行。
+          const cx=Math.sin(now*1.7+i*.58)*5.0 +
+                   Math.sin(now*.72+i*1.21)*2.6*(.35+t*.65);
           centers.push({x:cx,y,w});
           leftPts.push({x:cx-w,y});
           rightPts.push({x:cx+w,y});
@@ -9348,25 +9359,43 @@ function drawBackground(dt){
         ctx.fill();
         ctx.stroke();
 
-        // 渦の横筋。完全な輪ではなく、左右にずれた弧を重ねる。
+        // 渦の横筋を高密度に。輪ではなく、短い流線が何本も巻き付く見た目。
         for(let i=0;i<layers;i++){
           const c=centers[i];
-          const alpha=.84-(i/layers)*.24;
-          ctx.strokeStyle=(i%2===0)
-            ? `rgba(240,255,255,${alpha})`
-            : `rgba(70,190,235,${alpha})`;
-          ctx.lineWidth=Math.max(1.7,4.2-i*.16);
+          const alpha=.90-(i/layers)*.30;
+          ctx.strokeStyle=(i%3===0)
+            ? `rgba(248,255,255,${alpha})`
+            : `rgba(72,194,236,${alpha})`;
+          ctx.lineWidth=Math.max(1.15,3.1-i*.07);
 
-          const skew=Math.sin(now*2.8+i*.75)*c.w*.16;
+          const skew=Math.sin(now*2.35+i*.47)*c.w*.20;
+          const left=c.x-c.w*(.92+(i%2)*.05);
+          const right=c.x+c.w*(.80+((i+1)%3)*.05);
+
           ctx.beginPath();
-          ctx.moveTo(c.x-c.w,c.y);
+          ctx.moveTo(left,c.y);
           ctx.quadraticCurveTo(
             c.x+skew,
-            c.y-8-(i%3)*2,
-            c.x+c.w*.82,
-            c.y+2
+            c.y-4-(i%4)*1.4,
+            right,
+            c.y+1.5
           );
           ctx.stroke();
+
+          // 2本に1本は少し内側にも細い風筋を追加
+          if(i%2===0){
+            ctx.strokeStyle=`rgba(220,250,255,${alpha*.56})`;
+            ctx.lineWidth=1;
+            ctx.beginPath();
+            ctx.moveTo(c.x-c.w*.62,c.y+4);
+            ctx.quadraticCurveTo(
+              c.x-skew*.55,
+              c.y+1,
+              c.x+c.w*.58,
+              c.y+4
+            );
+            ctx.stroke();
+          }
         }
 
         // 中央のうねった芯
@@ -9384,7 +9413,7 @@ function drawBackground(dt){
         ctx.strokeStyle='rgba(205,248,255,.92)';
         ctx.lineWidth=4;
         ctx.beginPath();
-        ctx.ellipse(centers[0].x,top+2,topW,12,0,0,Math.PI*2);
+        ctx.ellipse(centers[0].x,top+2,topW*1.03,10,0,0,Math.PI*2);
         ctx.stroke();
 
         ctx.restore();
