@@ -3006,7 +3006,8 @@
     raphaelCircleAccum:0,
     raphaelCircleLastTime:0,
     raphaelCircleMask:0,
-    raphaelCircleReadyUntil:0
+    raphaelCircleReadyUntil:0,
+    raphaelTornadoReadyUntil:0
   };
 
   function pushCommandDir(dir){
@@ -3113,6 +3114,9 @@
     }
 
     if(dir) pushCommandDir(dir);
+    if(player && player.type==='yellow' && dir && raphaelHasFullCircle(1250)){
+      input.raphaelTornadoReadyUntil=performance.now()+1800;
+    }
     if(!dir || input.dashUsedThisTouch) return;
 
     const now=performance.now();
@@ -6012,13 +6016,14 @@
   }
 
   function raphaelGiantTornado(f){
-    if(gameOver||!f||f.type!=='yellow'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    if(gameOver||!f||f.type!=='yellow'||f.stun>0)return false;
 
     const target=f.isPlayer?enemy:player;
     if(!target)return false;
 
     // ここまで来たら、0.10.3と同じタイミングで表示。
     comboEl.textContent='グランドトルネード!';
+    comboEl.style.opacity='1';
     setTimeout(()=>{if(comboEl.textContent==='グランドトルネード!')comboEl.textContent='';},900);
 
     f.specialType='raphaelGiantTornado';
@@ -6775,6 +6780,21 @@
     const action=btn.dataset.action;
     const down=e=>{
       e.preventDefault();btn.classList.add('pressed');
+
+      // ラファエル隠し技は通常 attack()/trySpecial の外で直接発動。
+      if(action==='punch' && player && player.type==='yellow'){
+        const now=performance.now();
+        if(input.raphaelTornadoReadyUntil>now || raphaelHasFullCircle(1250)){
+          input.raphaelTornadoReadyUntil=0;
+          player.guard=false;
+          player.attackT=0;
+          player.specialT=0;
+          if(raphaelGiantTornado(player)){
+            playSfx('special');
+            return;
+          }
+        }
+      }
       if(action==='guard'){
         if(player){
           if(player.type==='blue'){
