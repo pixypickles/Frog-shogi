@@ -6022,11 +6022,19 @@
     const target=f.isPlayer?enemy:player;
     if(!target)return false;
 
+    // 1回転1発。ready状態と回転入力をここで完全消費する。
+    input.raphaelTornadoReadyUntil=0;
+    input.raphaelCircleAccum=0;
+    input.raphaelCircleLastAngle=null;
+    input.raphaelCircleLastTime=0;
+    input.commandHistory=[];
+
     // ここまで来たら、0.10.3と同じタイミングで表示。
     comboEl.textContent='グランドトルネード!';
     comboEl.style.opacity='1';
     setTimeout(()=>{if(comboEl.textContent==='グランドトルネード!')comboEl.textContent='';},900);
 
+    f._raphaelTornadoLockUntil=performance.now()+700;
     f.specialType='raphaelGiantTornado';
     f.specialT=.72;
     f.attack='punch';
@@ -6040,15 +6048,16 @@
       owner:f,
       // ラファエルの位置から小さく発生
       x:Math.max(48,Math.min(innerWidth-48,f.x)),
-      y:Math.max(90,Math.min(innerHeight-120,f.y)),
+      // 発生の高さはラファエル本人の高度に関係なく、やや下寄りから開始。
+      y:Math.max(130,innerHeight*.68),
       vx:0,
       vy:0,
       r:24,
 
-      // 発生地点と、成長後に収まる安全な中心Y
-      tornadoSpawnY:Math.max(90,Math.min(innerHeight-120,f.y)),
+      // 低い位置から生まれて、成長中に画面中央へ収まる。
+      tornadoSpawnY:Math.max(130,innerHeight*.68),
       tornadoCenterY:Math.max(finalH*.50+28,
-        Math.min(innerHeight-finalH*.50-36, innerHeight*.50)),
+        Math.min(innerHeight-finalH*.50-36, innerHeight*.52)),
 
       // 成長演出
       tornadoGrowT:0,
@@ -6082,7 +6091,9 @@
   }
 
   function trySpecial(f,kind){
-    if(f && f.type==='yellow' && kind==='punch' && raphaelHasFullCircle(1250)){
+    if(f && f.type==='yellow' && kind==='punch' &&
+       (f._raphaelTornadoLockUntil||0)<=performance.now() &&
+       raphaelHasFullCircle(1250)){
       return raphaelGiantTornado(f);
     }
 
@@ -6791,7 +6802,6 @@
           input.raphaelCircleLastAngle=a;
           if(Math.abs(input.raphaelCircleAccum)>=Math.PI*1.55){
             input.raphaelTornadoReadyUntil=now+2200;
-            comboEl.textContent='TORNADO READY';
           }
         }
         input.raphaelCircleLastTime=now;
@@ -6845,7 +6855,9 @@
       // ラファエル隠し技は通常 attack()/trySpecial の外で直接発動。
       if(action==='punch' && player && player.type==='yellow'){
         const now=performance.now();
-        if(input.raphaelTornadoReadyUntil>now || raphaelHasFullCircle(1250)){
+        if((player._raphaelTornadoLockUntil||0)>now){
+          // 直前のグランドトルネード発動直後は再発動させない
+        }else if(input.raphaelTornadoReadyUntil>now || raphaelHasFullCircle(1250)){
           input.raphaelTornadoReadyUntil=0;
           player.guard=false;
           player.attackT=0;
@@ -9309,10 +9321,10 @@ function drawBackground(dt){
         const topW=q.tornadoTopW||24;
         const bottomW=q.tornadoBottomW||6;
 
-        // 成長中はラファエル付近から上方向へ伸びていく印象。
-        const growRatio=Math.min(1,(q.tornadoGrowT||0)/(q.tornadoGrowDuration||.34));
-        const top=-h*(.72-.22*growRatio);
-        const bottom=h*(.28+.22*growRatio);
+        // 向きは常に固定：上が太い・下が細い。
+        // 成長中も上下比率を変えず、逆さに見える原因を排除。
+        const top=-h*.50;
+        const bottom=h*.50;
         const layers=24;
 
         // 輪郭用の左右ポイント。
@@ -9323,7 +9335,7 @@ function drawBackground(dt){
           const t=i/(layers-1);
           const y=top+t*h;
           // 下へ行くほど細くなる。途中に少し膨らみを残す。
-          const taper=Math.pow(1-t,.68);
+          const taper=Math.pow(1-t,.58);
           const w=bottomW+(topW-bottomW)*taper;
           // うねり。上から下まで同じ向きの漏斗を保ちつつ、中心だけ蛇行。
           const cx=Math.sin(now*1.7+i*.58)*5.0 +
