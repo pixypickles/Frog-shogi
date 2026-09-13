@@ -92,7 +92,6 @@
   let engineerShots = [];
   let michaelAuraShots = [];
   let water2Shots = [];
-  let raphaelTornadoes=[];
   let gabrielChargePreview=null;
   let gabrielWaterfalls=[];
   let iceWalls = [];
@@ -1158,8 +1157,8 @@
 
     // 大きい弾ほどやや鈍く、小さい弾ほど追尾が強い。
     const size=Math.max(8,shot.r||16);
-    let turn=(shot.raphaelStrongHoming?12.0:2.35)*(18/size);
-    turn=shot.raphaelStrongHoming?Math.max(6.5,Math.min(13.5,turn)):Math.max(.65,Math.min(2.9,turn));
+    let turn=(shot.raphaelStrongHoming?10.0:2.35)*(18/size);
+    turn=shot.raphaelStrongHoming?Math.max(5.0,Math.min(11.5,turn)):Math.max(.65,Math.min(2.9,turn));
 
     // 一部高速弾は少しだけ追尾を弱くして自然な軌道にする。
     if(speed>420) turn*=.72;
@@ -6007,11 +6006,37 @@
     if(gameOver||!f||f.type!=='yellow'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
     const target=f.isPlayer?enemy:player;
     if(!target)return false;
+
     f.specialType='raphaelGiantTornado';
-    f.specialT=.82;
+    f.specialT=.72;
     f.attack='punch';
-    f.attackT=.36;
-    raphaelTornadoes=[{owner:f,x:target.x,y:target.y,r:78,h:160,t:1.45,life:1.45,hitCd:0,spin:0}];
+    f.attackT=.34;
+
+    water2Shots.push({
+      owner:f,
+      x:target.x,
+      y:target.y,
+      vx:0.01,
+      vy:0,
+      r:72,
+      age:0,
+      maxAge:1.25,
+      t:1,
+      life:1,
+      damage:6.4,
+      name:'グランドトルネード',
+      color:'aqua',
+      reflected:0,
+      hit:false,
+      spin:0,
+      style:'grandTornado',
+      poisonDuration:0,
+      curve:0,
+      wobble:0,
+      baseVy:0,
+      maxReflect:0
+    });
+
     comboEl.textContent='グランドトルネード!';
     setTimeout(()=>{if(comboEl.textContent==='グランドトルネード!')comboEl.textContent='';},760);
     clearCommand();
@@ -7043,17 +7068,1498 @@
     });
     gabrielWaterfalls=gabrielWaterfalls.filter(w=>w.t>0);
 
-    raphaelTornadoes.forEach(t=>{
-      const fade=Math.min(1,t.t/.18);
-      ctx.save();ctx.translate(t.x,t.y);ctx.globalAlpha=.72*fade;
-      ctx.strokeStyle='rgba(220,250,255,.95)';ctx.lineWidth=5;
-      for(let i=0;i<3;i++){
-        const yy=-48+i*48,ww=42+i*18;
-        ctx.save();ctx.translate(0,yy);ctx.rotate((t.spin||0)*(i%2?1:-1));
-        ctx.beginPath();ctx.ellipse(0,0,ww,14+i*4,0,0,Math.PI*2);ctx.stroke();ctx.restore();
+    water2Shots.forEach(q=>{ if(q.owner && q.owner!==f && !q.hit) threats.push({x:q.x,y:q.y,vx:q.vx||0,vy:q.vy||0,r:q.r||14}); });
+    pressureBlades.forEach(q=>{ if(q.owner && q.owner!==f && !q.hit) threats.push({x:q.x,y:q.y,vx:q.vx||0,vy:q.vy||0,r:30}); });
+    return threats.some(q=>{
+      const dx=f.x-q.x, dy=f.y-q.y;
+      const d=Math.hypot(dx,dy);
+      if(d>250 || Math.abs(dy)>95) return false;
+      // 弾の速度ベクトルがキャラ方向を向いているか。
+      return dx*q.vx + dy*q.vy > 0;
+    });
+  }
+
+  function enemyAI(dt){
+    const diff=difficultyProfile();
+    if(gameMode==='practice' || gameMode==='raceMini' || gameMode==='basketMini') return;
+    if(gameOver)return;
+
+    // CPUも舌で引かれている時は、たまに投げ抜けを狙う。
+    if(player && player.tonguePullTarget===enemy && player.tonguePullTimer>0){
+      if(Math.random()<dt*3.2*diff.tongue) attack(enemy,'tongue');
+      return;
+    }
+
+    if(enemy.stun>0)return;
+    const dx=player.x-enemy.x,dy=player.y-enemy.y,dist=Math.hypot(dx,dy);
+
+    // 飛び道具へのガードは難易度別の成功率。
+    // 何もしていない時だけ反応しやすく、移動中・攻撃中・必殺技中は基本的に被弾する。
+    enemy.cpuProjectileGuardT=Math.max(0,(enemy.cpuProjectileGuardT||0)-dt);
+    enemy.cpuProjectileDecisionCd=Math.max(0,(enemy.cpuProjectileDecisionCd||0)-dt);
+    const projectileThreat=incomingReflectableThreat(enemy);
+
+    if(enemy.cpuProjectileGuardT>0){
+      enemy.guard=true;
+      enemy.guardStartT=Math.max(enemy.guardStartT||0,.18);
+      enemy.vx*=.84;enemy.vy*=.84;
+      return;
+    }
+
+    if(projectileThreat && enemy.cpuProjectileDecisionCd<=0){
+      const moving=Math.hypot(enemy.vx||0,enemy.vy||0)>42;
+      const busy=(enemy.attackT||0)>0 || (enemy.specialT||0)>0 || moving;
+      enemy.cpuProjectileDecisionCd=.62;
+
+      if(!busy && Math.random()<diff.projectileGuard){
+        enemy.cpuProjectileGuardT=.34;
+        enemy.guard=true;
+        enemy.guardStartT=.28;
+        enemy.vx*=.82;enemy.vy*=.82;
+        return;
       }
-      ctx.strokeStyle='rgba(120,220,255,.42)';ctx.lineWidth=3;
-      ctx.beginPath();ctx.ellipse(0,18,t.r,36,0,0,Math.PI*2);ctx.stroke();ctx.restore();
+      // 失敗した時はその弾に対してすぐ再抽選しない。
+      // 通常AIを続けるので、移動や攻撃を始めればそのまま被弾しうる。
+    }
+    enemy.guard=false;
+
+    if(enemy.attackT<=0){
+      // ラファエルCPU：接近戦を避け、水圧カッター中心の距離戦。
+      if(enemy.type==='yellow'){
+        const idealMin=285, idealMax=430;
+        const away=-Math.sign(dx||enemy.face||1);
+
+        if(dist<idealMin){
+          // 近づかれたらまず距離を取る。かなり近い時は高速バブル上下移動も使う。
+          enemy.vx += away*enemy.speed*1.75*diff.move*dt;
+          enemy.vy += -Math.sign(dy||1)*enemy.speed*.42*diff.move*dt;
+          if(dist<155 && enemy.specialT<=0 && Math.random()<dt*.42){
+            specialRaphaelBubbleMove(enemy);return;
+          }
+        }else if(dist>idealMax){
+          // 遠すぎる時だけ少し寄る。密着するまで追いかけない。
+          enemy.vx += Math.sign(dx)*enemy.speed*.34*diff.move*dt;
+          enemy.vy += Math.sign(dy)*enemy.speed*.18*diff.move*dt;
+        }else{
+          // 射撃距離では横移動を弱め、上下だけ軽く合わせる。
+          enemy.vx*=.93;
+          enemy.vy += Math.sign(dy)*enemy.speed*.15*diff.move*dt;
+        }
+
+        if(enemy.specialT<=0){
+          const r=Math.random();
+          if(r<dt*.34*diff.special){
+            specialPressureBlade(enemy,0,'punch');return;
+          }
+          if(r<dt*.56*diff.special){
+            specialPressureBlade(enemy,15,'kick');return;
+          }
+          if(r<dt*.72*diff.special){
+            const upper=(player.y<enemy.y);
+            specialWater2Shot(enemy,{name:'カープ水圧カッター',attack:upper?'punch':'kick',color:'blade',style:'carpBlade',speed:285,angle:upper?-30:30,damage:3.7,r:12,charge:.40,curve:upper?105:-105,maxReflect:5});return;
+          }
+          if(enemy.hp<45 && r<dt*.78*diff.special){specialHealingBubble(enemy);return;}
+        }
+        // ラファエルは通常の接近・舌・近接AIへ流さない。
+        return;
+      }
+
+      if(enemy.type==='beelzebub' && enemy.specialT<=0 && enemy.bossSpecialCooldown<=0){
+        const roll=Math.random();
+        if(!mixBattleMode){
+          if(roll<dt*.10){ specialVenomWater(enemy); return; }
+          if(roll<dt*.26){ specialAbyssShock(enemy,dy<0?'upper':'lower'); return; }
+        }
+        if(dist>150 && roll<dt*.46){ specialWater2Shot(enemy,{name:'ベノムショット',attack:'punch',color:'venom',style:'venomGloss',speed:235,damage:4.5,r:16,charge:.50,poisonDuration:2.2,maxReflect:4}); return; }
+      }
+      if(enemy.type==='satanael'&&enemy.specialT<=0){const r=Math.random();if(dist>190&&r<dt*.16){specialDisasterFlare(enemy);return;}if(dist>220&&r<dt*.28){specialDarkRay(enemy);return;}if(r<dt*.38){specialDarkPressure(enemy);return;}if(r<dt*.50){specialInfernoWave(enemy);return;}}
+      if(enemy.type==='flauros'&&enemy.specialT<=0){const r=Math.random();if(dist>180&&r<dt*.20){specialHellFlame(enemy);return;}if(dist>170&&r<dt*.38){specialFlameClaw(enemy);return;}if(dist<250&&r<dt*.52){specialLeopardRush(enemy);return;}if(dist>130&&r<dt*.59){specialInfernoClaw(enemy);return;}}
+      if(enemy.type==='sariel'&&enemy.specialT<=0){const r=Math.random();if(dist>170&&r<dt*.18){specialLunaSlash(enemy,Math.random()<.5?'up':'down');return;}if(dist<160&&r<dt*.12){specialMoonSaltKick(enemy);return;}if(dist<360&&r<dt*.07){specialEvilEye(enemy);return;}if(dist>180&&r<dt*.035){specialBloodMoon(enemy);return;}}
+      if((enemy.type==='kokabiel'||enemy.type==='awakenedKokabiel')&&enemy.specialT<=0){const r=Math.random();if(dist>180&&r<dt*.24){specialGravityBall(enemy);return;}if(dist<260&&r<dt*.10){specialGravityZone(enemy);return;}if(dist>130&&r<dt*.08){specialMeteorRain(enemy);return;}}
+      if(enemy.type==='jihal'&&enemy.specialT<=0&&!enemy.jihalCharging){const r=Math.random();if(dist>210&&r<dt*.28){specialJihalBolt(enemy);return;}if(dist<175&&r<dt*.18){specialLightningDash(enemy);return;}if(dist<110&&r<dt*.10){specialSparkBurst(enemy);return;}if(dist>250&&r<dt*.05){startThunderCharge(enemy);setTimeout(()=>{if(enemy&&enemy.jihalCharging)releaseThunderCharge(enemy);},650);return;}}
+      if(enemy.type==='remiel' && enemy.specialT<=0){const roll=Math.random();if(!remielMirages.some(m=>m.owner===enemy)&&roll<dt*.10){remielMakeMirage(enemy,Math.random()<.5?'up':'down');return;}if(dist>190&&roll<dt*.28){specialRemielFrostShot(enemy);return;}if(dist<150&&roll<dt*.18){specialMirageKick(enemy);return;}if(dist<115&&roll<dt*.10){specialAquaParry(enemy,false);return;}}
+      if(enemy.type==='seraphiel' && enemy.specialT<=0){
+        const roll=Math.random();
+        if(dist>220 && roll<dt*.22){specialWater2Shot(enemy,{name:'セラフィックショット',attack:'punch',color:'seraphic',style:'seraphicShot',speed:310,damage:5.8,r:15,charge:.36,maxReflect:5});return;}
+        if(dist>180 && roll<dt*.10){specialSeraphicRay(enemy);return;}
+        if(dist<135 && roll<dt*.24){specialSeraphicKick(enemy);return;}
+        if(dist<110 && roll<dt*.12){specialSeraphicUpper(enemy);return;}
+      }
+      if(enemy.type==='samael' && enemy.specialT<=0){
+        const roll=Math.random();
+        if(enemy.hp<enemy.maxHp*.55 && roll<dt*.10){ specialDeadlyAqua(enemy); return; }
+        if(roll<dt*.40){
+          const sides=['up','down','forward','back'];
+          specialSamaelGate(enemy,sides[Math.floor(Math.random()*sides.length)]);
+          return;
+        }
+        if(dist>120 && roll<dt*.62){ specialSamaelTongueShot(enemy); return; }
+      }
+      if(enemy.type==='kawazu' && enemy.specialT<=0){
+        const roll=Math.random();
+        if(dist<320 && roll<dt*.18){ specialKawazuCrossRush(enemy); return; }
+        if(dist>135 && roll<dt*.30){ specialKawazuPressureRush(enemy); return; }
+        if(dist<250 && roll<dt*.46){ specialKawazuMirageKick(enemy); return; }
+        if(dist>120 && roll<dt*.60){ specialKawazuSpinCutter(enemy); return; }
+      }
+      if(enemy.type==='purple' && enemy.specialT<=0 && dist<250 && Math.random()<dt*.13){
+        specialLilithDropKick(enemy);return;
+      }
+
+      if(dist>105){ enemy.vx += Math.sign(dx)*enemy.speed*.9*diff.move*dt; enemy.vy += Math.sign(dy)*enemy.speed*.55*diff.move*dt; }
+      else if(Math.random()<dt*.8*diff.attack) attack(enemy,Math.random()<.62?'punch':'kick');
+      if(enemy.tonguePullTarget && enemy.tonguePullTimer>0 && Math.random()<dt*2.2*diff.attack){
+        attack(enemy,'tongue');
+      } else if(dist>120&&dist<enemy.tongueRange&&Math.random()<dt*.28*diff.tongue) {
+        attack(enemy,'tongue');
+      }
+      if(dist<90 && Math.random()<dt*.25*diff.guard) enemy.guard=true;
+    }
+  }
+
+  function guardWave(f){
+    if(!f || gameOver || f.waveCooldown>0) return;
+
+    f.waveCooldown=1.05;
+    f.guard=false;
+    f.attack='wave';
+    f.attackT=.48;
+
+    const dir=f.face;
+    guardWaves.push({
+      owner:f,
+      x:f.x+dir*34,
+      y:f.y+18,
+      dir,
+      r:18,
+      t:.48,
+      life:.48,
+      hit:false
+    });
+
+    // 水を両手で押した反動
+    f.vx += -dir*42;
+  }
+
+  function spawnImpact(x,y,type){
+    const n=type==='guard'?8:16;
+    for(let i=0;i<n;i++){
+      particles.push({
+        x,y,
+        vx:(Math.random()-.5)*(type==='guard'?160:240),
+        vy:(Math.random()-.5)*(type==='guard'?160:240),
+        t:type==='guard'?.32:.42,
+        r:2+Math.random()*(type==='guard'?4:6),
+        type
+      });
+    }
+
+    // 当たった瞬間に広がるリングで、ヒットを見やすくする
+    hitRings.push({
+      x,y,
+      r:type==='guard'?12:10,
+      max:type==='guard'?42:58,
+      t:type==='guard'?.28:.34,
+      life:type==='guard'?.28:.34,
+      type
+    });
+  }
+
+  function ensureFighterVisible(f,fallbackX,fallbackY){
+    if(!f) return;
+
+    if(!Number.isFinite(f.x) || !Number.isFinite(f.y) ||
+       !Number.isFinite(f.vx) || !Number.isFinite(f.vy)){
+      f.x=fallbackX;
+      f.y=fallbackY;
+      f.vx=0;
+      f.vy=0;
+      f.spinAngle=0;
+      f.throwState=null;
+    }
+
+    const margin=Math.max(42,(Number.isFinite(f.radius)?f.radius:35)+8);
+    f.x=Math.max(margin,Math.min(innerWidth-margin,f.x));
+    f.y=Math.max(58,Math.min(innerHeight-58,f.y));
+  }
+
+  function separateBattleFighters(a,b){
+    // 表示・描画処理とは完全に独立した座標補正だけ。
+    if(!a || !b) return;
+    if(!Number.isFinite(a.x) || !Number.isFinite(a.y) ||
+       !Number.isFinite(b.x) || !Number.isFinite(b.y)) return;
+
+    // 舌投げなど、意図的に重なる演出中は何もしない。
+    if(a.throwState || b.throwState) return;
+
+    const ar=Number.isFinite(a.radius) ? a.radius : 35;
+    const br=Number.isFinite(b.radius) ? b.radius : 35;
+
+    const dx=b.x-a.x;
+    const dy=b.y-a.y;
+
+    // 上下差が大きい場合は水中ですれ違える。
+    const verticalLimit=(ar+br)*0.62;
+    if(Math.abs(dy)>verticalLimit) return;
+
+    // 横方向の最低距離。見た目より少し柔らかめ。
+    const minX=(ar+br)*0.76;
+    const absDx=Math.abs(dx);
+    if(absDx>=minX) return;
+
+    // 完全に同じXなら、PLAYERを左・RIVALを右に分ける。
+    const dir=absDx<0.001 ? 1 : Math.sign(dx);
+    const overlap=minX-absDx;
+
+    // 一気に弾かず、1フレームで少しずつ押し分ける。
+    const push=Math.min(overlap*.52,8);
+
+    a.x-=dir*push;
+    b.x+=dir*push;
+
+    // 互いに突っ込み続けて再び重なるのを少し抑える。
+    if(Number.isFinite(a.vx) && Number.isFinite(b.vx)){
+      const approaching=(b.vx-a.vx)*dir<0;
+      if(approaching){
+        a.vx*=.72;
+        b.vx*=.72;
+      }
+    }
+
+    // 画面外へ押し出さない。
+    const margin=42;
+    a.x=Math.max(margin,Math.min(innerWidth-margin,a.x));
+    b.x=Math.max(margin,Math.min(innerWidth-margin,b.x));
+  }
+
+  function rotatePoint(x,y,a){
+    const ca=Math.cos(a), sa=Math.sin(a);
+    return {x:x*ca-y*sa,y:x*sa+y*ca};
+  }
+
+  function burningCycloneAngle(f){
+    if(!f || f.specialType!=='burningCyclone') return 0;
+    const elapsed=(performance.now()-(f.cycloneStartTime||performance.now()))/1000;
+    // 右向きは時計回り、左向きは鏡映し
+    return elapsed*22*(f.face>0?1:-1);
+  }
+
+  function updateNewSpecialMoves(f,dt){
+    if(!f) return;
+
+    if(f.type==='flauros'){
+      const o=f.isPlayer?enemy:player;
+      if(f.specialType==='leopardRush'&&f.specialT>0){
+        f.vx=(f.flaurosRushDir||f.face)*760;
+        if(o&&!f.flaurosRushHit&&Math.abs(o.x-f.x)<76&&Math.abs(o.y-f.y)<72){f.flaurosRushHit=true;damageHit(f,o,8.0*f.damageMul,300*(f.flaurosRushDir||f.face),-55);spawnImpact(o.x,o.y,'hit');}
+      }
+      if(f.specialType==='infernoClaw'&&f.specialT>0){
+        const elapsed=(performance.now()-(f.infernoStart||performance.now()))/1000;
+        const wallT=.25, diveT=.48;
+        f.vx=0;f.vy=0;
+        if(elapsed<wallT){
+          // 現在地→後ろ上の壁。少しイーズアウトして「壁へ飛びつく」動き。
+          let t=Math.max(0,Math.min(1,elapsed/wallT));t=1-Math.pow(1-t,2);
+          f.x=f.infernoFromX+(f.infernoWallX-f.infernoFromX)*t;
+          f.y=f.infernoFromY+(f.infernoWallY-f.infernoFromY)*t;
+        }else{
+          if(f.infernoPhase===0)f.infernoPhase=1;
+          // 壁から反対側の下端まで、軌道を曲げず対角線に一直線。
+          const t=Math.max(0,Math.min(1,(elapsed-wallT)/diveT));
+          f.x=f.infernoWallX+(f.infernoEndX-f.infernoWallX)*t;
+          f.y=f.infernoWallY+(f.infernoEndY-f.infernoWallY)*t;
+          const dir=Math.sign(f.infernoEndX-f.infernoWallX)||f.face;
+          if(o&&!f.infernoHit&&Math.abs(o.x-f.x)<76&&Math.abs(o.y-f.y)<70){
+            f.infernoHit=true;const guarded=o.guard;spawnImpact(o.x,o.y,guarded?'guard':'hit');
+            if(guarded){damageHit(f,o,1.0,55*dir,10);}else{
+              const bx=o.x,by=o.y;for(let i=0;i<5;i++)flaurosClaws.push({owner:f,target:o,x:bx,y:by,t:.10+i*.065,life:.30,index:i,hit:false});
+            }
+          }
+        }
+      }
+    }
+
+    if(f.specialType==='burningCyclone'){
+      const other=f.isPlayer?enemy:player;
+      const ang=burningCycloneAngle(f);
+
+      // 突進速度を維持
+      if(Math.abs(f.vx)<390) f.vx+=f.face*255*dt;
+
+      if(other){
+        const feet=[
+          {localX:-17,localY:52,key:'cycloneLastHitA'},
+          {localX: 17,localY:52,key:'cycloneLastHitB'}
+        ];
+        const now=performance.now();
+
+        feet.forEach(foot=>{
+          const p=rotatePoint(foot.localX,foot.localY,ang);
+          const wx=f.x+p.x, wy=f.y+p.y;
+          if(
+            Math.hypot(other.x-wx,other.y-wy)<other.radius+25 &&
+            now-(f[foot.key]||-9999)>68
+          ){
+            f[foot.key]=now;
+            // 超多段用の小ダメージ
+            damageHit(f,other,.72*f.damageMul,18*f.face,-2);
+          }
+        });
+      }
+    }
+
+    if(f.specialType==='lilithDropKick'){
+      const other=f.isPlayer?enemy:player;
+      // 横移動している間ずっと両足側に攻撃判定を持たせる。
+      // 一度ヒット／ガードしたら同じ技中の再ヒットはしない。
+      if(other && !f.lilithDropHitDone){
+        const dir=f.face||1;
+        const elapsed=(performance.now()-(f.lilithDropStart||performance.now()))/1000;
+        // 開始直後から終了直前まで有効。足先は進行方向へ少し長め。
+        if(elapsed>=.03 && f.specialT>.08){
+          const footX=f.x+dir*56;
+          const footY=f.y+2;
+          const hitX=Math.abs(other.x-footX)<other.radius+44;
+          const hitY=Math.abs(other.y-footY)<other.radius+46;
+          // 相手が身体の真後ろにいる場合は当てない。
+          const forward=(other.x-f.x)*dir>-18;
+          if(hitX && hitY && forward){
+            f.lilithDropHitDone=true;
+            f.lilithDropHitAt=performance.now();
+            f.vx*=.22;
+            if(other.guard){
+              spawnImpact(other.x,other.y,'guard');
+              other.vx+=dir*55;
+            }else{
+              damageHit(f,other,8.2*f.damageMul,245*dir,-38);
+              spawnImpact(other.x,other.y,'hit');
+            }
+          }
+        }
+      }
+    }
+
+    if(f.specialType==='lilithBackSpin'){
+      const other=f.isPlayer?enemy:player;
+      const elapsed=(performance.now()-(f.lilithSpinStartTime||performance.now()))/1000;
+      const ang=elapsed*18*(f.face>0?-1:1);
+      if(other){
+        const now=performance.now();
+        [{x:-58,y:46,key:'lilithSpinLastHitA'},{x:58,y:46,key:'lilithSpinLastHitB'}].forEach(foot=>{
+          const p=rotatePoint(foot.x,foot.y,ang);
+          if(Math.hypot(other.x-(f.x+p.x),other.y-(f.y+p.y))<other.radius+22 && now-(f[foot.key]||-9999)>115){
+            f[foot.key]=now;
+            damageHit(f,other,.82*f.damageMul,-38*f.face,-5);
+          }
+        });
+      }
+    }
+
+    if(f.specialType==='raphaelBubbleMove'){
+      f.raphaelMoveElapsed=(f.raphaelMoveElapsed||0)+dt;
+      const dur=f.raphaelMoveDuration||.82;
+      const t=Math.max(0,Math.min(1,f.raphaelMoveElapsed/dur));
+      const u=1-t;
+
+      // 2次ベジェ：斜め後ろ下へ膨らみ、前下へぐるっと回り込む
+      f.x=
+        u*u*f.raphaelMoveStartX+
+        2*u*t*f.raphaelMoveControlX+
+        t*t*f.raphaelMoveEndX;
+      f.y=
+        u*u*f.raphaelMoveStartY+
+        2*u*t*f.raphaelMoveControlY+
+        t*t*f.raphaelMoveEndY;
+
+      f.vx=0;
+      f.vy=0;
+    }
+  }
+
+  function isPoisonImmune(f){
+    return !!f && (f.type==='beelzebub' || f.type==='samael');
+  }
+
+  function applyPoison(target,owner,duration=2.5){
+    if(!target || isPoisonImmune(target)) return false;
+    target.poisonT=Math.max(target.poisonT||0,duration);
+    target.poisonTick=Math.min(target.poisonTick||0,.35);
+    target.poisonOwner=owner||null;
+    return true;
+  }
+
+  function projectileImmuneByBubble(f){
+    return !!(f && f.specialType==='raphaelBubbleMove' && f.specialT>0);
+  }
+
+function drawBackground(dt){
+    const w=innerWidth,h=innerHeight;
+    const g=ctx.createLinearGradient(0,0,0,h);
+    g.addColorStop(0,'#74d8ff');
+    g.addColorStop(.46,'#aee9ff');
+    g.addColorStop(1,'#edfaff');
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,w,h);
+
+    const now=performance.now()/1000;
+
+    // 遠景の光
+    ctx.save();
+    ctx.globalAlpha=.18;
+    const sun=ctx.createRadialGradient(w*.78,h*.13,8,w*.78,h*.13,w*.34);
+    sun.addColorStop(0,'rgba(255,255,230,1)');
+    sun.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=sun;ctx.fillRect(0,0,w,h*.55);
+    ctx.restore();
+
+    // 雲。ゆっくり横へ流れる。
+    function cloud(x,y,scale,alpha){
+      ctx.save();
+      ctx.translate(x,y);ctx.scale(scale,scale);
+      ctx.globalAlpha=alpha;
+      ctx.fillStyle='#ffffff';
+      [[0,0,38,20],[-31,7,29,17],[31,8,34,18],[-4,-15,28,22],[18,-11,24,19]].forEach(v=>{
+        ctx.beginPath();ctx.ellipse(v[0],v[1],v[2],v[3],0,0,Math.PI*2);ctx.fill();
+      });
+      ctx.restore();
+    }
+    for(let i=0;i<8;i++){
+      const speed=8+i*1.4;
+      const x=((i*173 + now*speed)%(w+260))-130;
+      const y=h*(.10 + (i%5)*.17);
+      cloud(x,y,.72+(i%3)*.18,.22+(i%2)*.12);
+    }
+
+    // 下方は厚い雲海
+    ctx.save();
+    ctx.globalAlpha=.78;
+    for(let i=0;i<9;i++){
+      const x=(i-.4)*w/7 + Math.sin(now*.35+i)*18;
+      const y=h*.88 + Math.sin(now*.5+i*.8)*7;
+      cloud(x,y,1.45,.72);
+    }
+    ctx.restore();
+
+    // 高度感を出す薄い風の筋
+    ctx.save();
+    ctx.strokeStyle='rgba(255,255,255,.20)';
+    ctx.lineWidth=2;
+    for(let i=0;i<6;i++){
+      const y=h*(.18+i*.12);
+      ctx.beginPath();
+      ctx.moveTo(-40,y+Math.sin(now+i)*5);
+      ctx.bezierCurveTo(w*.25,y-9,w*.72,y+10,w+40,y-4);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+
+  function drawAquariumArena(){
+    // 雲上戦では水槽・観客席・水面表現は描画しない。
+  }
+
+
+  function loop(now){
+    requestAnimationFrame(loop);
+    if(!screens.game.classList.contains('active')||!player||!enemy)return;
+    let dt=Math.min(.033,(now-last)/1000);last=now;
+    if(gamePaused)return;
+    if(!gameOver){
+      let ix=input.x+(keys['d']?1:0)-(keys['a']?1:0);
+      let iy=input.y+(keys['s']?1:0)-(keys['w']?1:0);
+      if(player.stun<=0&&!player.guard){
+        player.vx += ix*player.speed*dt*2.05;
+        player.vy += iy*player.speed*dt*1.68;
+      }
+      enemyAI(dt);
+      player.update(dt);enemy.update(dt);
+      updateNewSpecialMoves(player,dt);
+      updateNewSpecialMoves(enemy,dt);
+
+      // v6.5: フリー対戦／ストーリーだけ、上下位置が近い時に横へ押し分ける。
+      if(gameMode==='battle' || gameMode==='story'){
+        separateBattleFighters(player,enemy);
+      }
+
+      ensureFighterVisible(player,innerWidth*.28,innerHeight*.52);
+      ensureFighterVisible(enemy,innerWidth*.72,innerHeight*.48);
+
+
+
+
+      // ラファエルさんの水圧カッター更新
+      if(leafMiniActive){
+        leafMiniTime-=dt;
+        leafSpawnTimer-=dt;
+
+        if(leafMiniTimeEl) leafMiniTimeEl.textContent=Math.max(0,leafMiniTime).toFixed(1);
+
+        if(leafSpawnTimer<=0 && leafTargets.length<22){
+          spawnLeafTarget(Math.floor(Math.random()*5),false);
+          leafSpawnTimer=.24+Math.random()*.16;
+        }
+
+        leafTargets.forEach(leaf=>{
+          leaf.x+=leaf.vx*dt;
+          leaf.rot+=leaf.spin*dt;
+        });
+
+        leafTargets=leafTargets.filter(leaf=>!leaf.hit && leaf.x>-80);
+        checkLeafHits();
+
+        if(leafMiniTime<=0){
+          leafMiniTime=0;
+          endLeafMiniGame();
+        }
+      }
+
+      if(guardMiniActive){
+        guardMiniTime-=dt; guardSpawnTimer-=dt;
+        if(guardMiniTimeEl) guardMiniTimeEl.textContent=Math.max(0,guardMiniTime).toFixed(1);
+        const progress=1-Math.max(0,guardMiniTime)/60;
+        // 最初の20秒は必ず1体ずつ。以降も最大2体まで。
+        const maxTargets=guardMiniTime>40 ? 1 : 2;
+        if(guardSpawnTimer<=0 && guardTargets.length<maxTargets){
+          spawnGuardTarget();
+          // 序盤は約2秒間隔。後半だけ少しずつ短くする。
+          guardSpawnTimer=Math.max(.95,2.05-progress*.95)+Math.random()*.35;
+        }
+        guardTargets.forEach(t=>{
+          t.x+=t.vx*dt;
+          t.phase+=dt*4;
+          // 全て主人公へ向かう。上下移動してもゆっくり追尾する。
+          t.targetY=player.y;
+          t.y+=(t.targetY-t.y)*Math.min(1,dt*3.2);
+          if(t.resolved)return;
+          const dx=t.x-player.x, dy=Math.abs(t.y-player.y);
+          if(dx<player.radius+t.r+13 && dx>-player.radius-t.r-10 && dy<player.radius+t.r+8){
+            t.resolved=true;
+            const elapsed=performance.now()-guardMiniGuardTapTime;
+            if(player.guard && elapsed>=0 && elapsed<=300){
+              guardMiniScore++;
+              if(guardMiniScoreEl)guardMiniScoreEl.textContent=String(guardMiniScore);
+              comboEl.textContent='JUST GUARD!';
+              spawnImpact(player.x+player.face*30,player.y,'guard');
+            }else{
+              guardMiniMiss++;
+              if(guardMiniMissEl)guardMiniMissEl.textContent=String(guardMiniMiss);
+              comboEl.textContent='MISS';
+              player.hurtFace='both'; player.hurtFaceT=.28;
+              spawnImpact(player.x+player.face*24,player.y,'hit');
+            }
+          }
+        });
+        guardTargets=guardTargets.filter(t=>!t.resolved && t.x>-80);
+        if(guardMiniTime<=0){guardMiniTime=0;endGuardMiniGame();}
+      }
+
+      if(leafMiniActive){
+        // 保険：葉っぱが0枚になっても必ず次を生成する
+        if(leafTargets.length===0){
+          for(let i=0;i<5;i++){
+            spawnLeafTarget(i,false);
+            const t=leafTargets[leafTargets.length-1];
+            if(t) t.x=innerWidth+35+i*95;
+          }
+        }
+      }
+
+      // オーラのある拳・脚で水圧カッター／ナマズを打ち消す。
+      // ガブリエルさんの長い水流は貫通系なので対象外。
+      cancelSoftProjectilesByAura();
+
+      michaelAuraShots.forEach(s=>{
+        ctx.save();ctx.globalCompositeOperation='lighter';
+        ctx.fillStyle='rgba(255,55,35,.85)';ctx.shadowColor='#ff2a18';ctx.shadowBlur=16;
+        ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();ctx.restore();
+      });
+      engineerShots.forEach(q=>{
+        q.t-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.spin+=dt*9;
+        const target=q.owner&&q.owner.isPlayer?enemy:player;
+        if(target&&!q.hit&&Math.hypot(target.x-q.x,target.y-q.y)<target.radius+q.r+4){
+          q.hit=true;q.t=0;
+          if(projectileImmuneByBubble(target))spawnImpact(target.x,target.y,'guard');
+          else{
+            q.owner._projectileHit=true;
+            damageHit(q.owner,target,2.4*q.owner.damageMul,42*q.owner.face,-5);
+            q.owner._projectileHit=false;
+            spawnImpact(q.x,q.y,'hit');
+          }
+        }
+      });
+      engineerShots=engineerShots.filter(q=>q.t>0&&q.x>-50&&q.x<innerWidth+50);
+
+      aquaVortices.forEach(v=>{
+        v.t-=dt;
+        v.spin+=dt*8.5;
+
+        cancelSoftProjectilesAtZone({owner:v.owner,x:v.x,y:v.y,r:v.r});
+
+        const target=v.owner && v.owner.isPlayer ? enemy : player;
+        if(target){
+          const d=Math.hypot(target.x-v.x,target.y-v.y);
+          const now=performance.now();
+          if(d<target.radius+v.r && now-v.lastHitAt>260){
+            v.lastHitAt=now;
+            if(projectileImmuneByBubble(target)){
+              spawnImpact(target.x,target.y,'guard');
+            }else{
+              v.owner._projectileHit=true;
+              damageHit(v.owner,target,1.15*v.owner.damageMul,26*v.owner.face,-8);
+              v.owner._projectileHit=false;
+              v.owner.hp=Math.min(100,v.owner.hp+.42);
+              if(v.owner.isPlayer)updateHud();
+            }
+          }
+        }
+      });
+      aquaVortices=aquaVortices.filter(v=>v.t>0);
+      michaelAuraShots.forEach(s=>{
+        s.t-=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;
+        const target=s.owner&&s.owner.isPlayer?enemy:player;
+        if(target&&!s.hit&&Math.hypot(target.x-s.x,target.y-s.y)<target.radius+s.r+8){
+          s.hit=true;s.t=0;s.owner._projectileHit=true;
+          damageHit(s.owner,target,3.4*s.owner.damageMul,95*s.owner.face,-8);
+          s.owner._projectileHit=false;spawnImpact(s.x,s.y,'hit');
+        }
+      });
+      michaelAuraShots=michaelAuraShots.filter(s=>s.t>0&&s.x>-80&&s.x<innerWidth+80);
+
+
+      // ルシファー：設置型アイスウォール。約3秒残り、接触した相手を押し返す。
+      iceWalls.forEach(w=>{
+        w.t-=dt; w.hitCd=Math.max(0,(w.hitCd||0)-dt);
+        const target=w.owner&&w.owner.isPlayer?enemy:player;
+        if(target && w.hitCd<=0 && Math.abs(target.x-w.x)<target.radius+w.w*.65 && Math.abs(target.y-w.y)<target.radius+w.h*.45){
+          w.hitCd=.55;
+          const dir=Math.sign(target.x-w.x)||w.owner.face;
+          damageHit(w.owner,target,1.8*w.owner.damageMul,150*dir,-18);
+          spawnImpact(target.x,target.y,'guard');
+        }
+      });
+      iceWalls=iceWalls.filter(w=>w.t>0);
+
+      // サリエル：月刃・邪眼・血月・ムーンサルト。
+      [player,enemy].forEach(f=>{
+        if(!f)return;
+        if((f.sarielParalyzeT||0)>0){f.sarielParalyzeT=Math.max(0,f.sarielParalyzeT-dt);f.vx*=.45;f.vy*=.45;}
+        if((f.bloodSlowT||0)>0){f.bloodSlowT=Math.max(0,f.bloodSlowT-dt);f.vx*=.86;f.vy*=.86;}
+        if(f.type!=='sariel')return;
+        const o=f.isPlayer?enemy:player;if(!o)return;
+        if(f.specialType==='evilEye'&&f.specialT>0&&!f.evilEyeHit){
+          const facing=(f.face>0&&o.x>f.x)||(f.face<0&&o.x<f.x);
+          if(facing&&Math.abs(o.y-f.y)<125&&Math.abs(o.x-f.x)<430&&!o.guard){
+            f.evilEyeHit=true;o.sarielParalyzeT=3;o.vx=0;o.vy=0;comboEl.textContent='イーブルアイ：3秒麻痺!';
+          }
+        }
+        if(f.specialType==='moonSalt'&&f.specialT>0){
+          // 上昇を抑え、相手の高さに長く留まる回転多段技にする。
+          f.vy=Math.min(f.vy,-72);
+          f.moonSaltSpin=(f.moonSaltSpin||0)+dt*34;
+          f.moonSaltHitCd=Math.max(0,(f.moonSaltHitCd||0)-dt);
+          // 回転そのものが攻撃。最大6ヒット、約0.09秒ごとに再ヒット可能。
+          if((f.moonSaltHits||0)<6&&f.moonSaltHitCd<=0&&Math.abs(o.x-f.x)<82&&Math.abs(o.y-f.y)<88){
+            f.moonSaltHits=(f.moonSaltHits||0)+1;f.moonSaltHitCd=.09;
+            const last=f.moonSaltHits>=6;
+            damageHit(f,o,(last?3.8:1.45)*f.damageMul,(last?145:24)*f.face,last?-210:-22);
+            spawnImpact(o.x,o.y,'hit');
+          }
+        }
+      });
+      lunarSlashes.forEach(q=>{
+        q.t-=dt;q.age+=dt;const p=Math.min(1,q.age/1.45),a=Math.PI*p;
+        q.x=q.baseX+Math.sin(a)*q.dir*285;q.y=q.baseY+(q.arc==='up'?-1:1)*Math.sin(a)*92;
+        const t=q.owner.isPlayer?enemy:player;
+        if(t&&!q.hit&&Math.abs(q.x-t.x)<t.radius+30&&Math.abs(q.y-t.y)<t.radius+30){
+          if(t.guard){q.owner=t;q.baseX=t.x;q.baseY=t.y;q.dir=t.face;q.arc=q.arc==='up'?'down':'up';q.age=0;spawnImpact(t.x,t.y,'guard');}
+          else{q.hit=true;damageHit(q.owner,t,q.damage,125*q.dir,q.arc==='up'?-45:45);spawnImpact(q.x,q.y,'hit');}
+        }
+      });
+      lunarSlashes=lunarSlashes.filter(q=>q.t>0&&q.age<1.52);
+      bloodMoons.forEach(m=>{
+        m.t-=dt;const o=m.owner,t=o&&o.isPlayer?enemy:player;if(!o||!t||m.broken)return;
+        if(o.hp<m.startHp-.05){m.broken=true;o.specialT=Math.min(o.specialT,.15);comboEl.textContent='ブラッドムーン破壊!';return;}
+        if(m.t<=0){t.bloodSlowT=10;m.broken=true;comboEl.textContent='ブラッドムーン：10秒スロー!';}
+      });
+      bloodMoons=bloodMoons.filter(m=>!m.broken&&m.t>0);
+
+      // コカビエル：急降下キックと重力異常。
+      [player,enemy].forEach(f=>{
+        if(!f)return;
+        if((f.gravityHeavyT||0)>0){
+          f.gravityHeavyT=Math.max(0,f.gravityHeavyT-dt);
+          f.vy+=360*dt;
+          if(f.vy<0)f.vy*=.88;
+        }
+        if(f.type!=='kokabiel'||f.specialType!=='gravityDive'||f.specialT<=0)return;
+        f.vy=Math.max(f.vy,390);
+        const o=f.isPlayer?enemy:player;
+        if(o&&!f.gravityDiveHit&&Math.abs(o.x-f.x)<78&&Math.abs(o.y-f.y)<82){
+          f.gravityDiveHit=true;
+          damageHit(f,o,8.2*f.damageMul,145*f.face,135);
+          o.gravityHeavyT=2.25;o.vy=Math.max(o.vy,180);
+          spawnImpact(o.x,o.y,'hit');comboEl.textContent='ヘヴィ・グラビティ!';
+        }
+      });
+
+      gravityBalls.forEach(q=>{
+        q.t-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;
+        const target=q.owner.isPlayer?enemy:player;if(!target||q.t<=0)return;
+        const dx=q.x-target.x,dy=q.y-target.y,d=Math.hypot(dx,dy)||1;
+        if(d<230){const f=(1-d/230)*q.pull+28;target.vx+=dx/d*f*dt;target.vy+=dy/d*f*.72*dt;}
+        if(Math.abs(q.x-target.x)<target.radius+q.r+8&&Math.abs(q.y-target.y)<target.radius+q.r+8){
+          if(target.guard){q.owner=target;q.vx=-q.vx*1.05;q.reflects++;q.x=target.x+Math.sign(q.vx)*56;spawnImpact(target.x,target.y,'guard');if(q.reflects>=q.maxReflect)q.t=0;}
+          else{damageHit(q.owner,target,q.damage,Math.sign(q.vx)*100,-24);spawnImpact(q.x,q.y,'hit');q.t=0;}
+        }
+      });
+      gravityBalls=gravityBalls.filter(q=>q.t>0&&q.x>-100&&q.x<innerWidth+100);
+      gravityZones.forEach(z=>{
+        z.t-=dt;z.arm=Math.max(0,z.arm-dt);
+        const target=z.owner.isPlayer?enemy:player;if(!target||z.t<=0)return;
+        const dx=z.x-target.x,dy=z.y-target.y,d=Math.hypot(dx,dy)||1;
+        if(z.arm<=0&&d<z.maxR){const f=(1-d/z.maxR)*520+95;target.vx+=dx/d*f*dt;target.vy+=dy/d*f*.78*dt;}
+      });
+      gravityZones=gravityZones.filter(z=>z.t>0);
+      meteorDrops.forEach(m=>{
+        m.t-=dt;if(!m.active){m.delay-=dt;if(m.delay<=0)m.active=true;}if(!m.active)return;
+        m.y+=m.vy*dt;const target=m.owner.isPlayer?enemy:player;
+        if(target&&Math.abs(m.x-target.x)<target.radius+m.r&&Math.abs(m.y-target.y)<target.radius+m.r){
+          if(target.guard){damageHit(m.owner,target,1.3,0,35);spawnImpact(target.x,target.y,'guard');}
+          else{damageHit(m.owner,target,m.damage,Math.sign(target.x-m.x||1)*55,160);spawnImpact(m.x,m.y,'hit');}
+          m.t=0;
+        }
+      });
+      meteorDrops=meteorDrops.filter(m=>m.t>0&&m.y<innerHeight+90);
+
+      // ジィハル高速技は発動時の進行方向と速度を維持する。
+      [player,enemy].forEach(f=>{
+        if(!f||f.type!=='jihal')return;
+        const dir=f.jihalRushDir||f.face||1;
+        if(f.specialType==='lightningDash'&&f.specialT>0) f.vx=dir*920;
+        if(f.specialType==='thunderChargeRush'&&f.specialT>0){
+          const c=Math.max(0,Math.min(1,f.jihalChargePower||0));
+          f.vx=dir*(980+520*c);
+        }
+      });
+
+      // ジィハル高速技の当たり判定。
+      [player,enemy].forEach(f=>{
+        if(!f||f.type!=='jihal')return;
+        const o=f.isPlayer?enemy:player;
+        if(!o)return;
+
+        // ライトニングダッシュは前半〜中盤だけ攻撃判定。
+        if(f.specialType==='lightningDash' && f.specialT>0){
+          const elapsed=.34-f.specialT;
+          if(elapsed<=.21 && !f.jihalDashHit && Math.abs(o.x-f.x)<78 && Math.abs(o.y-f.y)<76){
+            f.jihalDashHit=true;
+            damageHit(f,o,9.5*f.damageMul,365*f.face,-45);
+            spawnImpact(o.x,o.y,'hit');
+          }
+        }
+
+        // サンダーチャージは相手に当たっても速度を落とさず、そのまま通り抜ける。
+        if(f.specialType==='thunderChargeRush' && f.specialT>0){
+          if(!f.jihalThunderHit && Math.abs(o.x-f.x)<86 && Math.abs(o.y-f.y)<84){
+            f.jihalThunderHit=true;
+            const c=Math.max(0,Math.min(1,f.jihalChargePower||0));
+            const dir=f.jihalRushDir||f.face||1;
+            const keepVx=dir*(980+520*c);
+            damageHit(f,o,(10.5+6*c)*f.damageMul,(410+180*c)*dir,-70);
+            // hit処理後も速度を完全復元し、相手の反対側へ抜ける。
+            f.vx=keepVx;
+            f.x=o.x+dir*(o.radius+f.radius+16);
+            o.x-=dir*8;
+            spawnImpact(o.x,o.y,'hit');
+          }
+        }
+      });
+
+      [player,enemy].forEach(f=>{if(f&&f.type==='jihal'&&f.jihalCharging){f.jihalCharge=Math.min(1,(f.jihalCharge||0)+dt/.95);f.specialT=999;f.vx*=.75;}});
+      jihalBolts.forEach(q=>{
+        q.t-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;const t=q.owner.isPlayer?enemy:player;
+        if(t&&q.t>0&&Math.abs(q.x-t.x)<50&&Math.abs(q.y-t.y)<62){
+          if(t.guard){q.owner=t;q.vx=-q.vx*1.06;q.reflects++;q.x=t.x+Math.sign(q.vx)*52;spawnImpact(t.x,t.y,'guard');if(q.reflects>=5)q.t=0;}
+          else{damageHit(q.owner,t,q.damage,Math.sign(q.vx)*160,-30);spawnImpact(q.x,q.y,'hit');q.t=0;}
+        }
+      });
+      jihalBolts=jihalBolts.filter(q=>q.t>0&&q.x>-80&&q.x<innerWidth+80);
+      jihalBursts.forEach(b=>{b.t-=dt;b.r=b.maxR*(1-b.t/b.life);});
+      jihalBursts=jihalBursts.filter(b=>b.t>0);
+
+      remielMirages.forEach(m=>{
+        m.t-=dt;m.age=(m.age||0)+dt;m.counterT=Math.max(0,(m.counterT||0)-dt);m.ghostTongueT=Math.max(0,(m.ghostTongueT||0)-dt);
+        const splitTime=.28;
+        if(m.owner && m.age<=splitTime && m.originY!=null){
+          const p=Math.max(0,Math.min(1,m.age/splitTime));
+          const e=p*p*(3-2*p);
+          m.owner.y=m.originY+(m.bodyTargetY-m.originY)*e;
+          m.owner.vy=0;
+        }
+        const foe=m.owner.isPlayer?enemy:player;
+        const g=remielGhostPos(m);
+        if(foe&&g&&foe.attackT>0&&Math.abs(foe.x-g.x)<105&&Math.abs(foe.y-g.y)<72){
+          // ミラージュカウンター中なら、幻影を殴っても半威力の反撃。
+          if(m.counterT>0){
+            m.counterT=0;
+            damageHit(m.owner,foe,3.6*m.owner.damageMul,-Math.sign(g.x-foe.x||1)*115,-38,true);
+            spawnImpact(foe.x,foe.y,'hit');
+            comboEl.textContent='幻影ミラージュカウンター!';
+          }else{
+            spawnImpact(g.x,g.y,'guard');
+          }
+          m.t=0;
+        }
+        if(m.t>0&&g){
+          for(const q of water2Shots){
+            if(q.owner!==m.owner&&Math.abs(q.x-g.x)<48&&Math.abs(q.y-g.y)<58){
+              m.t=0;q.t=0;spawnImpact(q.x,q.y,'guard');break;
+            }
+          }
+        }
+      });
+      remielMirages=remielMirages.filter(m=>m.t>0);
+      remielFakeShots.forEach(q=>{
+        q.t-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;
+        const target=q.owner.isPlayer?enemy:player;
+        if(target&&!q.hit&&Math.abs(q.x-target.x)<(q.r||14)+target.radius*.62&&Math.abs(q.y-target.y)<(q.r||14)+target.radius*.62){
+          q.hit=true;q.t=0;
+          if(target.guard)spawnImpact(target.x,target.y,'guard');
+          else{damageHit(q.owner,target,q.damage||2.4*q.owner.damageMul,75*Math.sign(q.vx||q.owner.face),-18);spawnImpact(target.x,target.y,'hit');}
+          if(q.mirage&&q.mirage.t>0)remielConsumeMirage(q.mirage,q.x,q.y,'guard');
+        }
+      });
+      remielFakeShots=remielFakeShots.filter(q=>q.t>0&&q.x>-50&&q.x<innerWidth+50&&q.y>-50&&q.y<innerHeight+50);
+
+      // セラフィエル：セラフィックレイ。予告0.32秒後に短時間だけ攻撃判定。
+      seraphielRays.forEach(r=>{
+        r.t-=dt;
+        const elapsed=r.life-r.t;
+        r.active=elapsed>.32 && elapsed<.50;
+        const target=r.owner.isPlayer?enemy:player;
+        if(r.active && target && !r.hit){
+          const ahead=(target.x-r.x)*r.dir;
+          if(ahead>0 && ahead<innerWidth && Math.abs(target.y-r.y)<34+target.radius*.45){
+            if(target.guard){
+              // レイは飛び道具ではないので反射せず、シャボンで大きく軽減。
+              damageHit(r.owner,target,3.0*r.owner.damageMul,80*r.dir,-15);
+              spawnImpact(target.x,target.y,'guard');
+            }else{
+              damageHit(r.owner,target,15.5*r.owner.damageMul,265*r.dir,-55);
+              spawnImpact(target.x,target.y,'hit');
+            }
+            r.hit=true;
+          }
+        }
+      });
+      seraphielRays=seraphielRays.filter(r=>r.t>0);
+
+
+      // サタナエル：ディザスターフレア。遅い赤黒炎は通常弾を飲み込み、ガードでも消滅しない。
+      satanaelFlares.forEach(q=>{
+        q.t-=dt;q.x+=q.vx*dt;
+        for(const p of water2Shots){
+          if(p.owner!==q.owner&&p.t>0&&Math.abs(p.x-q.x)<q.r+(p.r||12)&&Math.abs(p.y-q.y)<q.r+(p.r||12)){
+            p.t=0;spawnImpact(p.x,p.y,'guard');
+          }
+        }
+        const target=q.owner.isPlayer?enemy:player;
+        if(target&&!q.hit&&Math.abs(target.x-q.x)<q.r+target.radius*.65&&Math.abs(target.y-q.y)<q.r+target.radius*.65){
+          if(target.guard){damageHit(q.owner,target,3.4*q.owner.damageMul,38*Math.sign(q.vx),-8);spawnImpact(target.x,target.y,'guard');}
+          else{damageHit(q.owner,target,12.5*q.owner.damageMul,185*Math.sign(q.vx),-45);spawnImpact(target.x,target.y,'hit');}
+          q.hit=true; // 本体への多段防止。弾そのものは画面外まで残る。
+        }
+      });
+      satanaelFlares=satanaelFlares.filter(q=>q.t>0&&q.x>-100&&q.x<innerWidth+100);
+
+      // ダークレイ：セラフィックレイの黒版。
+      satanaelRays.forEach(r=>{
+        r.t-=dt;const elapsed=r.life-r.t;r.active=elapsed>.32&&elapsed<.50;
+        const target=r.owner.isPlayer?enemy:player;
+        if(r.active&&target&&!r.hit){
+          const ahead=(target.x-r.x)*r.dir;
+          if(ahead>0&&ahead<innerWidth&&Math.abs(target.y-r.y)<34+target.radius*.45){
+            if(target.guard){damageHit(r.owner,target,3.2*r.owner.damageMul,80*r.dir,-15);spawnImpact(target.x,target.y,'guard');}
+            else{damageHit(r.owner,target,16.2*r.owner.damageMul,275*r.dir,-55);spawnImpact(target.x,target.y,'hit');}
+            r.hit=true;
+          }
+        }
+      });
+      satanaelRays=satanaelRays.filter(r=>r.t>0);
+
+      // ダークプレッシャー：上から降りる黒い光。0ダメージで相手を底へ押し下げる。
+      satanaelPressures.forEach(p=>{
+        p.t-=dt;const elapsed=p.life-p.t;const target=p.owner.isPlayer?enemy:player;
+        if(target&&elapsed>.18&&elapsed<.68){
+          const floorY=innerHeight-72;
+          target.y+=(floorY-target.y)*Math.min(1,dt*7.5);
+          target.vy=Math.max(target.vy,240);
+        }
+      });
+      satanaelPressures=satanaelPressures.filter(p=>p.t>0);
+
+      // インフェルノウェーブ：底を黒炎の火柱が連続して走る。
+      satanaelWaves.forEach(p=>{
+        p.t-=dt;
+        if(p.t<=0&&!p.fired){p.fired=true;p.t=p.life;}
+        if(p.fired){
+          const target=p.owner.isPlayer?enemy:player;
+          // 炎柱は底から約150pxまで。画面上側にいる相手には絶対に当たらない。
+          if(target&&!p.hit&&Math.abs(target.x-p.x)<38&&target.y>innerHeight-150){
+            p.hit=true;
+            if(target.guard){damageHit(p.owner,target,1.6*p.owner.damageMul,45*p.owner.face,-25);spawnImpact(target.x,target.y,'guard');}
+            else{damageHit(p.owner,target,5.0*p.owner.damageMul,115*p.owner.face,-95);spawnImpact(target.x,target.y,'hit');}
+          }
+        }
+      });
+      satanaelWaves=satanaelWaves.filter(p=>p.t>0);
+
+      // サマエル：毒弾の発生地点。紫＋青白い渦を見せてから相手へ発射。
+  
+
+    samaelGates.forEach(g=>{
+        g.t-=dt;
+        if(g.t<=0 && !g.fired){
+          g.fired=true;
+          const target=g.target && g.target.hp>0 ? g.target : (g.owner.isPlayer?enemy:player);
+          if(target){
+            const dx=target.x-g.x,dy=target.y-g.y,d=Math.hypot(dx,dy)||1;
+            const speed=g.deadly?225:252;
+            water2Shots.push(aimShotAtTarget({
+              owner:g.owner,x:g.x,y:g.y,vx:dx/d*speed,vy:dy/d*speed,r:g.deadly?19:16,
+              age:0,maxAge:18,t:1,life:1,damage:g.deadly?5.6:4.7,name:g.deadly?'デッドリー・アクア':'ポイズンゲート',
+              color:'samaelVenom',reflected:0,hit:false,spin:0,style:'samaelVenom',
+              poisonDuration:g.deadly?2.8:2.2,curve:0,arcFlip:1,wobble:g.deadly?.08:.04,baseVy:dy/d*speed,maxReflect:g.deadly?3:4
+            }));
+            comboEl.textContent='ポイズンゲート!';
+            setTimeout(()=>{if(comboEl.textContent==='ポイズンゲート!')comboEl.textContent='';},480);
+          }
+        }
+      });
+      samaelGates=samaelGates.filter(g=>g.t>-.08 && !g.fired);
+
+      flaurosPillars.forEach(p=>{
+        p.t-=dt;const target=p.owner&&p.owner.isPlayer?enemy:player;if(!target)return;
+        if(!p.fired&&p.t<=0){p.fired=true;p.t=.42;comboEl.textContent='ヘルフレイム!';}
+        if(p.fired&&!p.hit&&Math.abs(target.x-p.x)<48&&Math.abs(target.y-(p.y-75))<115){p.hit=true;damageHit(p.owner,target,7.2*p.owner.damageMul,45*Math.sign(target.x-p.x||1),-175);spawnImpact(target.x,target.y,'hit');}
+      });
+      flaurosPillars=flaurosPillars.filter(p=>p.t>0||!p.fired);
+      flaurosClaws.forEach(c=>{c.t-=dt;if(c.t<=0&&!c.hit&&c.target&&c.target.hp>0){c.hit=true;const last=c.index===4;damageHit(c.owner,c.target,(last?2.5:1.55)*c.owner.damageMul,(last?145:20)*c.owner.face,last?-75:-8);spawnImpact(c.target.x,c.target.y,'hit');}});
+      flaurosClaws=flaurosClaws.filter(c=>!c.hit);
+
+      // 雲上格闘2 共通飛び道具：シャボンガードに触れると自動反射。
+      water2Shots.forEach(q=>{
+        q.age=(q.age||0)+dt;
+        q.spin=(q.spin||0)+dt*(q.style==='spinCutterBlade'?22:(q.style==='aquaSpin'?10:4));
+        if(q.curve){ q.vy += q.curve*dt; }
+        if(q.style==='iceChargeOrb'){ q.trail=q.trail||[]; q.trail.push({x:q.x,y:q.y,t:.75}); if(q.trail.length>22)q.trail.shift(); q.trail.forEach(v=>v.t-=dt); q.trail=q.trail.filter(v=>v.t>0); }
+        q.x+=q.vx*dt;
+        q.y+=q.vy*dt + Math.sin((q.spin||0)*2)*(q.wobble||0)*18*dt;
+        const target=q.owner&&q.owner.isPlayer?enemy:player;
+        if(!target||q.hit) return;
+        if(Math.hypot(target.x-q.x,target.y-q.y)<target.radius+q.r+14){
+          if(target.guard){
+            // 反射：所有者を入れ替え、相手方向へ返す。ラリーごとに少し加速・大型化。
+            spawnImpact(q.x,q.y,'guard'); playSfx('guard');
+            q.owner=target; q.vx=-q.vx*1.08; q.vy=-q.vy*.94;
+            // 泡は大きくなり過ぎない。ほかの弾も成長を控えめにしてラリーを見やすくする。
+            const grow=(q.style==='bubble')?1.015:1.035;
+            const cap=(q.style==='bubble')?23:25;
+            q.r=Math.min(cap,q.r*grow);
+            q.damage*=1.06; q.reflected=(q.reflected||0)+1;
+            q.x=target.x+target.face*(target.radius+q.r+12);
+            // 反射回数が増えるほど不安定に。上限では派手に消散。
+            if(q.reflected>=q.maxReflect){
+              q.hit=true;
+              spawnImpact(q.x,q.y,'guard');
+              comboEl.textContent='OVER REFLECT!';
+            }else{
+              comboEl.textContent=q.reflected>1?'REFLECT x'+q.reflected+'!':'REFLECT!';
+            }
+          }else{
+            q.hit=true; q.owner._projectileHit=true;
+            damageHit(q.owner,target,q.damage*q.owner.damageMul,75*Math.sign(q.vx||q.owner.face),-8);
+            q.owner._projectileHit=false;
+            if(q.poisonDuration>0) applyPoison(target,q.owner,q.poisonDuration);
+            spawnImpact(q.x,q.y,'hit');
+          }
+        }
+      });
+      water2Shots=water2Shots.filter(q=>!q.hit&&(q.age||0)<(q.maxAge||18)&&q.x>-100&&q.x<innerWidth+100&&q.y>-100&&q.y<innerHeight+100);
+
+      toxicWaters.forEach(v=>{
+        v.t-=dt;
+        v.tick-=dt;
+        const target=v.owner && v.owner.isPlayer ? enemy : player;
+        if(target && v.tick<=0){
+          v.tick=.60;
+          // 紫の水の間、相手だけ。毒耐性持ちは継続毒を受けない。
+          if(!target.guard && !isPoisonImmune(target)){
+            v.owner._projectileHit=true;
+            damageHit(v.owner,target,1.15*v.owner.damageMul,0,0);
+            v.owner._projectileHit=false;
+          }
+        }
+      });
+      toxicWaters=toxicWaters.filter(v=>v.t>0);
+
+      bossFish.forEach(fish=>{
+        fish.t-=dt;
+        fish.phase+=dt*7;
+        const target=fish.target;
+        if(target){
+          const dx=target.x-fish.x, dy=target.y-fish.y;
+          const d=Math.hypot(dx,dy)||1;
+          fish.vx+=(dx/d)*260*dt;
+          fish.vy+=(dy/d)*210*dt;
+          const sp=Math.hypot(fish.vx,fish.vy)||1;
+          const maxSp=235;
+          if(sp>maxSp){fish.vx=fish.vx/sp*maxSp;fish.vy=fish.vy/sp*maxSp;}
+          fish.x+=fish.vx*dt;
+          fish.y+=fish.vy*dt+Math.sin(fish.phase)*6*dt;
+
+          // 相手の攻撃に触れれば小魚は1発で倒せる
+          const attacking=target.attackT>0 || target.tongueT>0 || target.specialT>0;
+          if(attacking && Math.hypot(target.x-fish.x,target.y-fish.y)<target.radius+72){
+            fish.hp=0;
+            spawnImpact(fish.x,fish.y,'guard');
+          }else if(Math.hypot(target.x-fish.x,target.y-fish.y)<target.radius+fish.r+8){
+            fish.hp=0;
+            fish.owner._projectileHit=true;
+            damageHit(fish.owner,target,1.25*fish.owner.damageMul,45*Math.sign(fish.vx||1),-8);
+            fish.owner._projectileHit=false;
+          }
+        }
+      });
+      bossFish=bossFish.filter(f=>f.t>0 && f.hp>0);
+
+      abyssShocks.forEach(w=>{
+        w.t-=dt;
+        w.vy+=(w.curve||0)*dt;
+        w.x+=w.vx*dt;
+        w.y+=w.vy*dt;
+        const target=w.owner && w.owner.isPlayer ? enemy : player;
+        if(!w.hit && target && Math.hypot(target.x-w.x,target.y-w.y)<target.radius+w.r+8){
+          if(target.guard){
+            spawnImpact(w.x,w.y,'guard'); playSfx('guard');
+            w.owner=target; w.vx=-w.vx*1.06; w.vy=-w.vy*.96; w.curve=-(w.curve||0);
+            w.reflected=(w.reflected||0)+1;
+            w.x=target.x+target.face*(target.radius+w.r+12);
+            if(w.reflected>=w.maxReflect){w.hit=true;comboEl.textContent='OVER REFLECT!';}
+            else comboEl.textContent='REFLECT!';
+          }else{
+            w.hit=true;
+            w.owner._projectileHit=true;
+            damageHit(w.owner,target,(w.damage||5.8)*w.owner.damageMul,135*Math.sign(w.vx||w.owner.face),-80);
+            w.owner._projectileHit=false;
+          }
+        }
+      });
+      abyssShocks=abyssShocks.filter(w=>w.t>0 && !w.hit && w.x>-100 && w.x<innerWidth+100 && w.y>-120 && w.y<innerHeight+120);
+
+      if(raceMiniActive){
+        raceMiniElapsed=(performance.now()-raceMiniStart)/1000;
+        if(raceMiniTimeEl)raceMiniTimeEl.textContent=raceMiniElapsed.toFixed(2);
+        const cp=raceCheckpoints[raceCheckpointIndex];
+        if(cp && Math.hypot(player.x-cp.x,player.y-cp.y)<cp.r){
+          raceCheckpointIndex++;
+          if(raceCheckpointIndex>=raceCheckpoints.length){
+            endRaceMiniGame();
+          }
+        }
+        // v6.41: リング境界では停止させず、接線方向へ滑らせる。
+        // これにより楕円の端（見た目上の「角」）で引っ掛からない。
+        {
+          const xs=raceCheckpoints.map(p=>p.x), ys=raceCheckpoints.map(p=>p.y);
+          const rcx=(Math.min(...xs)+Math.max(...xs))/2, rcy=(Math.min(...ys)+Math.max(...ys))/2;
+          const rrx=(Math.max(...xs)-Math.min(...xs))/2, rry=(Math.max(...ys)-Math.min(...ys))/2;
+          const laneHalf=48;
+          const keepOnRing=(f)=>{
+            if(!f)return;
+            const dx=f.x-rcx, dy=f.y-rcy;
+            const a=Math.atan2(dy/Math.max(1,rry),dx/Math.max(1,rrx));
+            const ca=Math.cos(a), sa=Math.sin(a);
+            const innerRx=Math.max(24,rrx-laneHalf), innerRy=Math.max(24,rry-laneHalf);
+            const outerRx=rrx+laneHalf, outerRy=rry+laneHalf;
+            const qInner=(dx*dx)/(innerRx*innerRx)+(dy*dy)/(innerRy*innerRy);
+            const qOuter=(dx*dx)/(outerRx*outerRx)+(dy*dy)/(outerRy*outerRy);
+
+            // 楕円の接線ベクトル。境界に当たった時は進行成分をこちらへ残す。
+            let tx=-innerRx*sa, ty=innerRy*ca;
+            const tl=Math.hypot(tx,ty)||1; tx/=tl; ty/=tl;
+
+            if(qInner<1){
+              // 内周に少しだけ余白を持たせ、めり込みを一発で解消
+              f.x=rcx+ca*(innerRx+3);
+              f.y=rcy+sa*(innerRy+3);
+              const tang=f.vx*tx+f.vy*ty;
+              const speed=Math.max(1.2,Math.hypot(f.vx,f.vy)*0.92);
+              const sign=Math.abs(tang)>.08?Math.sign(tang):1;
+              f.vx=tx*speed*sign; f.vy=ty*speed*sign;
+            }else if(qOuter>1){
+              // 外周でも同様に、壁に止めずコース沿いへ滑らせる
+              f.x=rcx+ca*(outerRx-3);
+              f.y=rcy+sa*(outerRy-3);
+              tx=-outerRx*sa; ty=outerRy*ca;
+              const otl=Math.hypot(tx,ty)||1; tx/=otl; ty/=otl;
+              const tang=f.vx*tx+f.vy*ty;
+              const speed=Math.max(1.2,Math.hypot(f.vx,f.vy)*0.92);
+              const sign=Math.abs(tang)>.08?Math.sign(tang):1;
+              f.vx=tx*speed*sign; f.vy=ty*speed*sign;
+            }
+          };
+          keepOnRing(player); keepOnRing(enemy);
+        }
+
+        // CPUレーサーも同じ楕円を走る。少しだけライン取りに揺らぎを入れる。
+        const ecp=raceCheckpoints[raceEnemyCheckpointIndex];
+        if(ecp && enemy){
+          const dx=ecp.x-enemy.x,dy=ecp.y-enemy.y,d=Math.hypot(dx,dy)||1;
+          const cpuSpeed=enemy.speed*.88;
+          enemy.vx+=dx/d*cpuSpeed*2.2*dt;
+          enemy.vy+=dy/d*cpuSpeed*2.2*dt;
+          if(d<ecp.r){
+            raceEnemyCheckpointIndex++;
+            if(raceEnemyCheckpointIndex>=raceCheckpoints.length){
+              raceMiniActive=false;
+              comboEl.textContent='レース結果：RIVALの勝ち！';
+              comboEl.style.fontSize='clamp(28px,5vw,56px)';
+              restartButton.hidden=false;
+            }
+          }
+        }
+      }
+
+      if(basketMiniActive){
+        basketMiniTime-=dt;
+        if(basketTimeEl)basketTimeEl.textContent=Math.max(0,basketMiniTime).toFixed(1);
+
+        // 自陣から出られない：中央線を越えない。
+        const mid=innerWidth*.5, margin=player.radius+8;
+        player.x=Math.min(player.x,mid-margin);
+        enemy.x=Math.max(enemy.x,mid+margin);
+
+        if(basketBall){
+          basketBall.owner=null;
+          basketBall.vx*=Math.pow(.9985,dt*60);
+          basketBall.vy*=Math.pow(.9985,dt*60);
+          // 遅くなりすぎない。エアホッケーらしく常に速め。
+          let sp=Math.hypot(basketBall.vx,basketBall.vy);
+          if(sp<330){
+            const ang=sp>20?Math.atan2(basketBall.vy,basketBall.vx):(Math.random()*Math.PI*2);
+            basketBall.vx=Math.cos(ang)*330;basketBall.vy=Math.sin(ang)*330;
+          }else if(sp>820){
+            basketBall.vx*=820/sp;basketBall.vy*=820/sp;
+          }
+          basketBall.x+=basketBall.vx*dt;
+          basketBall.y+=basketBall.vy*dt;
+
+          const goalHalf=Math.max(62,innerHeight*.13);
+          const cy=innerHeight*.52;
+          // 上下壁
+          if(basketBall.y<62+basketBall.r || basketBall.y>innerHeight-48-basketBall.r){
+            basketBall.vy*=-1;
+            basketBall.y=Math.max(62+basketBall.r,Math.min(innerHeight-48-basketBall.r,basketBall.y));
+          }
+          // 左右壁。ただしゴール開口部は通過して得点。
+          if(basketBall.x<8+basketBall.r){
+            if(Math.abs(basketBall.y-cy)<goalHalf){
+              basketEnemyScore++;
+              if(basketEnemyScoreEl)basketEnemyScoreEl.textContent=String(basketEnemyScore);
+              comboEl.textContent='RIVAL SCORE';
+              resetBasketBall();
+            }else{
+              basketBall.vx=Math.abs(basketBall.vx);
+              basketBall.x=8+basketBall.r;
+            }
+          }else if(basketBall.x>innerWidth-8-basketBall.r){
+            if(Math.abs(basketBall.y-cy)<goalHalf){
+              basketPlayerScore++;
+              if(basketPlayerScoreEl)basketPlayerScoreEl.textContent=String(basketPlayerScore);
+              comboEl.textContent='SCORE!';
+              resetBasketBall();
+            }else{
+              basketBall.vx=-Math.abs(basketBall.vx);
+              basketBall.x=innerWidth-8-basketBall.r;
+            }
+          }
+
+          // CPUは自陣内でマリモのYに合わせて守り、近ければ打ち返す。
+          if(enemy && enemy.stun<=0){
+            const tx=Math.max(mid+margin,Math.min(innerWidth*.82,basketBall.x));
+            const ty=basketBall.y;
+            enemy.vx+=Math.sign(tx-enemy.x)*enemy.speed*.72*dt;
+            enemy.vy+=Math.sign(ty-enemy.y)*enemy.speed*.62*dt;
+            if(Math.hypot(enemy.x-basketBall.x,enemy.y-basketBall.y)<enemy.radius+92 && Math.random()<dt*8){
+              hockeyStrike(enemy,Math.random()<.45?'kick':'punch');
+            }
+          }
+        }
+
+        if(basketMiniTime<=0){basketMiniTime=0;endBasketMiniGame();}
+      }
+
+      kawazuShots.forEach(p=>{
+        p.t-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
+        const target=p.owner&&p.owner.isPlayer?enemy:player;
+        if(!p.hit&&target&&Math.hypot(target.x-p.x,target.y-p.y)<target.radius+p.r){
+          if(target.guard){
+            // 水圧ラッシュは反射されると単純に戻らず、上下へ散る。
+            spawnImpact(p.x,p.y,'guard');
+            p.owner=target; p.reflected=(p.reflected||0)+1;
+            p.vx=-p.vx*.78;
+            const sign=(p.vy||0)>=0?1:-1;
+            p.vy=sign*(150+Math.abs(p.vy)*.72);
+            p.x=target.x+target.face*(target.radius+p.r+10);
+            comboEl.textContent='SPLIT REFLECT!';
+          }else{
+            p.hit=true;
+            p.owner._projectileHit=true;
+            damageHit(p.owner,target,1.00*p.owner.damageMul,30*Math.sign(p.vx),p.vy*.08);
+            p.owner._projectileHit=false;
+          }
+        }
+      });
+      kawazuShots=kawazuShots.filter(p=>p.t>0&&!p.hit&&p.x>-40&&p.x<innerWidth+40&&p.y>-40&&p.y<innerHeight+40);
+      kawazuGhosts.forEach(q=>q.t-=dt);
+      kawazuGhosts=kawazuGhosts.filter(q=>q.t>0);
+
+    pressureBlades.forEach(p=>{
+        p.t-=dt; p.x+=p.vx*dt; p.y+=(p.vy||0)*dt;
+        const target=p.owner && p.owner.isPlayer ? enemy : player;
+        if(!p.hit && target){
+          const d=Math.hypot(target.x-p.x,target.y-p.y);
+          if(d<target.radius+28){
+            // 雲上格闘2：水圧カッターもシャボンガードで反射できる。
+            if(target.guard){
+              spawnImpact(p.x,p.y,'guard'); playSfx('guard');
+              p.owner=target;
+              p.vx=-p.vx*1.10; p.vy=-(p.vy||0)*.92;
+              p.size=Math.min(1.45,(p.size||1)*1.06);
+              p.reflected=(p.reflected||0)+1;
+              p.x=target.x+target.face*(target.radius+38);
+              if(p.reflected>=5){p.hit=true;p.t=0;comboEl.textContent='OVER REFLECT!';}
+              else comboEl.textContent=p.reflected>1?'REFLECT x'+p.reflected+'!':'REFLECT!';
+            }else{
+              p.hit=true;
+              if(projectileImmuneByBubble(target)){
+                spawnImpact(p.x,p.y,'guard');
+              }else if(target.type==='orange' && target.counterReady){
+                spawnImpact(p.x,p.y,'guard');
+              }else{
+                p.owner._projectileHit=true;
+                damageHit(p.owner,target,5.2*p.owner.damageMul,105*Math.sign(p.vx||p.owner.face),-18);
+                p.owner._projectileHit=false;
+              }
+            }
+          }
+        }
+      });
+      pressureBlades=pressureBlades.filter(p=>p.t>0 && !p.hit && p.x>-80 && p.x<innerWidth+80);
+
+      aquaTornadoes.forEach(t=>{
+        t.t-=dt;
+
+        // 発生中は持ち主の手元に根元を追従
+        const owner=t.owner;
+        if(owner){
+          const length=Math.max(innerWidth,innerHeight)*1.05;
+          const downward=t.direction==='down';
+          // 水流は発生後も指定角度を維持する。
+          // 下: 水平より8° / 上: 水平より15°
+          const dx=owner.face*(downward?.990:.966);
+          const dy=downward?.139:-.259;
+
+          t.startX=owner.x+owner.face*(t.source==='foot'?28:35);
+          t.startY=owner.y+(t.source==='foot'?42:-6);
+          t.endX=t.startX+dx*length;
+          t.endY=t.startY+dy*length;
+          t.dir=owner.face;
+        }
+
+        // 下向き水流が底に当たった場所だけ、軽い土煙を出す。
+        // 円を大量生成せず、1つの濁り雲を短時間描くだけなので軽量。
+        if(t.direction==='down' && !t.siltSpawned){
+          const floorY=innerHeight-35;
+          const segDy=t.endY-t.startY;
+          if(segDy>0 && t.startY<floorY && t.endY>=floorY){
+            const u=(floorY-t.startY)/segDy;
+            const floorX=t.startX+(t.endX-t.startX)*u;
+            if(floorX>-40 && floorX<innerWidth+40){
+              t.siltSpawned=true;
+              siltClouds.push({
+                x:floorX,
+                y:floorY-2,
+                t:1.05,
+                life:1.05,
+                radius:32
+              });
+            }
+          }
+        }
+
+        const target=owner && owner.isPlayer ? enemy : player;
+        if(!t.hit && target){
+          const d=pointToSegmentDistance(
+            target.x,target.y,
+            t.startX,t.startY,t.endX,t.endY
+          );
+
+          // 水流全体が当たり判定
+          if(d < target.radius + t.width){
+            t.hit=true;
+            if(projectileImmuneByBubble(target)){
+              spawnImpact(target.x,target.y,'guard');
+            }else{
+              owner._projectileHit=true;
+              damageHit(owner,target,7.0*owner.damageMul,125*owner.face,-125);
+              owner._projectileHit=false;
+            }
+          }
+        }
+      });
+      aquaTornadoes=aquaTornadoes.filter(t=>t.t>0);
+
+      catfishCharges.forEach(n=>{
+        n.t-=dt; n.x+=n.vx*dt;
+        const target=n.target;
+        if(!n.hit && target && Math.hypot(target.x-(n.x+Math.sign(n.vx)*55),target.y-n.y)<target.radius+72){
+          n.hit=true;
+          if(projectileImmuneByBubble(target)){
+            spawnImpact(target.x,target.y,'guard');
+          }else{
+            n.owner._projectileHit=true;
+            damageHit(n.owner,target,7.0*n.owner.damageMul,n.vx*.42,-55);
+            n.owner._projectileHit=false;
+          }
+        }
+      });
+      catfishCharges=catfishCharges.filter(n=>n.t>0);
+
+    burstWaves.forEach(b=>{b.t-=dt;});
+      burstWaves=burstWaves.filter(b=>b.t>0);
+
+    siltClouds.forEach(s=>{
+        s.t-=dt;
+        s.radius+=34*dt;
+        s.y-=5*dt;
+      });
+      siltClouds=siltClouds.filter(s=>s.t>0);
+
+    guardWaves.forEach(w=>{
+        w.t-=dt;
+        w.x += w.dir*285*dt;
+        w.r += 42*dt;
+
+        const target=w.owner.isPlayer?enemy:player;
+        if(!w.hit && target){
+          const dx=target.x-w.x, dy=target.y-w.y;
+          if(Math.hypot(dx,dy)<w.r+target.radius){
+            w.hit=true;
+            // ダメージ無し。水圧だけで押し返す。
+            target.vx += w.dir*365;
+            target.vy += -38;
+            target.stun=Math.max(target.stun,.16);
+            spawnImpact(target.x,target.y,'guard');
+          }
+        }
+      });
+      guardWaves=guardWaves.filter(w=>w.t>0);
+
+      if(comboTimer>0){comboTimer-=dt;if(comboTimer<=0){comboHits=0;comboEl.textContent=''}}
+    } else {
+      player.update(dt);enemy.update(dt);
+    }
+
+    drawBackground(dt);
+    drawAquariumArena();
+    ctx.globalAlpha=1;
+    ctx.globalCompositeOperation='source-over';
+
+    if(raceMiniActive){
+      ctx.save();
+      const xs=raceCheckpoints.map(p=>p.x), ys=raceCheckpoints.map(p=>p.y);
+      const cx=(Math.min(...xs)+Math.max(...xs))/2, cy=(Math.min(...ys)+Math.max(...ys))/2;
+      const rx=(Math.max(...xs)-Math.min(...xs))/2, ry=(Math.max(...ys)-Math.min(...ys))/2;
+      ctx.strokeStyle='rgba(255,255,255,.32)';ctx.lineWidth=38;
+      ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
+      ctx.strokeStyle='rgba(70,225,240,.75)';ctx.lineWidth=3;
+      ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
+      // 中央は通れないことが視覚的にも分かる内周境界
+      ctx.fillStyle='rgba(0,72,82,.32)';
+      ctx.beginPath();ctx.ellipse(cx,cy,Math.max(20,rx-48),Math.max(20,ry-48),0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,.62)';ctx.lineWidth=3;
+      ctx.beginPath();ctx.ellipse(cx,cy,Math.max(20,rx-48),Math.max(20,ry-48),0,0,Math.PI*2);ctx.stroke();
+      for(let i=2;i<raceCheckpoints.length;i+=4){
+        const p=raceCheckpoints[i], q=raceCheckpoints[Math.min(i+1,raceCheckpoints.length-1)];
+        const ang=Math.atan2(q.y-p.y,q.x-p.x);
+        ctx.save();ctx.translate(p.x,p.y);ctx.rotate(ang);
+        ctx.fillStyle='rgba(255,242,120,.9)';
+        ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(-10,-9);ctx.lineTo(-5,0);ctx.lineTo(-10,9);ctx.closePath();ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    if(basketMiniActive){
+      ctx.save();
+      const mid=innerWidth*.5, cy=innerHeight*.52, gh=Math.max(62,innerHeight*.13);
+      // 中央線
+      ctx.strokeStyle='rgba(255,255,255,.42)';ctx.lineWidth=3;ctx.setLineDash([10,10]);
+      ctx.beginPath();ctx.moveTo(mid,58);ctx.lineTo(mid,innerHeight-48);ctx.stroke();ctx.setLineDash([]);
+      // 左右ゴール
+      for(const x of [10,innerWidth-10]){
+        ctx.strokeStyle='#f7d660';ctx.lineWidth=6;
+        ctx.beginPath();ctx.moveTo(x,cy-gh);ctx.lineTo(x,cy+gh);ctx.stroke();
+        ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=2;
+        for(let y=cy-gh;y<=cy+gh;y+=14){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(x<mid?28:-28),y);ctx.stroke();}
+      }
+      ctx.restore();
+    }
+
+    ctx.globalAlpha=1;
+    ctx.globalCompositeOperation='source-over';
+    ctx.filter='none';
+    ctx.shadowBlur=0;
+    ctx.shadowColor='transparent';
+
+    ctx.save();
+    gabrielWaterfalls.forEach(w=>{
+      const fade=Math.min(1,w.t/.18);
+      ctx.save();
+      ctx.globalAlpha=.88*fade;
+
+      const grad=ctx.createLinearGradient(w.x-w.w/2,0,w.x+w.w/2,0);
+      grad.addColorStop(0,'rgba(80,190,255,.18)');
+      grad.addColorStop(.20,'rgba(170,235,255,.88)');
+      grad.addColorStop(.50,'rgba(238,253,255,.98)');
+      grad.addColorStop(.80,'rgba(120,215,255,.90)');
+      grad.addColorStop(1,'rgba(40,145,240,.18)');
+      ctx.fillStyle=grad;
+      ctx.fillRect(w.x-w.w/2,w.top,w.w,w.bottom-w.top);
+
+      // 流れ筋
+      ctx.strokeStyle='rgba(255,255,255,.68)';
+      ctx.lineWidth=3;
+      for(let i=-1;i<=1;i++){
+        const xx=w.x+i*w.w*.24;
+        ctx.beginPath();
+        ctx.moveTo(xx,w.top);
+        ctx.bezierCurveTo(xx+8,w.top+120,xx-8,w.top+260,xx,w.bottom);
+        ctx.stroke();
+      }
+
+      // 下端の飛沫
+      ctx.globalAlpha=.55*fade;
+      ctx.fillStyle='#dff8ff';
+      for(let i=0;i<8;i++){
+        const a=i/8*Math.PI*2;
+        ctx.beginPath();
+        ctx.arc(w.x+Math.cos(a)*32,w.bottom+Math.sin(a)*10,5+(i%3),0,Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
     });
 
     if(gabrielChargePreview){
@@ -7085,28 +8591,6 @@
       }
       ctx.restore();
     }
-
-    raphaelTornadoes.forEach(t=>{
-      const now=performance.now()/1000;
-      const fade=Math.min(1,t.t/.22);
-      ctx.save();ctx.globalAlpha=.80*fade;ctx.translate(t.x,t.y);
-      for(let i=0;i<8;i++){
-        const yy=-t.h*.5+i*(t.h/8);
-        const width=t.r*(.36+i*.085);
-        const phase=now*5.6+i*.82;
-        ctx.strokeStyle=`rgba(225,252,255,${.70-i*.045})`;
-        ctx.lineWidth=6-i*.42;
-        ctx.beginPath();
-        ctx.ellipse(Math.sin(phase)*width*.15,yy,width,16+i*1.5,phase*.18,0,Math.PI*2);
-        ctx.stroke();
-      }
-      ctx.strokeStyle='rgba(110,220,255,.44)';ctx.lineWidth=4;
-      for(let i=0;i<4;i++){
-        const rr=t.r*(.80+i*.11);
-        ctx.beginPath();ctx.arc(0,0,rr,now*2+i,now*2+i+1.9);ctx.stroke();
-      }
-      ctx.restore();
-    });
 
     player.draw();
     ctx.restore();
@@ -7685,6 +9169,32 @@
       ctx.rotate(ang);
 
       if(q.style==='flameClaw'){ctx.rotate(q.spin||0);ctx.shadowColor='#ff3a20';ctx.shadowBlur=20;ctx.strokeStyle='#ff4028';ctx.lineWidth=6;for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(-18,i*8);ctx.quadraticCurveTo(0,-15+i*7,24,i*5);ctx.stroke();}ctx.strokeStyle='#ffd05a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(27,0);ctx.stroke();
+      }else if(q.style==='grandTornado'){
+        ctx.save();
+        ctx.rotate(-(Math.atan2(q.vy,q.vx)||0));
+        const now=performance.now()/1000;
+        ctx.globalAlpha=.78;
+        ctx.strokeStyle='rgba(225,252,255,.96)';
+        ctx.lineWidth=5;
+
+        for(let i=0;i<4;i++){
+          const yy=-46+i*31;
+          const ww=34+i*13;
+          ctx.save();
+          ctx.translate(0,yy);
+          ctx.rotate(now*(i%2?4.2:-4.2));
+          ctx.beginPath();
+          ctx.ellipse(0,0,ww,11+i*3,0,0,Math.PI*2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        ctx.strokeStyle='rgba(105,210,250,.48)';
+        ctx.lineWidth=3;
+        ctx.beginPath();
+        ctx.ellipse(0,20,72,28,0,0,Math.PI*2);
+        ctx.stroke();
+        ctx.restore();
       }else if(q.style==='crescentAir'){
         ctx.save();
         ctx.translate(q.x,q.y);
