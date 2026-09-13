@@ -3805,3 +3805,21 @@ body.portrait-play #gameCanvas{background:transparent!important}
   border-radius:17px !important;
   z-index:36 !important;
 }
+
+
+/* v0.11.5: 古い portrait-play 指定より強いセレクタでHPゲージとの重なりを解消 */
+body.portrait-play #practiceExitButton.practice-exit-btn:not([hidden]){
+  display:block !important;
+  position:fixed !important;
+  top:112px !important;
+  left:12px !important;
+  right:auto !important;
+  bottom:auto !important;
+  min-width:92px !important;
+  width:auto !important;
+  padding:7px 10px !important;
+  border-radius:15px !important;
+  font-size:12px !important;
+  line-height:1.05 !important;
+  z-index:70 !important;
+}

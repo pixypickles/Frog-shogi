@@ -6037,7 +6037,7 @@
       x:Math.max(82,Math.min(innerWidth-82,target.x)),
       y:Math.max(110,Math.min(innerHeight-145,target.y)),
       vx:.01,vy:0,
-      r:74,
+      r:50,
       age:0,maxAge:1.35,t:1,life:1.35,
       damage:6.2,
       name:'グランドトルネード',
@@ -9242,50 +9242,63 @@ function drawBackground(dt){
 
       if(q.style==='flameClaw'){ctx.rotate(q.spin||0);ctx.shadowColor='#ff3a20';ctx.shadowBlur=20;ctx.strokeStyle='#ff4028';ctx.lineWidth=6;for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(-18,i*8);ctx.quadraticCurveTo(0,-15+i*7,24,i*5);ctx.stroke();}ctx.strokeStyle='#ffd05a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(27,0);ctx.stroke();
       }else if(q.style==='grandTornado'){
-        // 青空と白雲の上でも見えるよう加算合成を解除
+        // 上が太く、下が細い「漏斗型」の竜巻。
+        // 相手位置に直接発生するので、判定も見た目も以前より小さめ。
         ctx.globalCompositeOperation='source-over';
         ctx.save();
-        ctx.rotate(-(Math.atan2(q.vy,q.vx)||0));
         const now=performance.now()/1000;
-        const pulse=.96+Math.sin(now*9)*.04;
+        const sway=Math.sin(now*5.5)*3;
+        ctx.translate(sway,0);
 
-        const body=ctx.createLinearGradient(0,-95,0,95);
-        body.addColorStop(0,'rgba(210,250,255,.30)');
-        body.addColorStop(.42,'rgba(70,185,235,.55)');
-        body.addColorStop(1,'rgba(10,90,165,.70)');
+        // 半透明の漏斗本体：上部が広く、下へ向かって細くなる。
+        const body=ctx.createLinearGradient(0,-78,0,78);
+        body.addColorStop(0,'rgba(185,245,255,.50)');
+        body.addColorStop(.42,'rgba(70,185,230,.48)');
+        body.addColorStop(1,'rgba(12,95,165,.72)');
         ctx.fillStyle=body;
-        ctx.strokeStyle='rgba(10,95,170,.96)';
-        ctx.lineWidth=4;
-
+        ctx.strokeStyle='rgba(10,95,165,.92)';
+        ctx.lineWidth=3.5;
         ctx.beginPath();
-        ctx.moveTo(-24,-92);
-        ctx.bezierCurveTo(-65,-48,-90,20,-73,72);
-        ctx.quadraticCurveTo(0,105,73,72);
-        ctx.bezierCurveTo(90,20,65,-48,24,-92);
+        ctx.moveTo(-62,-70);
+        ctx.bezierCurveTo(-54,-32,-32,18,-10,70);
+        ctx.quadraticCurveTo(0,82,10,70);
+        ctx.bezierCurveTo(32,18,54,-32,62,-70);
+        ctx.quadraticCurveTo(0,-88,-62,-70);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        for(let i=0;i<5;i++){
-          const yy=-65+i*34;
-          const ww=(38+i*10)*pulse;
+        // 回転する渦。上ほど大きく、下へ行くほど小さい。
+        const ys=[-60,-30,0,28,52];
+        const widths=[62,52,41,29,17];
+        const heights=[14,13,11,9,7];
+        for(let i=0;i<ys.length;i++){
           ctx.save();
-          ctx.translate(0,yy);
-          ctx.rotate(now*(i%2?5.4:-5.4));
+          ctx.translate(Math.sin(now*7+i)*2,ys[i]);
+          ctx.rotate(now*(i%2?5.8:-5.8));
           ctx.strokeStyle=i%2
-            ? 'rgba(240,255,255,.98)'
-            : 'rgba(55,180,230,.98)';
-          ctx.lineWidth=5;
+            ? 'rgba(245,255,255,.98)'
+            : 'rgba(55,190,235,.98)';
+          ctx.lineWidth=4.2-i*.35;
           ctx.beginPath();
-          ctx.ellipse(0,0,ww,12+i*2.8,0,0,Math.PI*2);
+          ctx.ellipse(0,0,widths[i],heights[i],0,0,Math.PI*2);
           ctx.stroke();
           ctx.restore();
         }
 
-        ctx.fillStyle='rgba(5,80,145,.32)';
+        // 中心のねじれ線で「円筒」ではなく竜巻らしく見せる。
+        ctx.strokeStyle='rgba(230,255,255,.68)';
+        ctx.lineWidth=2.2;
         ctx.beginPath();
-        ctx.ellipse(0,40,24,58,0,0,Math.PI*2);
-        ctx.fill();
+        ctx.moveTo(-30,-67);
+        ctx.bezierCurveTo(38,-38,-34,4,20,34);
+        ctx.bezierCurveTo(-5,50,7,62,0,76);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(30,-67);
+        ctx.bezierCurveTo(-38,-38,34,4,-20,34);
+        ctx.bezierCurveTo(5,50,-7,62,0,76);
+        ctx.stroke();
 
         ctx.restore();
       }else if(q.style==='crescentAir'){
