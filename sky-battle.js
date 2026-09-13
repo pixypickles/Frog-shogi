@@ -3020,7 +3020,7 @@
     }
 
     // 古い入力は削除
-    input.commandHistory=hist.filter(v=>now-v.time<=1800).slice(-18);
+    input.commandHistory=hist.filter(v=>now-v.time<=2400).slice(-24);
   }
 
   function hasCommand(sequence, maxMs=700){
@@ -3103,10 +3103,10 @@
     if(player && player.type==='yellow' && Math.hypot(input.x,input.y)>.42){
       const nowCircle=performance.now();
       const a=Math.atan2(input.y,input.x);
-      if(input.raphaelCircleLastAngle!=null && nowCircle-input.raphaelCircleLastTime<700){
+      if(input.raphaelCircleLastAngle!=null && nowCircle-input.raphaelCircleLastTime<1000){
         let d=Math.atan2(Math.sin(a-input.raphaelCircleLastAngle),Math.cos(a-input.raphaelCircleLastAngle));
         if(Math.abs(d)<2.45) input.raphaelCircleAccum+=d;
-      }else if(nowCircle-input.raphaelCircleLastTime>=700){
+      }else if(nowCircle-input.raphaelCircleLastTime>=1000){
         input.raphaelCircleAccum=0;
       }
       input.raphaelCircleLastAngle=a;
@@ -6002,24 +6002,29 @@
   }
 
 
-  function raphaelHasFullCircle(maxMs=1800){
+  function raphaelHasFullCircle(maxMs=2200){
     const now=performance.now();
-    if(now-input.raphaelCircleLastTime<=850 && Math.abs(input.raphaelCircleAccum)>=Math.PI*1.50)return true;
-    const hist=(input.commandHistory||[]).filter(v=>now-v.time<=maxMs).map(v=>v.dir);
-    const toCard=d=>{
-      if(d==='up'||d==='upLeft'||d==='upRight')return 'up';
-      if(d==='down'||d==='downLeft'||d==='downRight')return 'down';
-      if(d==='left')return 'left'; if(d==='right')return 'right'; return null;
-    };
-    const seq=[]; for(const d of hist){const c=toCard(d); if(c&&seq[seq.length-1]!==c)seq.push(c);}
-    const orders=[['up','right','down','left'],['up','left','down','right']];
-    for(const order of orders){
-      for(let i=0;i<=seq.length-4;i++){
-        const k=order.indexOf(seq[i]); if(k<0)continue;
-        if(seq[i+1]===order[(k+1)%4]&&seq[i+2]===order[(k+2)%4]&&seq[i+3]===order[(k+3)%4])return true;
-      }
+
+    // タッチ回転量で成立。かなり甘めに約225度からOK。
+    if(now-input.raphaelCircleLastTime<=1200 &&
+       Math.abs(input.raphaelCircleAccum)>=Math.PI*1.25){
+      return true;
     }
-    return false;
+
+    // 方向履歴に上下左右が全部入っていれば成立。
+    // 順番は問わない。実際にぐるっと回した操作を取りこぼさないことを優先。
+    const hist=(input.commandHistory||[]).filter(v=>now-v.time<=maxMs);
+    const seen=new Set();
+
+    for(const v of hist){
+      const d=v.dir;
+      if(d==='up'||d==='upLeft'||d==='upRight')seen.add('up');
+      if(d==='down'||d==='downLeft'||d==='downRight')seen.add('down');
+      if(d==='left'||d==='upLeft'||d==='downLeft')seen.add('left');
+      if(d==='right'||d==='upRight'||d==='downRight')seen.add('right');
+    }
+
+    return seen.has('up')&&seen.has('down')&&seen.has('left')&&seen.has('right');
   }
 
   function raphaelGiantTornado(f){
@@ -6061,13 +6066,14 @@
     });
 
     comboEl.textContent='隠し技！ グランドトルネード！';
+    if(comboEl) comboEl.style.opacity='1';
     setTimeout(()=>{if(comboEl.textContent==='隠し技！ グランドトルネード！')comboEl.textContent='';},760);
     clearCommand();
     return true;
   }
 
   function trySpecial(f,kind){
-    if(f && f.type==='yellow' && kind==='punch' && raphaelHasFullCircle(1800)){
+    if(f && f.type==='yellow' && kind==='punch' && raphaelHasFullCircle(2200)){
       return raphaelGiantTornado(f);
     }
 
