@@ -3020,7 +3020,7 @@
     }
 
     // 古い入力は削除
-    input.commandHistory=hist.filter(v=>now-v.time<=900).slice(-8);
+    input.commandHistory=hist.filter(v=>now-v.time<=1800).slice(-18);
   }
 
   function hasCommand(sequence, maxMs=700){
@@ -3103,11 +3103,10 @@
     if(player && player.type==='yellow' && Math.hypot(input.x,input.y)>.42){
       const nowCircle=performance.now();
       const a=Math.atan2(input.y,input.x);
-      if(input.raphaelCircleLastAngle!=null && nowCircle-input.raphaelCircleLastTime<260){
+      if(input.raphaelCircleLastAngle!=null && nowCircle-input.raphaelCircleLastTime<700){
         let d=Math.atan2(Math.sin(a-input.raphaelCircleLastAngle),Math.cos(a-input.raphaelCircleLastAngle));
-        // 急な反転ノイズは除外し、回した角度を蓄積。
-        if(Math.abs(d)<1.75) input.raphaelCircleAccum+=d;
-      }else if(nowCircle-input.raphaelCircleLastTime>=260){
+        if(Math.abs(d)<2.45) input.raphaelCircleAccum+=d;
+      }else if(nowCircle-input.raphaelCircleLastTime>=700){
         input.raphaelCircleAccum=0;
       }
       input.raphaelCircleLastAngle=a;
@@ -6003,26 +6002,31 @@
   }
 
 
-  function raphaelHasFullCircle(maxMs=1500){
+  function raphaelHasFullCircle(maxMs=1800){
     const now=performance.now();
-    // タッチスティックを実際に一回転させた角度を直接見る。
-    if(now-input.raphaelCircleLastTime<=maxMs && Math.abs(input.raphaelCircleAccum)>=Math.PI*1.65){
-      return true;
+    if(now-input.raphaelCircleLastTime<=850 && Math.abs(input.raphaelCircleAccum)>=Math.PI*1.50)return true;
+    const hist=(input.commandHistory||[]).filter(v=>now-v.time<=maxMs).map(v=>v.dir);
+    const toCard=d=>{
+      if(d==='up'||d==='upLeft'||d==='upRight')return 'up';
+      if(d==='down'||d==='downLeft'||d==='downRight')return 'down';
+      if(d==='left')return 'left'; if(d==='right')return 'right'; return null;
+    };
+    const seq=[]; for(const d of hist){const c=toCard(d); if(c&&seq[seq.length-1]!==c)seq.push(c);}
+    const orders=[['up','right','down','left'],['up','left','down','right']];
+    for(const order of orders){
+      for(let i=0;i<=seq.length-4;i++){
+        const k=order.indexOf(seq[i]); if(k<0)continue;
+        if(seq[i+1]===order[(k+1)%4]&&seq[i+2]===order[(k+2)%4]&&seq[i+3]===order[(k+3)%4])return true;
+      }
     }
-    // キーボード等では上下左右の順入力でも成立。
-    const hist=(input.commandHistory||[]).filter(v=>now-v.time<=900).map(v=>v.dir);
-    const card=hist.filter(d=>['up','right','down','left'].includes(d));
-    const joined=card.join(',');
-    return joined.includes('up,right,down,left') || joined.includes('right,down,left,up') ||
-           joined.includes('down,left,up,right') || joined.includes('left,up,right,down') ||
-           joined.includes('up,left,down,right') || joined.includes('left,down,right,up') ||
-           joined.includes('down,right,up,left') || joined.includes('right,up,left,down');
+    return false;
   }
 
   function raphaelGiantTornado(f){
-    if(gameOver||!f||f.type!=='yellow'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    if(gameOver||!f||f.type!=='yellow'||f.stun>0)return false;
     const target=f.isPlayer?enemy:player;
     if(!target)return false;
+    f.guard=false; f.attackT=0; f.specialT=0;
 
     input.raphaelCircleAccum=0;
     input.raphaelCircleLastAngle=null;
@@ -6063,7 +6067,7 @@
   }
 
   function trySpecial(f,kind){
-    if(f && f.type==='yellow' && kind==='punch' && raphaelHasFullCircle(1500)){
+    if(f && f.type==='yellow' && kind==='punch' && raphaelHasFullCircle(1800)){
       return raphaelGiantTornado(f);
     }
 
