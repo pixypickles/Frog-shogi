@@ -3001,7 +3001,10 @@
     lastBackInputTime:0,
     purpleGuardCount:0,
     purpleGuardLastTime:0,
-    forwardTapTimes:[]
+    forwardTapTimes:[],
+    raphaelCircleLastAngle:null,
+    raphaelCircleAccum:0,
+    raphaelCircleLastTime:0
   };
 
   function pushCommandDir(dir){
@@ -3095,6 +3098,21 @@
   function checkTouchDash(){
     const dir=getStickDirection(input.x,input.y);
     input.currentDir=dir;
+
+    // ラファエル隠し技用：スティックの実際の回転角を蓄積する。
+    if(player && player.type==='yellow' && Math.hypot(input.x,input.y)>.42){
+      const nowCircle=performance.now();
+      const a=Math.atan2(input.y,input.x);
+      if(input.raphaelCircleLastAngle!=null && nowCircle-input.raphaelCircleLastTime<260){
+        let d=Math.atan2(Math.sin(a-input.raphaelCircleLastAngle),Math.cos(a-input.raphaelCircleLastAngle));
+        // 急な反転ノイズは除外し、回した角度を蓄積。
+        if(Math.abs(d)<1.75) input.raphaelCircleAccum+=d;
+      }else if(nowCircle-input.raphaelCircleLastTime>=260){
+        input.raphaelCircleAccum=0;
+      }
+      input.raphaelCircleLastAngle=a;
+      input.raphaelCircleLastTime=nowCircle;
+    }
 
     // リリスさん用：後ろ方向を入れた時刻を記録
     if(player && player.type==='purple' && dir){
@@ -5985,21 +6003,20 @@
   }
 
 
-  function raphaelHasFullCircle(maxMs=1250){
+  function raphaelHasFullCircle(maxMs=1500){
     const now=performance.now();
-    const hist=(input.commandHistory||[]).filter(v=>now-v.time<=maxMs);
-    if(hist.length<6)return false;
-    const dirs=['right','downRight','down','downLeft','left','upLeft','up','upRight'];
-    const vals=hist.map(v=>dirs.indexOf(v.dir)).filter(v=>v>=0);
-    if(vals.length<6)return false;
-    let cw=0,ccw=0;
-    for(let i=1;i<vals.length;i++){
-      const d=(vals[i]-vals[i-1]+8)%8;
-      const r=(vals[i-1]-vals[i]+8)%8;
-      if(d===1||d===2)cw++;
-      if(r===1||r===2)ccw++;
+    // タッチスティックを実際に一回転させた角度を直接見る。
+    if(now-input.raphaelCircleLastTime<=maxMs && Math.abs(input.raphaelCircleAccum)>=Math.PI*1.65){
+      return true;
     }
-    return cw>=5||ccw>=5;
+    // キーボード等では上下左右の順入力でも成立。
+    const hist=(input.commandHistory||[]).filter(v=>now-v.time<=900).map(v=>v.dir);
+    const card=hist.filter(d=>['up','right','down','left'].includes(d));
+    const joined=card.join(',');
+    return joined.includes('up,right,down,left') || joined.includes('right,down,left,up') ||
+           joined.includes('down,left,up,right') || joined.includes('left,up,right,down') ||
+           joined.includes('up,left,down,right') || joined.includes('left,down,right,up') ||
+           joined.includes('down,right,up,left') || joined.includes('right,up,left,down');
   }
 
   function raphaelGiantTornado(f){
@@ -6007,6 +6024,8 @@
     const target=f.isPlayer?enemy:player;
     if(!target)return false;
 
+    input.raphaelCircleAccum=0;
+    input.raphaelCircleLastAngle=null;
     f.specialType='raphaelGiantTornado';
     f.specialT=.72;
     f.attack='punch';
@@ -6037,14 +6056,14 @@
       maxReflect:0
     });
 
-    comboEl.textContent='グランドトルネード!';
-    setTimeout(()=>{if(comboEl.textContent==='グランドトルネード!')comboEl.textContent='';},760);
+    comboEl.textContent='隠し技！ グランドトルネード！';
+    setTimeout(()=>{if(comboEl.textContent==='隠し技！ グランドトルネード！')comboEl.textContent='';},760);
     clearCommand();
     return true;
   }
 
   function trySpecial(f,kind){
-    if(f && f.type==='yellow' && kind==='punch' && raphaelHasFullCircle(1250)){
+    if(f && f.type==='yellow' && kind==='punch' && raphaelHasFullCircle(1500)){
       return raphaelGiantTornado(f);
     }
 
@@ -9197,8 +9216,8 @@ function drawBackground(dt){
         ctx.restore();
       }else if(q.style==='crescentAir'){
         ctx.save();
-        ctx.translate(q.x,q.y);
-        ctx.rotate(Math.atan2(q.vy,q.vx)+Math.PI/2);
+        // 外側ですでに弾位置・進行方向へ変換済み。ここでは高速自転だけ加える。
+        ctx.rotate((performance.now()/1000)*20);
         const rr=q.r*1.45;
         ctx.shadowColor='rgba(210,250,255,.95)';
         ctx.shadowBlur=16;
