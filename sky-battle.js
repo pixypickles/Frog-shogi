@@ -9311,10 +9311,12 @@ function drawBackground(dt){
 
       if(q.style==='flameClaw'){ctx.rotate(q.spin||0);ctx.shadowColor='#ff3a20';ctx.shadowBlur=20;ctx.strokeStyle='#ff4028';ctx.lineWidth=6;for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(-18,i*8);ctx.quadraticCurveTo(0,-15+i*7,24,i*5);ctx.stroke();}ctx.strokeStyle='#ffd05a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(27,0);ctx.stroke();
       }else if(q.style==='grandTornado'){
-        // 回転リングを並べるのではなく、
-        // 上が太く下が細い、縦長でうねった一本の竜巻として描画。
+        // 共通弾描画で進行方向へ回転済みだが、
+        // 竜巻は左右どちらへ進んでも上下を固定する。
+        // 左移動時に ang=PI で逆さになるため、ここで共通回転を打ち消す。
         ctx.globalCompositeOperation='source-over';
         ctx.save();
+        ctx.rotate(-ang);
 
         const now=performance.now()/1000;
         const h=q.tornadoH||54;
