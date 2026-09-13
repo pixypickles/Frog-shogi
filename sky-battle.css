@@ -3789,3 +3789,19 @@ body.portrait-play #gameCanvas{background:transparent!important}
   font-size:15px !important;
   z-index:45 !important;
 }
+
+
+/* v0.11.4: PLAYER HPを隠さない位置へ */
+#practiceExitButton.practice-exit-btn{
+  position:fixed !important;
+  top:150px !important;
+  left:14px !important;
+  right:auto !important;
+  min-width:102px !important;
+  width:auto !important;
+  padding:7px 11px !important;
+  font-size:13px !important;
+  line-height:1.1 !important;
+  border-radius:17px !important;
+  z-index:36 !important;
+}

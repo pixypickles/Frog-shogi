@@ -3619,7 +3619,7 @@
     if(titleReturnButton)titleReturnButton.hidden=true;
     if(practiceExitButton && mixBattleContext.practice){
       practiceExitButton.hidden=false;
-      practiceExitButton.textContent='練習メニュー';
+      practiceExitButton.textContent='キャラ選択へ';
       practiceExitButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'training.html',location.href).href; };
     }
     return true;
@@ -6044,6 +6044,7 @@
       color:'aqua',
       reflected:0,hit:false,spin:0,
       style:'grandTornado',
+      tornadoHitCd:0,
       poisonDuration:0,curve:0,wobble:0,
       baseVy:0,maxReflect:0
     });
@@ -8109,6 +8110,7 @@ function drawBackground(dt){
       // 雲上格闘2 共通飛び道具：シャボンガードに触れると自動反射。
       water2Shots.forEach(q=>{
         q.age=(q.age||0)+dt;
+        if(q.style==='grandTornado') q.tornadoHitCd=Math.max(0,(q.tornadoHitCd||0)-dt);
         q.spin=(q.spin||0)+dt*(q.style==='spinCutterBlade'?22:(q.style==='aquaSpin'?10:4));
         if(q.curve){ q.vy += q.curve*dt; }
         if(q.style==='iceChargeOrb'){ q.trail=q.trail||[]; q.trail.push({x:q.x,y:q.y,t:.75}); if(q.trail.length>22)q.trail.shift(); q.trail.forEach(v=>v.t-=dt); q.trail=q.trail.filter(v=>v.t>0); }
@@ -8117,17 +8119,29 @@ function drawBackground(dt){
         const target=q.owner&&q.owner.isPlayer?enemy:player;
         if(!target||q.hit) return;
         if(Math.hypot(target.x-q.x,target.y-q.y)<target.radius+q.r+14){
-          if(target.guard){
-            // 反射：所有者を入れ替え、相手方向へ返す。ラリーごとに少し加速・大型化。
+          if(q.style==='grandTornado'){
+            // 持続技：命中しても消さない
+            if(q.tornadoHitCd<=0){
+              if(target.guard){
+                spawnImpact(target.x,target.y,'guard');
+                playSfx('guard');
+              }else{
+                q.owner._projectileHit=true;
+                damageHit(q.owner,target,2.05*q.owner.damageMul,
+                  48*Math.sign((target.x-q.x)||q.owner.face),-34);
+                q.owner._projectileHit=false;
+                spawnImpact(target.x,target.y,'hit');
+              }
+              q.tornadoHitCd=.32;
+            }
+          }else if(target.guard){
             spawnImpact(q.x,q.y,'guard'); playSfx('guard');
             q.owner=target; q.vx=-q.vx*1.08; q.vy=-q.vy*.94;
-            // 泡は大きくなり過ぎない。ほかの弾も成長を控えめにしてラリーを見やすくする。
             const grow=(q.style==='bubble')?1.015:1.035;
             const cap=(q.style==='bubble')?23:25;
             q.r=Math.min(cap,q.r*grow);
             q.damage*=1.06; q.reflected=(q.reflected||0)+1;
             q.x=target.x+target.face*(target.radius+q.r+12);
-            // 反射回数が増えるほど不安定に。上限では派手に消散。
             if(q.reflected>=q.maxReflect){
               q.hit=true;
               spawnImpact(q.x,q.y,'guard');
@@ -9228,30 +9242,51 @@ function drawBackground(dt){
 
       if(q.style==='flameClaw'){ctx.rotate(q.spin||0);ctx.shadowColor='#ff3a20';ctx.shadowBlur=20;ctx.strokeStyle='#ff4028';ctx.lineWidth=6;for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(-18,i*8);ctx.quadraticCurveTo(0,-15+i*7,24,i*5);ctx.stroke();}ctx.strokeStyle='#ffd05a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(27,0);ctx.stroke();
       }else if(q.style==='grandTornado'){
+        // 青空と白雲の上でも見えるよう加算合成を解除
+        ctx.globalCompositeOperation='source-over';
         ctx.save();
         ctx.rotate(-(Math.atan2(q.vy,q.vx)||0));
         const now=performance.now()/1000;
-        ctx.globalAlpha=.78;
-        ctx.strokeStyle='rgba(225,252,255,.96)';
-        ctx.lineWidth=5;
+        const pulse=.96+Math.sin(now*9)*.04;
 
-        for(let i=0;i<4;i++){
-          const yy=-46+i*31;
-          const ww=34+i*13;
+        const body=ctx.createLinearGradient(0,-95,0,95);
+        body.addColorStop(0,'rgba(210,250,255,.30)');
+        body.addColorStop(.42,'rgba(70,185,235,.55)');
+        body.addColorStop(1,'rgba(10,90,165,.70)');
+        ctx.fillStyle=body;
+        ctx.strokeStyle='rgba(10,95,170,.96)';
+        ctx.lineWidth=4;
+
+        ctx.beginPath();
+        ctx.moveTo(-24,-92);
+        ctx.bezierCurveTo(-65,-48,-90,20,-73,72);
+        ctx.quadraticCurveTo(0,105,73,72);
+        ctx.bezierCurveTo(90,20,65,-48,24,-92);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        for(let i=0;i<5;i++){
+          const yy=-65+i*34;
+          const ww=(38+i*10)*pulse;
           ctx.save();
           ctx.translate(0,yy);
-          ctx.rotate(now*(i%2?4.2:-4.2));
+          ctx.rotate(now*(i%2?5.4:-5.4));
+          ctx.strokeStyle=i%2
+            ? 'rgba(240,255,255,.98)'
+            : 'rgba(55,180,230,.98)';
+          ctx.lineWidth=5;
           ctx.beginPath();
-          ctx.ellipse(0,0,ww,11+i*3,0,0,Math.PI*2);
+          ctx.ellipse(0,0,ww,12+i*2.8,0,0,Math.PI*2);
           ctx.stroke();
           ctx.restore();
         }
 
-        ctx.strokeStyle='rgba(105,210,250,.48)';
-        ctx.lineWidth=3;
+        ctx.fillStyle='rgba(5,80,145,.32)';
         ctx.beginPath();
-        ctx.ellipse(0,20,72,28,0,0,Math.PI*2);
-        ctx.stroke();
+        ctx.ellipse(0,40,24,58,0,0,Math.PI*2);
+        ctx.fill();
+
         ctx.restore();
       }else if(q.style==='crescentAir'){
         ctx.save();
@@ -9738,7 +9773,7 @@ function drawBackground(dt){
       if(practiceExitButton){
         if(mixBattleContext.practice){
           practiceExitButton.hidden=false;
-          practiceExitButton.textContent='練習メニュー';
+          practiceExitButton.textContent='キャラ選択へ';
           practiceExitButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'training.html',location.href).href; };
         }else{
           practiceExitButton.hidden=true;
