@@ -359,7 +359,7 @@
       'バーニングサイクロン：下 → 後ろ ＋ キック'
     ],
     blue:['上＋ガード：ウォータージェット上昇','上昇中＋パンチ：ジェットアッパー','上＋パンチ：ビッグウォータードロップ','後ろ＋キック：クラウドレインショット','下＋キック：スカイレインバースト','下→前＋パンチ：ギガウォーターキャノン'],
-    yellow:['方向＋パンチ：逃げながら逆方向へ三日月エアカッター（強追尾）','方向＋キック：ウィンドタックル','ガード×2：ヒールウィンド（徐々に回復＋少し速度UP）','隠し：方向キー1回転＋パンチ：グランドトルネード'],
+    yellow:['方向＋パンチ：逃げながら逆方向へ三日月エアカッター（強追尾）','方向＋キック：ウィンドタックル','ガード×2：ヒールウィンド（徐々に回復＋少し速度UP）','隠し：スティック1回転（上下左右を通過）＋パンチ：グランドトルネード'],
     orange:[
       'ホワイトカウンター：下 → 後ろ ＋ ガード',
       'ガーディアンタックル：後ろ → 前 ＋ ガード',
@@ -3004,7 +3004,9 @@
     forwardTapTimes:[],
     raphaelCircleLastAngle:null,
     raphaelCircleAccum:0,
-    raphaelCircleLastTime:0
+    raphaelCircleLastTime:0,
+    raphaelCircleMask:0,
+    raphaelCircleReadyUntil:0
   };
 
   function pushCommandDir(dir){
@@ -3020,7 +3022,7 @@
     }
 
     // 古い入力は削除
-    input.commandHistory=hist.filter(v=>now-v.time<=2400).slice(-24);
+    input.commandHistory=hist.filter(v=>now-v.time<=900).slice(-8);
   }
 
   function hasCommand(sequence, maxMs=700){
@@ -3099,19 +3101,6 @@
     const dir=getStickDirection(input.x,input.y);
     input.currentDir=dir;
 
-    // ラファエル隠し技用：スティックの実際の回転角を蓄積する。
-    if(player && player.type==='yellow' && Math.hypot(input.x,input.y)>.42){
-      const nowCircle=performance.now();
-      const a=Math.atan2(input.y,input.x);
-      if(input.raphaelCircleLastAngle!=null && nowCircle-input.raphaelCircleLastTime<1000){
-        let d=Math.atan2(Math.sin(a-input.raphaelCircleLastAngle),Math.cos(a-input.raphaelCircleLastAngle));
-        if(Math.abs(d)<2.45) input.raphaelCircleAccum+=d;
-      }else if(nowCircle-input.raphaelCircleLastTime>=1000){
-        input.raphaelCircleAccum=0;
-      }
-      input.raphaelCircleLastAngle=a;
-      input.raphaelCircleLastTime=nowCircle;
-    }
 
     // リリスさん用：後ろ方向を入れた時刻を記録
     if(player && player.type==='purple' && dir){
@@ -3122,6 +3111,7 @@
         input.lastBackInputTime=performance.now();
       }
     }
+
     if(dir) pushCommandDir(dir);
     if(!dir || input.dashUsedThisTouch) return;
 
@@ -6002,80 +5992,66 @@
   }
 
 
-  function raphaelHasFullCircle(maxMs=2200){
+  function raphaelHasFullCircle(maxMs=1250){
     const now=performance.now();
-
-    // タッチ回転量で成立。かなり甘めに約225度からOK。
-    if(now-input.raphaelCircleLastTime<=1200 &&
-       Math.abs(input.raphaelCircleAccum)>=Math.PI*1.25){
-      return true;
-    }
-
-    // 方向履歴に上下左右が全部入っていれば成立。
-    // 順番は問わない。実際にぐるっと回した操作を取りこぼさないことを優先。
     const hist=(input.commandHistory||[]).filter(v=>now-v.time<=maxMs);
-    const seen=new Set();
+    if(hist.length<6)return false;
 
-    for(const v of hist){
-      const d=v.dir;
-      if(d==='up'||d==='upLeft'||d==='upRight')seen.add('up');
-      if(d==='down'||d==='downLeft'||d==='downRight')seen.add('down');
-      if(d==='left'||d==='upLeft'||d==='downLeft')seen.add('left');
-      if(d==='right'||d==='upRight'||d==='downRight')seen.add('right');
+    const dirs=['right','downRight','down','downLeft','left','upLeft','up','upRight'];
+    const vals=hist.map(v=>dirs.indexOf(v.dir)).filter(v=>v>=0);
+    if(vals.length<6)return false;
+
+    let cw=0,ccw=0;
+    for(let i=1;i<vals.length;i++){
+      const d=(vals[i]-vals[i-1]+8)%8;
+      const r=(vals[i-1]-vals[i]+8)%8;
+      if(d===1||d===2)cw++;
+      if(r===1||r===2)ccw++;
     }
-
-    return seen.has('up')&&seen.has('down')&&seen.has('left')&&seen.has('right');
+    return cw>=5||ccw>=5;
   }
 
   function raphaelGiantTornado(f){
-    if(gameOver||!f||f.type!=='yellow'||f.stun>0)return false;
+    if(gameOver||!f||f.type!=='yellow'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+
     const target=f.isPlayer?enemy:player;
     if(!target)return false;
-    f.guard=false; f.attackT=0; f.specialT=0;
 
-    input.raphaelCircleAccum=0;
-    input.raphaelCircleLastAngle=null;
+    // ここまで来たら、0.10.3と同じタイミングで表示。
+    comboEl.textContent='グランドトルネード!';
+    setTimeout(()=>{if(comboEl.textContent==='グランドトルネード!')comboEl.textContent='';},900);
+
     f.specialType='raphaelGiantTornado';
     f.specialT=.72;
     f.attack='punch';
     f.attackT=.34;
 
+    // フリーズした専用竜巻配列は使わず、通常の弾1個だけで表現。
     water2Shots.push({
       owner:f,
-      x:target.x,
-      y:target.y,
-      vx:0.01,
-      vy:0,
-      r:72,
-      age:0,
-      maxAge:1.25,
-      t:1,
-      life:1,
-      damage:6.4,
+      x:Math.max(82,Math.min(innerWidth-82,target.x)),
+      y:Math.max(110,Math.min(innerHeight-145,target.y)),
+      vx:.01,vy:0,
+      r:74,
+      age:0,maxAge:1.35,t:1,life:1.35,
+      damage:6.2,
       name:'グランドトルネード',
       color:'aqua',
-      reflected:0,
-      hit:false,
-      spin:0,
+      reflected:0,hit:false,spin:0,
       style:'grandTornado',
-      poisonDuration:0,
-      curve:0,
-      wobble:0,
-      baseVy:0,
-      maxReflect:0
+      poisonDuration:0,curve:0,wobble:0,
+      baseVy:0,maxReflect:0
     });
 
-    comboEl.textContent='隠し技！ グランドトルネード！';
-    if(comboEl) comboEl.style.opacity='1';
-    setTimeout(()=>{if(comboEl.textContent==='隠し技！ グランドトルネード！')comboEl.textContent='';},760);
     clearCommand();
     return true;
   }
 
   function trySpecial(f,kind){
-    if(f && f.type==='yellow' && kind==='punch' && raphaelHasFullCircle(2200)){
+    if(f && f.type==='yellow' && kind==='punch' && raphaelHasFullCircle(1250)){
       return raphaelGiantTornado(f);
     }
+
 
     if(f && f.type==='yellow'){
       const dirName=raphaelPressedCardinal();
