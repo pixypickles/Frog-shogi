@@ -3115,7 +3115,7 @@
 
     if(dir) pushCommandDir(dir);
     if(player && player.type==='yellow' && dir && raphaelHasFullCircle(1250)){
-      input.raphaelTornadoReadyUntil=performance.now()+1800;
+      input.raphaelTornadoReadyUntil=performance.now()+2200;
     }
     if(!dir || input.dashUsedThisTouch) return;
 
@@ -3619,7 +3619,7 @@
     if(titleReturnButton)titleReturnButton.hidden=true;
     if(practiceExitButton && mixBattleContext.practice){
       practiceExitButton.hidden=false;
-      practiceExitButton.textContent='練習に戻る';
+      practiceExitButton.textContent='練習メニュー';
       practiceExitButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'training.html',location.href).href; };
     }
     return true;
@@ -6742,6 +6742,33 @@
     const max=r.width*.34, len=Math.hypot(dx,dy)||1, scale=Math.min(1,max/len);
     dx*=scale;dy*=scale;
     input.x=dx/max; input.y=dy/max;
+
+    // ラファエルの一回転はコマンド履歴ではなく、スティックそのものの軌跡で判定する。
+    // ダッシュや通常技の入力処理に横取りされない独立経路。
+    if(player && player.type==='yellow'){
+      const mag=Math.hypot(input.x,input.y);
+      if(mag>=.48){
+        const now=performance.now();
+        const a=Math.atan2(input.y,input.x);
+        if(input.raphaelCircleLastAngle==null || now-input.raphaelCircleLastTime>700){
+          input.raphaelCircleLastAngle=a;
+          input.raphaelCircleAccum=0;
+        }else{
+          let da=a-input.raphaelCircleLastAngle;
+          while(da>Math.PI) da-=Math.PI*2;
+          while(da<-Math.PI) da+=Math.PI*2;
+          // 指が飛んだような不自然な角度差は数えない。
+          if(Math.abs(da)<1.45) input.raphaelCircleAccum+=da;
+          input.raphaelCircleLastAngle=a;
+          if(Math.abs(input.raphaelCircleAccum)>=Math.PI*1.55){
+            input.raphaelTornadoReadyUntil=now+2200;
+            comboEl.textContent='TORNADO READY';
+          }
+        }
+        input.raphaelCircleLastTime=now;
+      }
+    }
+
     knob.style.transform=`translate(${dx}px,${dy}px)`;
     checkTouchDash();
   }
@@ -6749,6 +6776,11 @@
     const t=e.changedTouches[0];
     stickId=t.identifier;
     input.dashUsedThisTouch=false;
+    if(player && player.type==='yellow' && performance.now()>input.raphaelTornadoReadyUntil){
+      input.raphaelCircleLastAngle=null;
+      input.raphaelCircleAccum=0;
+      input.raphaelCircleLastTime=0;
+    }
     stickMove(t);
     e.preventDefault();
   },{passive:false});
@@ -6790,6 +6822,7 @@
           player.attackT=0;
           player.specialT=0;
           if(raphaelGiantTornado(player)){
+            comboEl.textContent='グランドトルネード!';
             playSfx('special');
             return;
           }
@@ -9705,7 +9738,7 @@ function drawBackground(dt){
       if(practiceExitButton){
         if(mixBattleContext.practice){
           practiceExitButton.hidden=false;
-          practiceExitButton.textContent='練習に戻る';
+          practiceExitButton.textContent='練習メニュー';
           practiceExitButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'training.html',location.href).href; };
         }else{
           practiceExitButton.hidden=true;
