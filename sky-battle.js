@@ -1138,6 +1138,7 @@
   }
 
   function applyUniversalHoming(shot,dt){
+    if(shot && shot.style==='grandTornado') return;
     if(!shot || !shot.owner) return;
     const target=shot.owner.isPlayer ? enemy : player;
     if(!target || target.hp<=0) return;
@@ -6032,19 +6033,41 @@
     f.attackT=.34;
 
     // フリーズした専用竜巻配列は使わず、通常の弾1個だけで表現。
+    const moveDir=(target.x>=f.x)?1:-1;
+    const finalH=Math.min(innerHeight*.76,560);
+
     water2Shots.push({
       owner:f,
-      x:Math.max(82,Math.min(innerWidth-82,target.x)),
-      y:Math.max(110,Math.min(innerHeight-145,target.y)),
-      vx:.01,vy:0,
-      r:50,
-      age:0,maxAge:1.35,t:1,life:1.35,
+      // ラファエルの位置から小さく発生
+      x:Math.max(48,Math.min(innerWidth-48,f.x)),
+      y:Math.max(90,Math.min(innerHeight-120,f.y)),
+      vx:0,
+      vy:0,
+      r:24,
+
+      // 成長演出
+      tornadoGrowT:0,
+      tornadoGrowDuration:.34,
+      tornadoStartH:54,
+      tornadoH:54,
+      tornadoFinalH:finalH,
+      tornadoTopW:24,
+      tornadoFinalTopW:58,
+      tornadoBottomW:6,
+      tornadoFinalBottomW:10,
+
+      // 成長後に相手方向へゆっくり流れる
+      tornadoMoveDir:moveDir,
+      tornadoMoveSpeed:92,
+      tornadoMoving:false,
+
+      tornadoHitCd:0,
+      age:0,maxAge:3.35,t:1,life:3.35,
       damage:6.2,
       name:'グランドトルネード',
       color:'aqua',
       reflected:0,hit:false,spin:0,
       style:'grandTornado',
-      tornadoHitCd:0,
       poisonDuration:0,curve:0,wobble:0,
       baseVy:0,maxReflect:0
     });
@@ -8110,7 +8133,26 @@ function drawBackground(dt){
       // 雲上格闘2 共通飛び道具：シャボンガードに触れると自動反射。
       water2Shots.forEach(q=>{
         q.age=(q.age||0)+dt;
-        if(q.style==='grandTornado') q.tornadoHitCd=Math.max(0,(q.tornadoHitCd||0)-dt);
+        if(q.style==='grandTornado'){
+          q.tornadoHitCd=Math.max(0,(q.tornadoHitCd||0)-dt);
+
+          q.tornadoGrowT=Math.min(q.tornadoGrowDuration||.34,(q.tornadoGrowT||0)+dt);
+          const gt=Math.min(1,(q.tornadoGrowT||0)/(q.tornadoGrowDuration||.34));
+
+          // ease-outで一気に縦へ伸びる
+          const ease=1-Math.pow(1-gt,3);
+          q.tornadoH=(q.tornadoStartH||54)+((q.tornadoFinalH||420)-(q.tornadoStartH||54))*ease;
+          q.tornadoTopW=24+((q.tornadoFinalTopW||58)-24)*ease;
+          q.tornadoBottomW=6+((q.tornadoFinalBottomW||10)-6)*ease;
+
+          // 成長がほぼ終わってから横移動開始
+          if(gt>=.96){
+            q.tornadoMoving=true;
+            q.vx=(q.tornadoMoveDir||1)*(q.tornadoMoveSpeed||92);
+          }else{
+            q.vx=0;
+          }
+        }
         q.spin=(q.spin||0)+dt*(q.style==='spinCutterBlade'?22:(q.style==='aquaSpin'?10:4));
         if(q.curve){ q.vy += q.curve*dt; }
         if(q.style==='iceChargeOrb'){ q.trail=q.trail||[]; q.trail.push({x:q.x,y:q.y,t:.75}); if(q.trail.length>22)q.trail.shift(); q.trail.forEach(v=>v.t-=dt); q.trail=q.trail.filter(v=>v.t>0); }
@@ -8118,7 +8160,11 @@ function drawBackground(dt){
         q.y+=q.vy*dt + Math.sin((q.spin||0)*2)*(q.wobble||0)*18*dt;
         const target=q.owner&&q.owner.isPlayer?enemy:player;
         if(!target||q.hit) return;
-        if(Math.hypot(target.x-q.x,target.y-q.y)<target.radius+q.r+14){
+        const tornadoCollision=q.style==='grandTornado'
+          ? (Math.abs(target.x-q.x)<(q.tornadoTopW||58)*.78+target.radius &&
+             Math.abs(target.y-q.y)<(q.tornadoH||360)*.50+target.radius)
+          : false;
+        if(tornadoCollision || Math.hypot(target.x-q.x,target.y-q.y)<target.radius+q.r+14){
           if(q.style==='grandTornado'){
             // 持続技：命中しても消さない
             if(q.tornadoHitCd<=0){
@@ -8158,7 +8204,7 @@ function drawBackground(dt){
           }
         }
       });
-      water2Shots=water2Shots.filter(q=>!q.hit&&(q.age||0)<(q.maxAge||18)&&q.x>-100&&q.x<innerWidth+100&&q.y>-100&&q.y<innerHeight+100);
+      water2Shots=water2Shots.filter(q=>!q.hit&&(q.age||0)<(q.maxAge||18)&&q.x>-160&&q.x<innerWidth+160&&q.y>-140&&q.y<innerHeight+140);
 
       toxicWaters.forEach(v=>{
         v.t-=dt;
@@ -9242,62 +9288,103 @@ function drawBackground(dt){
 
       if(q.style==='flameClaw'){ctx.rotate(q.spin||0);ctx.shadowColor='#ff3a20';ctx.shadowBlur=20;ctx.strokeStyle='#ff4028';ctx.lineWidth=6;for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(-18,i*8);ctx.quadraticCurveTo(0,-15+i*7,24,i*5);ctx.stroke();}ctx.strokeStyle='#ffd05a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(27,0);ctx.stroke();
       }else if(q.style==='grandTornado'){
-        // 上が太く、下が細い「漏斗型」の竜巻。
-        // 相手位置に直接発生するので、判定も見た目も以前より小さめ。
+        // 回転リングを並べるのではなく、
+        // 上が太く下が細い、縦長でうねった一本の竜巻として描画。
         ctx.globalCompositeOperation='source-over';
         ctx.save();
-        const now=performance.now()/1000;
-        const sway=Math.sin(now*5.5)*3;
-        ctx.translate(sway,0);
 
-        // 半透明の漏斗本体：上部が広く、下へ向かって細くなる。
-        const body=ctx.createLinearGradient(0,-78,0,78);
-        body.addColorStop(0,'rgba(185,245,255,.50)');
-        body.addColorStop(.42,'rgba(70,185,230,.48)');
-        body.addColorStop(1,'rgba(12,95,165,.72)');
+        const now=performance.now()/1000;
+        const h=q.tornadoH||54;
+        const topW=q.tornadoTopW||24;
+        const bottomW=q.tornadoBottomW||6;
+
+        // 成長中はラファエル付近から上方向へ伸びていく印象。
+        const growRatio=Math.min(1,(q.tornadoGrowT||0)/(q.tornadoGrowDuration||.34));
+        const top=-h*(.72-.22*growRatio);
+        const bottom=h*(.28+.22*growRatio);
+        const layers=13;
+
+        // 輪郭用の左右ポイント。
+        const leftPts=[];
+        const rightPts=[];
+        const centers=[];
+        for(let i=0;i<layers;i++){
+          const t=i/(layers-1);
+          const y=top+t*h;
+          // 下へ行くほど細くなる。途中に少し膨らみを残す。
+          const taper=Math.pow(1-t,.72);
+          const w=bottomW+(topW-bottomW)*taper;
+          // うねり。下ほど少し細かく曲がる。
+          const cx=Math.sin(now*2.1+i*.92)*5.5 +
+                   Math.sin(now*.8+i*1.67)*3.2*(.35+t*.65);
+          centers.push({x:cx,y,w});
+          leftPts.push({x:cx-w,y});
+          rightPts.push({x:cx+w,y});
+        }
+
+        // 本体を半透明で塗る
+        const body=ctx.createLinearGradient(0,top,0,bottom);
+        body.addColorStop(0,'rgba(225,252,255,.34)');
+        body.addColorStop(.28,'rgba(125,220,245,.43)');
+        body.addColorStop(.66,'rgba(45,155,215,.52)');
+        body.addColorStop(1,'rgba(15,90,165,.66)');
         ctx.fillStyle=body;
-        ctx.strokeStyle='rgba(10,95,165,.92)';
-        ctx.lineWidth=3.5;
+        ctx.strokeStyle='rgba(25,120,190,.88)';
+        ctx.lineWidth=3;
+
         ctx.beginPath();
-        ctx.moveTo(-62,-70);
-        ctx.bezierCurveTo(-54,-32,-32,18,-10,70);
-        ctx.quadraticCurveTo(0,82,10,70);
-        ctx.bezierCurveTo(32,18,54,-32,62,-70);
-        ctx.quadraticCurveTo(0,-88,-62,-70);
+        ctx.moveTo(leftPts[0].x,leftPts[0].y);
+        for(let i=1;i<layers;i++){
+          const p=leftPts[i];
+          const prev=leftPts[i-1];
+          ctx.quadraticCurveTo((prev.x+p.x)/2,prev.y+10,p.x,p.y);
+        }
+        for(let i=layers-1;i>=0;i--){
+          const p=rightPts[i];
+          const prev=rightPts[Math.min(layers-1,i+1)]||p;
+          ctx.quadraticCurveTo((prev.x+p.x)/2,p.y-10,p.x,p.y);
+        }
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // 回転する渦。上ほど大きく、下へ行くほど小さい。
-        const ys=[-60,-30,0,28,52];
-        const widths=[62,52,41,29,17];
-        const heights=[14,13,11,9,7];
-        for(let i=0;i<ys.length;i++){
-          ctx.save();
-          ctx.translate(Math.sin(now*7+i)*2,ys[i]);
-          ctx.rotate(now*(i%2?5.8:-5.8));
-          ctx.strokeStyle=i%2
-            ? 'rgba(245,255,255,.98)'
-            : 'rgba(55,190,235,.98)';
-          ctx.lineWidth=4.2-i*.35;
+        // 渦の横筋。完全な輪ではなく、左右にずれた弧を重ねる。
+        for(let i=0;i<layers;i++){
+          const c=centers[i];
+          const alpha=.84-(i/layers)*.24;
+          ctx.strokeStyle=(i%2===0)
+            ? `rgba(240,255,255,${alpha})`
+            : `rgba(70,190,235,${alpha})`;
+          ctx.lineWidth=Math.max(1.7,4.2-i*.16);
+
+          const skew=Math.sin(now*2.8+i*.75)*c.w*.16;
           ctx.beginPath();
-          ctx.ellipse(0,0,widths[i],heights[i],0,0,Math.PI*2);
+          ctx.moveTo(c.x-c.w,c.y);
+          ctx.quadraticCurveTo(
+            c.x+skew,
+            c.y-8-(i%3)*2,
+            c.x+c.w*.82,
+            c.y+2
+          );
           ctx.stroke();
-          ctx.restore();
         }
 
-        // 中心のねじれ線で「円筒」ではなく竜巻らしく見せる。
-        ctx.strokeStyle='rgba(230,255,255,.68)';
-        ctx.lineWidth=2.2;
+        // 中央のうねった芯
+        ctx.strokeStyle='rgba(235,255,255,.62)';
+        ctx.lineWidth=2.1;
         ctx.beginPath();
-        ctx.moveTo(-30,-67);
-        ctx.bezierCurveTo(38,-38,-34,4,20,34);
-        ctx.bezierCurveTo(-5,50,7,62,0,76);
+        ctx.moveTo(centers[0].x,centers[0].y);
+        for(let i=1;i<layers;i++){
+          const a=centers[i-1],b=centers[i];
+          ctx.quadraticCurveTo((a.x+b.x)/2+Math.sin(i)*4,(a.y+b.y)/2,b.x,b.y);
+        }
         ctx.stroke();
+
+        // 上部の開口部だけ少し強調
+        ctx.strokeStyle='rgba(205,248,255,.92)';
+        ctx.lineWidth=4;
         ctx.beginPath();
-        ctx.moveTo(30,-67);
-        ctx.bezierCurveTo(-38,-38,34,4,-20,34);
-        ctx.bezierCurveTo(5,50,-7,62,0,76);
+        ctx.ellipse(centers[0].x,top+2,topW,12,0,0,Math.PI*2);
         ctx.stroke();
 
         ctx.restore();
