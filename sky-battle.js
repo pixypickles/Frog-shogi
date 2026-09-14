@@ -2176,109 +2176,71 @@
       }
 
       if(this.type==='remiel'){
-        const mir=remielMirages.find(m=>m.owner===this&&m.t>0);
-        if(mir){
-          const drawRemielCopy=(gy,ga)=>{
-            ctx.save();ctx.translate(0,gy);
+        const mirages=remielActiveMirages(this);
+        if(mirages.length){
+          const drawRemielCopy=(gx,gy,ga,m)=>{
+            ctx.save();
+            ctx.translate(gx,gy);
             ctx.globalAlpha=ga;
-            ctx.shadowColor='#c9f6ff';ctx.shadowBlur=3;
+            ctx.shadowColor='#c9f6ff';
+            ctx.shadowBlur=4;
 
-            // 本体と同じ寸法で胴体・腹。
+            // 分身にも本体と同じ天使の羽。
+            drawSkyWings(this);
+
             ctx.fillStyle=pal.limb;
             ctx.beginPath();ctx.ellipse(0,31,30,34,0,0,Math.PI*2);ctx.fill();
             ctx.fillStyle=pal.belly;
             ctx.beginPath();ctx.ellipse(2,36,19,23,0,0,Math.PI*2);ctx.fill();
 
-            // 脚。
-            ctx.strokeStyle=pal.limb;ctx.lineWidth=12;ctx.lineCap='round';ctx.lineJoin='round';
+            ctx.strokeStyle=pal.limb;ctx.lineWidth=12;ctx.lineCap='round';
             ctx.beginPath();
             ctx.moveTo(-15,48);ctx.lineTo(-19,62);ctx.lineTo(-28,67);
-            if(this.attack!=='kick'){
-              ctx.moveTo(15,48);ctx.lineTo(19,62);ctx.lineTo(28,67);
-            }
+            ctx.moveTo(15,48);ctx.lineTo(19,62);ctx.lineTo(28,67);
             ctx.stroke();
 
-            // 腕。
-            if(!this.guard && this.attack!=='wave'){
-              ctx.strokeStyle=pal.limb;ctx.lineWidth=10;ctx.beginPath();
-              ctx.moveTo(-23,22);ctx.lineTo(-32,35);
-              if(this.attack!=='punch'){ctx.moveTo(23,22);ctx.lineTo(32,35);}
-              ctx.stroke();
-            }
+            ctx.strokeStyle=pal.limb;ctx.lineWidth=10;
+            ctx.beginPath();
+            ctx.moveTo(-23,22);ctx.lineTo(-32,35);
+            ctx.moveTo(23,22);ctx.lineTo(32,35);
+            ctx.stroke();
 
-            // 頭。
-            ctx.fillStyle=pal.body;ctx.beginPath();ctx.ellipse(0,-6,35,30,0,0,Math.PI*2);ctx.fill();
-            ctx.fillStyle=pal.eyeBump;ctx.beginPath();
-            ctx.arc(-19,-29,16,0,Math.PI*2);ctx.arc(19,-29,16,0,Math.PI*2);ctx.fill();
-            ctx.fillStyle='#fff';ctx.beginPath();
-            ctx.arc(-19,-30,10,0,Math.PI*2);ctx.arc(19,-30,10,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle=pal.body;
+            ctx.beginPath();ctx.ellipse(0,-6,35,30,0,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle=pal.eyeBump;
+            ctx.beginPath();ctx.arc(-19,-29,16,0,Math.PI*2);ctx.arc(19,-29,16,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle='#fff';
+            ctx.beginPath();ctx.arc(-19,-30,10,0,Math.PI*2);ctx.arc(19,-30,10,0,Math.PI*2);ctx.fill();
 
-            // 本体と同じ方向へ視線。
             const target=this.isPlayer?enemy:player;
-            let eyeShift=5;
-            if(target && target.x<this.x) eyeShift=-5;
-            ctx.fillStyle='#182a2a';ctx.beginPath();
-            ctx.arc(-19+eyeShift,-29,4,0,Math.PI*2);
-            ctx.arc( 19+eyeShift,-29,4,0,Math.PI*2);ctx.fill();
+            const eyeShift=target&&target.x<this.x+gx?-5:5;
+            ctx.fillStyle='#182a2a';
+            ctx.beginPath();ctx.arc(-19+eyeShift,-29,4,0,Math.PI*2);ctx.arc(19+eyeShift,-29,4,0,Math.PI*2);ctx.fill();
 
-            ctx.fillStyle='rgba(255,130,150,.42)';ctx.beginPath();
-            ctx.arc(-24,2,5,0,Math.PI*2);ctx.arc(24,2,5,0,Math.PI*2);ctx.fill();
-
-            ctx.strokeStyle='#255c31';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();
+            ctx.strokeStyle='#255c31';ctx.lineWidth=3;ctx.beginPath();
             ctx.arc(0,-3,14,.15*Math.PI,.85*Math.PI);ctx.stroke();
 
-            // 攻撃時の伸ばした手足もコピー。
-            if(this.attack==='punch'){
-              ctx.strokeStyle=pal.limb;ctx.lineWidth=12;ctx.beginPath();
-              ctx.moveTo(22,22);
-              if(this.attackVariant==='up')ctx.lineTo(48,-22);
-              else ctx.lineTo(59,8);
+            // 分身の舌も相手へ直接伸ばす。
+            if(m && (m.ghostTongueT||0)>0 && target){
+              const absX=this.x+gx,absY=this.y+gy;
+              const dx=target.x-absX,dy=target.y-absY;
+              const dist=Math.hypot(dx,dy)||1;
+              const reach=Math.min(this.tongueRange,dist);
+              ctx.strokeStyle='#ff718e';ctx.lineWidth=8;ctx.lineCap='round';
+              ctx.beginPath();ctx.moveTo(0,8);
+              ctx.lineTo(dx/dist*reach,8+dy/dist*reach);
               ctx.stroke();
             }
-            if(this.attack==='kick'){
-              ctx.strokeStyle=pal.limb;ctx.lineWidth=13;ctx.beginPath();
-              ctx.moveTo(15,48);ctx.lineTo(67,49);ctx.stroke();
-            }
+
             ctx.restore();
           };
 
-          const drawRemielGhostTongue=(gy)=>{
-            if((mir.ghostTongueT||0)<=0)return;
-            const target=this.isPlayer?enemy:player;
-            const ghostAbsY=this.y+gy;
-            const len=target?Math.min(this.tongueRange,Math.abs(target.x-this.x)):this.tongueRange*.75;
-            const ty=target?Math.max(-72,Math.min(72,target.y-ghostAbsY)):0;
-            ctx.save();ctx.translate(0,gy);
-            ctx.globalAlpha=.82*Math.min(1,(mir.ghostTongueT||0)/.07);
-            ctx.strokeStyle='#ff718e';ctx.lineWidth=8;ctx.lineCap='round';
-            ctx.shadowColor='#c9f6ff';ctx.shadowBlur=5;
-            ctx.beginPath();ctx.moveTo(0,8);ctx.lineTo(len,8+ty);ctx.stroke();
-            ctx.restore();
-          };
-
-          const splitTime=.28;
-          if((mir.age||0)<splitTime){
-            const p=Math.max(0,Math.min(1,(mir.age||0)/splitTime));
-            const e=p*p*(3-2*p);
-
-            // 実体と幻影の2体だけを、同じ中心点から反対方向へ広げる。
-            const bodyAbs =mir.originY+(mir.bodyTargetY -mir.originY)*e;
-            const ghostAbs=mir.originY+(mir.ghostTargetY-mir.originY)*e;
-            const bodyRel =bodyAbs-this.y;
-            const ghostRel=ghostAbs-this.y;
-
-            drawRemielCopy(bodyRel,.90);
-            drawRemielCopy(ghostRel,.90);
-            drawRemielGhostTongue(ghostRel);
-
-            // この間は後で描かれる実体を隠し、3体に見えないようにする。
-            ctx.globalAlpha=0;
-          }else{
-            // 分裂後は実体を通常描画し、幻影だけ追加。
-            const settle=Math.min(1,((mir.age||0)-splitTime)/.10);
-            drawRemielCopy(mir.offsetY,.94*settle*Math.min(1,mir.t/.22));
-            drawRemielGhostTongue(mir.offsetY);
-          }
+          mirages.forEach(m=>{
+            const g=remielGhostPos(m);if(!g)return;
+            const gx=g.x-this.x,gy=g.y-this.y;
+            const fade=Math.min(1,(m.age||0)/.16)*Math.min(1,m.t/.22);
+            drawRemielCopy(gx,gy,.88*fade,m);
+          });
         }
       }
       // 頭
@@ -2720,21 +2682,25 @@
       }
 
       if(this.tongueT>0 || (this.tonguePullTarget && this.tonguePullTimer>0) || (this.tongueClashTarget && this.tongueClashTimer>0)){
-        const target = this.tongueClashTarget || this.tonguePullTarget || (this.isPlayer ? enemy : player);
-        let len = Math.min(this.tongueRange, Math.abs(target.x-this.x));
-        ctx.strokeStyle=this.type==='samael'?'#9a72e8':'#ff718e';
-        ctx.lineWidth=this.type==='samael'?9:8;
-        ctx.lineCap='round';
-        ctx.beginPath();
-        // 舌だけは口の中央から出す
-        ctx.moveTo(0,8);
-        if(this.type==='beelzebub'){
-          const ty=Math.max(-62,Math.min(62,(target.y-this.y)*.42));
-          ctx.lineTo(len,8+ty);
-        }else{
-          ctx.lineTo(len,8);
+        const target=this.tongueClashTarget || this.tonguePullTarget || (this.isPlayer?enemy:player);
+        if(target){
+          // 描画座標は face で左右反転済みなので、相手方向をローカル座標に変換。
+          const worldDx=target.x-this.x;
+          const worldDy=target.y-this.y;
+          const localDx=worldDx*(this.face||1);
+          const dist=Math.hypot(localDx,worldDy)||1;
+          const reach=Math.min(this.tongueRange,dist);
+          const tx=localDx/dist*reach;
+          const ty=worldDy/dist*reach;
+
+          ctx.strokeStyle=this.type==='samael'?'#9a72e8':'#ff718e';
+          ctx.lineWidth=this.type==='samael'?9:8;
+          ctx.lineCap='round';
+          ctx.beginPath();
+          ctx.moveTo(0,8);
+          ctx.lineTo(tx,8+ty);
+          ctx.stroke();
         }
-        ctx.stroke();
       }
 
       if(this.attack==='wave'){
@@ -5242,95 +5208,110 @@
     comboEl.textContent='スパークバースト!';return true;
   }
 
+  function remielActiveMirages(f){
+    return remielMirages.filter(m=>m.owner===f&&m.t>0);
+  }
   function remielActiveMirage(f){
-    return remielMirages.find(m=>m.owner===f&&m.t>0);
+    return remielActiveMirages(f)[0]||null;
   }
   function remielGhostPos(m){
     if(!m||!m.owner)return null;
-    if((m.age||0)<.28 && m.originY!=null){
-      const p=Math.max(0,Math.min(1,(m.age||0)/.28));
-      const e=p*p*(3-2*p);
-      return {x:m.owner.x,y:m.originY+(m.ghostTargetY-m.originY)*e};
-    }
-    return {x:m.owner.x,y:m.owner.y+m.offsetY};
+    const p=Math.max(0,Math.min(1,(m.age||0)/.20));
+    const e=p*p*(3-2*p);
+    return {
+      x:m.owner.x+(m.offsetX||0)*e,
+      y:m.owner.y+(m.offsetY||0)*e
+    };
   }
+
   function remielConsumeMirage(m,x,y,kind='hit'){
     if(!m||m.t<=0)return;
     m.t=0;
     spawnImpact(x,y,kind);
   }
   function remielGhostNormalAttack(f,kind,variant='mid'){
-    const m=remielActiveMirage(f),target=f.isPlayer?enemy:player;
-    if(!m||!target)return;
-    const g=remielGhostPos(m); if(!g)return;
-    const dir=f.face,dx=(target.x-g.x)*dir,dy=target.y-g.y;
-    let hit=false,dmg=0,kx=0,ky=0,delay=0;
-    if(kind==='punch'){
-      const yAim=variant==='up'?-34:0;
-      hit=dx>0&&dx<88&&Math.abs(dy-yAim)<58;dmg=1.3*f.damageMul;kx=26*dir;ky=variant==='up'?-36:-3;delay=125;
-    }else if(kind==='kick'){
-      const yAim=variant==='down'?42:0;
-      hit=dx>0&&dx<106&&Math.abs(dy-yAim)<72;dmg=2.6*f.damageMul;kx=71*dir;ky=variant==='down'?63:-11;delay=175;
-    }else if(kind==='tongue'){
-      // 分身側にも実際に舌が伸びる見た目を出す。空振りでも舌は表示する。
-      m.ghostTongueT=.22;
-      m.ghostTongueTargetY=target.y;
-      hit=dx>0&&dx<f.tongueRange&&Math.abs(dy)<82;dmg=.9*f.damageMul;kx=0;ky=0;delay=70;
-    }
-    if(!hit)return;
-    setTimeout(()=>{
-      if(gameOver||m.t<=0||!target)return;
-      const gg=remielGhostPos(m);if(!gg)return;
-      // 幻影攻撃は半分ダメージ。舌はダメージのみで引き寄せ・絡め・投げなし。
-      if(target.guard){
-        spawnImpact(target.x,target.y,'guard');
-      }else{
-        damageHit(f,target,dmg,kx,ky);
-        spawnImpact(target.x,target.y,'hit');
+    const mirages=remielActiveMirages(f),target=f.isPlayer?enemy:player;
+    if(!mirages.length||!target)return;
+
+    mirages.forEach(m=>{
+      const g=remielGhostPos(m);if(!g)return;
+      const toX=target.x-g.x,toY=target.y-g.y,dist=Math.hypot(toX,toY);
+      const dir=toX>=0?1:-1;
+      let hit=false,dmg=0,kx=0,ky=0,delay=0;
+
+      if(kind==='punch'){
+        hit=dist<96;dmg=1.3*f.damageMul;kx=26*dir;ky=variant==='up'?-36:-3;delay=125;
+      }else if(kind==='kick'){
+        hit=dist<114;dmg=2.6*f.damageMul;kx=71*dir;ky=variant==='down'?63:-11;delay=175;
+      }else if(kind==='tongue'){
+        m.ghostTongueT=.22;
+        hit=dist<f.tongueRange;dmg=.9*f.damageMul;kx=0;ky=0;delay=70;
       }
-      remielConsumeMirage(m,gg.x,gg.y,'guard');
-    },delay);
-  }
-  function remielGhostMirageKick(f){
-    const m=remielActiveMirage(f),target=f.isPlayer?enemy:player;
-    if(!m||!target)return;
-    const g=remielGhostPos(m);if(!g)return;
-    const dir=f.face;
-    // 幻影も本体と同じ前進技を行ったものとして広めに判定。命中/ガードで消える。
-    setTimeout(()=>{
-      if(gameOver||m.t<=0||!target)return;
-      const gg=remielGhostPos(m);if(!gg)return;
-      const dx=(target.x-gg.x)*dir;
-      if(dx>0&&dx<250&&Math.abs(target.y-gg.y)<82){
+
+      if(!hit)return;
+      setTimeout(()=>{
+        if(gameOver||m.t<=0||!target)return;
+        const gg=remielGhostPos(m);if(!gg)return;
         if(target.guard)spawnImpact(target.x,target.y,'guard');
-        else{damageHit(f,target,4.9*f.damageMul,158*dir,-25);spawnImpact(target.x,target.y,'hit');}
+        else{
+          damageHit(f,target,dmg,kx,ky);
+          spawnImpact(target.x,target.y,'hit');
+        }
         remielConsumeMirage(m,gg.x,gg.y,'guard');
-      }
-    },180);
+      },delay);
+    });
+  }
+
+  function remielGhostMirageKick(f){
+    const mirages=remielActiveMirages(f),target=f.isPlayer?enemy:player;
+    if(!mirages.length||!target)return;
+    mirages.forEach(m=>{
+      setTimeout(()=>{
+        if(gameOver||m.t<=0||!target)return;
+        const g=remielGhostPos(m);if(!g)return;
+        const dx=target.x-g.x,dy=target.y-g.y;
+        if(Math.hypot(dx,dy)<265){
+          const dir=dx>=0?1:-1;
+          if(target.guard)spawnImpact(target.x,target.y,'guard');
+          else{damageHit(f,target,4.9*f.damageMul,158*dir,-25);spawnImpact(target.x,target.y,'hit');}
+          remielConsumeMirage(m,g.x,g.y,'guard');
+        }
+      },180);
+    });
   }
 
   function remielMakeMirage(f,where){
     if(gameOver||!f||f.type!=='remiel'||f.stun>0||f.specialT>0)return false;
-    remielMirages=remielMirages.filter(m=>m.owner!==f);
+    if(!['up','down','left','right'].includes(where))return false;
 
-    const originY=f.y;
-    // 幻影側は大きく、本体側も反対方向へ少し移動。
-    const ghostDelta=where==='up'?-108:108;
-    const bodyDelta =where==='up'?  48:-48;
-    const bodyTargetY=Math.max(74,Math.min(innerHeight-74,originY+bodyDelta));
-    const ghostTargetY=Math.max(74,Math.min(innerHeight-74,originY+ghostDelta));
+    // 同じ方向だけ更新。他方向の分身は残すので最大4体を同時維持。
+    remielMirages=remielMirages.filter(m=>!(m.owner===f&&m.side===where));
+
+    const gapY=132, gapX=138;
+    let offsetX=0,offsetY=0;
+    if(where==='up')offsetY=-gapY;
+    else if(where==='down')offsetY=gapY;
+    else if(where==='left')offsetX=-gapX;
+    else if(where==='right')offsetX=gapX;
+
+    // 画面外へ出すぎないよう、現在位置基準で補正。
+    const gx=Math.max(62,Math.min(innerWidth-62,f.x+offsetX));
+    const gy=Math.max(70,Math.min(innerHeight-70,f.y+offsetY));
+    offsetX=gx-f.x; offsetY=gy-f.y;
 
     remielMirages.push({
-      owner:f,side:where,t:4.2,life:4.2,alpha:.82,age:0,
-      originY,bodyTargetY,ghostTargetY,
-      offsetY:ghostTargetY-bodyTargetY
+      owner:f,side:where,t:4.8,life:4.8,alpha:.84,age:0,
+      offsetX,offsetY,ghostTongueT:0
     });
 
-    f.vy=0;
-    f.specialType='remielMirage';f.specialT=.34;
-    comboEl.textContent=where==='up'?'ミラージュ（上）!':'ミラージュ（下）!';
+    f.vx*=.35;f.vy*=.35;
+    f.specialType='remielMirage';f.specialT=.24;
+    const label={up:'上',down:'下',left:'左',right:'右'}[where];
+    comboEl.textContent=`ミラージュ（${label}）!`;
+    setTimeout(()=>{if(comboEl.textContent===`ミラージュ（${label}）!`)comboEl.textContent='';},520);
     return true;
   }
+
   function specialMirageCounter(f){
     if(gameOver||!f||f.type!=='remiel'||f.stun>0||f.specialT>0)return false;
     f.guard=false;f.specialType='mirageCounter';f.specialT=.48;f.remielCounterT=.30;
@@ -5343,8 +5324,12 @@
   }
   function specialRemielFrostShot(f){
     if(!specialWater2Shot(f,{name:'フロストショット',attack:'punch',color:'ice',style:'iceOrb',speed:270,damage:4.8,r:15,charge:.40,maxReflect:5})) return false;
-    const mir=remielMirages.find(m=>m.owner===f&&m.t>0),target=f.isPlayer?enemy:player;
-    if(mir&&target){const g=remielGhostPos(mir),sx=g.x+f.face*42,sy=g.y-12,dx=target.x-sx,dy=target.y-sy,d=Math.hypot(dx,dy)||1,sp=265;remielFakeShots.push({owner:f,mirage:mir,x:sx,y:sy,vx:dx/d*sp,vy:dy/d*sp,r:14,t:1.15,life:1.15,damage:2.4*f.damageMul,hit:false});}
+    const mirages=remielActiveMirages(f),target=f.isPlayer?enemy:player;
+    if(target)mirages.forEach(mir=>{
+      const g=remielGhostPos(mir),dx0=target.x-g.x,face=dx0>=0?1:-1;
+      const sx=g.x+face*42,sy=g.y-12,dx=target.x-sx,dy=target.y-sy,d=Math.hypot(dx,dy)||1,sp=265;
+      remielFakeShots.push({owner:f,mirage:mir,x:sx,y:sy,vx:dx/d*sp,vy:dy/d*sp,r:14,t:1.15,life:1.15,damage:2.4*f.damageMul,hit:false});
+    });
     return true;
   }
   function specialMirageKick(f){
@@ -5481,6 +5466,7 @@
     if(gameOver || !f || f.type!=='samael' || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
     const target=f.isPlayer?enemy:player;
     if(!target) return false;
+    if(Math.abs(target.x-f.x)>3) f.face=target.x>=f.x?1:-1;
     f.specialType='samaelTongue'; f.specialT=.58;
     f.attack='tongue'; f.attackT=.58; f.tongueT=.46;
     f.bossTongueAimY=Math.max(-62,Math.min(62,(target.y-f.y)*.40));
@@ -6636,19 +6622,16 @@
         return;
       }
 
-      // 通常の舌。コンボ中でなくても小ダメージ＋引き寄せ。
+      // 通常の舌。発動時に必ず相手へ向き直り、上下差も含めて直接狙う。
       playSfx('tongue');
+      if(other && Math.abs(other.x-f.x)>3) f.face=other.x>=f.x?1:-1;
       f.tongueT=.22;
       f.attack='tongue';
       f.attackT=.3;
 
-      const tongueDy=Math.abs(other.y-f.y);
-      const tongueTolerance=f.type==='beelzebub' ? 145 : 82;
-      if(Math.abs(other.x-f.x)<f.tongueRange && tongueDy<tongueTolerance && Math.sign(other.x-f.x)===dir){
-        if(f.type==='beelzebub'){
-          // 軽く上下へ追尾するよう、舌を出す瞬間に相手側へ少し寄せる
-          f.bossTongueAimY=(other.y-f.y)*.42;
-        }
+      const tongueDist=Math.hypot(other.x-f.x,other.y-f.y);
+      if(tongueDist<f.tongueRange){
+        f.bossTongueAimY=other.y-f.y;
         setTimeout(()=>{
           if(!other.guard){
             // まず小ダメージ
@@ -6941,8 +6924,8 @@
             let used=false;
             if(input.y<-.35) used=remielMakeMirage(player,'up');
             else if(input.y>.35) used=remielMakeMirage(player,'down');
-            else if((player.face>0&&input.x<-.35)||(player.face<0&&input.x>.35)) used=specialMirageCounter(player);
-            else if((player.face>0&&input.x>.35)||(player.face<0&&input.x<-.35)) used=specialAquaParry(player,false);
+            else if(input.x<-.35) used=remielMakeMirage(player,'left');
+            else if(input.x>.35) used=remielMakeMirage(player,'right');
             if(used){btn.classList.remove('pressed');return;}
           }
           // ルシファー：後ろ＋ガードは通常ガードより優先してアイスウォール。
@@ -7180,8 +7163,8 @@
       if(player.type==='remiel'){
         if(keys['w']) remielUsed=remielMakeMirage(player,'up');
         else if(keys['s']) remielUsed=remielMakeMirage(player,'down');
-        else if((player.face>0&&keys['a'])||(player.face<0&&keys['d'])) remielUsed=specialMirageCounter(player);
-        else if((player.face>0&&keys['d'])||(player.face<0&&keys['a'])) remielUsed=specialAquaParry(player,false);
+        else if(keys['a']) remielUsed=remielMakeMirage(player,'left');
+        else if(keys['d']) remielUsed=remielMakeMirage(player,'right');
       }
       const backHeld=player.type==='black'&&((player.face>0&&keys['a'])||(player.face<0&&keys['d']));
       if(remielUsed){player.guard=false;}
@@ -7326,7 +7309,7 @@
       if(enemy.type==='sariel'&&enemy.specialT<=0){const r=Math.random();if(dist>170&&r<dt*.18){specialLunaSlash(enemy,Math.random()<.5?'up':'down');return;}if(dist<160&&r<dt*.12){specialMoonSaltKick(enemy);return;}if(dist<360&&r<dt*.07){specialEvilEye(enemy);return;}if(dist>180&&r<dt*.035){specialBloodMoon(enemy);return;}}
       if((enemy.type==='kokabiel'||enemy.type==='awakenedKokabiel')&&enemy.specialT<=0){const r=Math.random();if(dist>180&&r<dt*.24){specialGravityBall(enemy);return;}if(dist<260&&r<dt*.10){specialGravityZone(enemy);return;}if(dist>130&&r<dt*.08){specialMeteorRain(enemy);return;}}
       if(enemy.type==='jihal'&&enemy.specialT<=0&&!enemy.jihalCharging){const r=Math.random();if(dist>210&&r<dt*.28){specialJihalBolt(enemy);return;}if(dist<175&&r<dt*.18){specialLightningDash(enemy);return;}if(dist<110&&r<dt*.10){specialSparkBurst(enemy);return;}if(dist>250&&r<dt*.05){startThunderCharge(enemy);setTimeout(()=>{if(enemy&&enemy.jihalCharging)releaseThunderCharge(enemy);},650);return;}}
-      if(enemy.type==='remiel' && enemy.specialT<=0){const roll=Math.random();if(!remielMirages.some(m=>m.owner===enemy)&&roll<dt*.10){remielMakeMirage(enemy,Math.random()<.5?'up':'down');return;}if(dist>190&&roll<dt*.28){specialRemielFrostShot(enemy);return;}if(dist<150&&roll<dt*.18){specialMirageKick(enemy);return;}if(dist<115&&roll<dt*.10){specialAquaParry(enemy,false);return;}}
+      if(enemy.type==='remiel' && enemy.specialT<=0){const roll=Math.random();if(remielActiveMirages(enemy).length<4&&roll<dt*.10){const dirs=['up','down','left','right'];remielMakeMirage(enemy,dirs[Math.floor(Math.random()*dirs.length)]);return;}if(dist>190&&roll<dt*.28){specialRemielFrostShot(enemy);return;}if(dist<150&&roll<dt*.18){specialMirageKick(enemy);return;}if(dist<115&&roll<dt*.10){specialAquaParry(enemy,false);return;}}
       if(enemy.type==='seraphiel' && enemy.specialT<=0){
         const roll=Math.random();
         if(dist>220 && roll<dt*.22){specialWater2Shot(enemy,{name:'セラフィックショット',attack:'punch',color:'seraphic',style:'seraphicShot',speed:310,damage:5.8,r:15,charge:.36,maxReflect:5});return;}
