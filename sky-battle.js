@@ -6022,6 +6022,10 @@
     const target=f.isPlayer?enemy:player;
     if(!target)return false;
 
+    // 強力な多段技なので、発動後10秒間は再使用不可。
+    const tornadoNow=performance.now();
+    if((f._raphaelTornadoCooldownUntil||0)>tornadoNow)return false;
+
     // 1回転1発。ready状態と回転入力をここで完全消費する。
     input.raphaelTornadoReadyUntil=0;
     input.raphaelCircleAccum=0;
@@ -6035,6 +6039,7 @@
     setTimeout(()=>{if(comboEl.textContent==='グランドトルネード!')comboEl.textContent='';},900);
 
     f._raphaelTornadoLockUntil=performance.now()+700;
+    f._raphaelTornadoCooldownUntil=performance.now()+10000;
     f.specialType='raphaelGiantTornado';
     f.specialT=.72;
     f.attack='punch';
@@ -6093,6 +6098,7 @@
   function trySpecial(f,kind){
     if(f && f.type==='yellow' && kind==='punch' &&
        (f._raphaelTornadoLockUntil||0)<=performance.now() &&
+       (f._raphaelTornadoCooldownUntil||0)<=performance.now() &&
        raphaelHasFullCircle(1250)){
       return raphaelGiantTornado(f);
     }
@@ -6855,8 +6861,9 @@
       // ラファエル隠し技は通常 attack()/trySpecial の外で直接発動。
       if(action==='punch' && player && player.type==='yellow'){
         const now=performance.now();
-        if((player._raphaelTornadoLockUntil||0)>now){
-          // 直前のグランドトルネード発動直後は再発動させない
+        if((player._raphaelTornadoLockUntil||0)>now ||
+           (player._raphaelTornadoCooldownUntil||0)>now){
+          // 発動直後または10秒クールタイム中は再発動させない
         }else if(input.raphaelTornadoReadyUntil>now || raphaelHasFullCircle(1250)){
           input.raphaelTornadoReadyUntil=0;
           player.guard=false;
@@ -8196,7 +8203,7 @@ function drawBackground(dt){
                 playSfx('guard');
               }else{
                 q.owner._projectileHit=true;
-                damageHit(q.owner,target,2.05*q.owner.damageMul,
+                damageHit(q.owner,target,4.25*q.owner.damageMul,
                   48*Math.sign((target.x-q.x)||q.owner.face),-34);
                 q.owner._projectileHit=false;
                 spawnImpact(target.x,target.y,'hit');
