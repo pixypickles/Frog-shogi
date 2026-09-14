@@ -4809,11 +4809,23 @@
 
   function specialUrielTackle(f){
     if(gameOver || f.stun>0 || f.specialT>0) return false;
+    const target=f.isPlayer?enemy:player;
+    if(target && Math.abs(target.x-f.x)>4) f.face=target.x>=f.x?1:-1;
+
     f.guard=false; f.tackleArmedT=0;
     f.specialType='urielTackle'; f.specialT=.96;
     f.attack='punch'; f.attackT=.96; f.tackleHit=false;
-    // v4.3: より速く、より長く突進
-    f.vx += f.face*560;
+
+    // 相手の現在位置へ向けて突進。上下差があっても相手方向へ発射する。
+    if(target){
+      const dx=target.x-f.x, dy=target.y-f.y;
+      const len=Math.hypot(dx,dy)||1;
+      f.vx=dx/len*560;
+      f.vy=dy/len*560;
+    }else{
+      f.vx=f.face*560;
+    }
+
     comboEl.textContent='ガーディアンタックル!';
     setTimeout(()=>{if(comboEl.textContent==='ガーディアンタックル!')comboEl.textContent='';},720);
     return true;
@@ -6394,7 +6406,13 @@
     // 雲上格闘2：ウリエル G＋P（直前のガードタップ＋P）でホワイトショット。
     if(f.type==='orange' && kind==='punch'){
       const justGuarded=performance.now()-(input.lastSimpleGuardTapTime||0)<=650;
-      if(justGuarded){ input.lastSimpleGuardTapTime=0; clearCommand(); return specialWater2Shot(f,{name:'ホワイトショット',attack:'punch',color:'white',style:'whiteOrb',speed:250,damage:3.7,r:17,charge:.38,maxReflect:5}); }
+      if(justGuarded){
+        input.lastSimpleGuardTapTime=0;
+        const target=f.isPlayer?enemy:player;
+        if(target && Math.abs(target.x-f.x)>4) f.face=target.x>=f.x?1:-1;
+        clearCommand();
+        return specialWater2Shot(f,{name:'ホワイトショット',attack:'punch',color:'white',style:'whiteOrb',speed:250,damage:3.7,r:17,charge:.38,maxReflect:5});
+      }
     }
     // リリス：前＋キックで体を横倒しにしたドロップキック。
     if(f.type==='purple' && kind==='kick' && water2HeldDir(f,'forward')){
