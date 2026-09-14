@@ -426,7 +426,7 @@
       'デッドリー・アクア：前 → 下 → 後ろ ＋ キック'
     ],
     kawazu:[
-      '水圧ラッシュ：パンチ連打',
+      'ハイドロラッシュ：パンチ連打',
       'クロスラッシュ：前 ＋ パンチ（パンチ→パンチ→キック→キック→両サイドアッパー）',
       'ミラージュキック：前 ＋ キック',
       'スピンキックカッター：後ろ ＋ キック（カッター3連発）'
@@ -565,7 +565,7 @@
         btn.dataset.fighter='kawazu';
         btn.innerHTML=`<span class="fighter-emoji kawazu-frog">🐸</span>
           <strong>カワズさん</strong>
-          <span class="special-hint move-names">水圧ラッシュ / ミラージュキック / スピンキックカッター</span>
+          <span class="special-hint move-names">ハイドロラッシュ / ミラージュキック / スピンキックカッター</span>
           `;
         const outsideCard=grid.querySelector('.fighter-card[data-fighter="piranha"], .fighter-card[data-fighter="crayfish"]');
         if(outsideCard)grid.insertBefore(btn,outsideCard);
@@ -1676,6 +1676,12 @@
       if(this.specialType==='burningCyclone'){
         ctx.rotate(burningCycloneAngle(this));
       }
+      if(this.type==='kawazu' && this.specialType==='kawazuSpinCutter' && this.specialT>0){
+        const total=.84;
+        const progress=Math.max(0,Math.min(1,(total-this.specialT)/total));
+        const spinDir=this.face>0?-1:1;
+        ctx.rotate(spinDir*progress*Math.PI*6);
+      }
 
       drawSkyWings(this);
       if(this.specialType==='lilithBackSpin'){
@@ -2009,14 +2015,8 @@
         ctx.scale(1.08,.82);
       }
 
-      // スピンキックカッター：フィギュアスケートのように高速3回転。
-      // 右向き時は画面上で反時計回り、左向き時は左右反転して逆回転。
-      if(this.type==='kawazu' && this.specialType==='kawazuSpinCutter' && this.specialT>0){
-        const total=.84;
-        const progress=Math.max(0,Math.min(1,(total-this.specialT)/total));
-        const spinDir=this.face>0?-1:1;
-        ctx.rotate(spinDir*progress*Math.PI*6);
-      }else if(this.throwState || Math.abs(this.spinAngle)>.02){
+      // スピンキックカッターの全身回転は翼を描く前に適用済み。
+      if(this.throwState || Math.abs(this.spinAngle)>.02){
         ctx.rotate(this.spinAngle);
       }
       if(this.face<0) ctx.scale(-1,1);
@@ -3529,7 +3529,7 @@
       'インフェルノウェーブ：下 ＋ キック'
     ],
     samael:['方向 ＋ パンチ：ポイズンゲート（指定方向から毒弾）','舌：ヴェノムタン（舌先から毒弾）','前 → 下 → 後ろ ＋ キック：デッドリー・アクア'],
-      kawazu:['パンチ連打：水圧ラッシュ','前 ＋ パンチ：クロスラッシュ（P→P→K→K→左右アッパー）','前 ＋ キック：ミラージュキック','後ろ ＋ キック：スピンキックカッター（カッター3連発）']
+      kawazu:['パンチ連打：ハイドロラッシュ','前 ＋ パンチ：クロスラッシュ（P→P→K→K→左右アッパー）','前 ＋ キック：ミラージュキック','後ろ ＋ キック：スピンキックカッター（カッター3連発）']
     };
     return map[type] || ['専用必殺技：練習対象外'];
   }
@@ -4854,19 +4854,44 @@
 
   function specialKawazuPressureRush(f){
     if(gameOver || f.stun>0 || f.specialT>0)return false;
-    f.specialType='kawazuPressureRush';f.specialT=.62;f.attack='punch';f.attackT=.62;
+    const target=f.isPlayer?enemy:player;
+    if(!target)return false;
+
+    // 相手のいる方向へ向き直り、その方向を中心に10発ばら撒く。
+    const dx=target.x-f.x;
+    const dy=target.y-f.y;
+    if(Math.abs(dx)>4) f.face=dx>=0?1:-1;
+
+    f.specialType='kawazuPressureRush';
+    f.specialT=.62;
+    f.attack='punch';
+    f.attackT=.62;
+
     const count=10;
+    const baseAngle=Math.atan2(dy,dx);
+
     for(let i=0;i<count;i++){
-      const spread=(-.48+Math.random()*.96);
+      // 相手方向を中心に約±15°。完全追尾ではなく、発射時に狙いを補正。
+      const spread=(Math.random()-.5)*.52;
+      const ang=baseAngle+spread;
       const speed=370+Math.random()*145;
+
       kawazuShots.push({
-        owner:f,x:f.x+f.face*45,y:f.y+5+(Math.random()-.5)*20,
-        vx:f.face*Math.cos(spread)*speed,vy:Math.sin(spread)*speed,
-        r:8+Math.random()*3,t:.85,life:.85,hit:false,reflected:0
+        owner:f,
+        x:f.x+Math.cos(baseAngle)*45,
+        y:f.y+5+Math.sin(baseAngle)*18+(Math.random()-.5)*12,
+        vx:Math.cos(ang)*speed,
+        vy:Math.sin(ang)*speed,
+        r:8+Math.random()*3,
+        t:.85,life:.85,
+        hit:false,reflected:0
       });
     }
-    comboEl.textContent='水圧ラッシュ!';
-    clearCommand();return true;
+
+    comboEl.textContent='ハイドロラッシュ!';
+    setTimeout(()=>{if(comboEl.textContent==='ハイドロラッシュ!')comboEl.textContent='';},650);
+    clearCommand();
+    return true;
   }
 
   function specialKawazuCrossRush(f){
@@ -8453,7 +8478,7 @@ function drawBackground(dt){
         const target=p.owner&&p.owner.isPlayer?enemy:player;
         if(!p.hit&&target&&Math.hypot(target.x-p.x,target.y-p.y)<target.radius+p.r){
           if(target.guard){
-            // 水圧ラッシュは反射されると単純に戻らず、上下へ散る。
+            // ハイドロラッシュは反射されると単純に戻らず、上下へ散る。
             spawnImpact(p.x,p.y,'guard');
             p.owner=target; p.reflected=(p.reflected||0)+1;
             p.vx=-p.vx*.78;
