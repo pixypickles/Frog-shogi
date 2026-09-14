@@ -102,6 +102,7 @@
   let gravityBalls=[]; let gravityZones=[]; let meteorDrops=[];
   let jihalBolts=[];
   let jihalBursts=[];
+  let jihalSkyStrikes=[];
   let remielFakeShots = [];
   let toxicWaters=[];
   let bossFish=[];
@@ -402,7 +403,8 @@
       'ボルトショット：前 ＋ パンチ',
       'ライトニングダッシュ：前 ＋ キック',
       'サンダーチャージ：後ろ ＋ キック長押し → 離す',
-      'スパークバースト：下 ＋ パンチ'
+      'スパークバースト：下 ＋ パンチ',
+      '隠し・サンダーピラー：下から方向キー1回転 ＋ パンチ'
     ],
     remiel:[
       'ミラージュ（上）：上 ＋ ガード','ミラージュ（下）：下 ＋ ガード','ミラージュカウンター：後ろ ＋ ガード','アクアパリィ：前 ＋ ガード / ジャストガード','フロストショット：前 ＋ パンチ','ミラージュキック：前 ＋ キック'
@@ -2974,7 +2976,12 @@
     raphaelCircleLastTime:0,
     raphaelCircleMask:0,
     raphaelCircleReadyUntil:0,
-    raphaelTornadoReadyUntil:0
+    raphaelTornadoReadyUntil:0,
+    jihalCircleStarted:false,
+    jihalCircleLastAngle:null,
+    jihalCircleAccum:0,
+    jihalCircleLastTime:0,
+    jihalSkyStrikeReadyUntil:0
   };
 
   function pushCommandDir(dir){
@@ -3484,7 +3491,7 @@
       beelzebub:['下 → 後ろ ＋ ガード：ヴェノム・ウォーター','上 ＋ パンチ：アビスショック（上弧）','下 ＋ キック：アビスショック（下弧）','前 ＋ パンチ：ベノムショット'],
       sariel:['上 ＋ パンチ：ルナ・スラッシュ（上弧）','下 ＋ パンチ：ルナ・スラッシュ（下弧）','前 ＋ ガード：イーブルアイ','後ろ ＋ ガード：ブラッドムーン','上 ＋ キック：ムーンサルトキック'],
       kokabiel:['前 ＋ パンチ：グラビティボール','後ろ ＋ ガード：グラビティゾーン','下 ＋ パンチ：メテオレイン','下 ＋ キック：グラビティダイブ'],
-      jihal:['前 ＋ パンチ：ボルトショット','前 ＋ キック：ライトニングダッシュ','後ろ ＋ キック長押し → 離す：サンダーチャージ','下 ＋ パンチ：スパークバースト'],
+      jihal:['前 ＋ パンチ：ボルトショット（相手方向）','前 ＋ キック：ライトニングダッシュ（横/斜め45°自動補正）','後ろ ＋ キック長押し → 離す：サンダーチャージ（相手方向）','下 ＋ パンチ：スパークバースト','隠し：下から方向キー1回転 ＋ パンチ：サンダーピラー'],
       remiel:['上 ＋ ガード：ミラージュ（上）','下 ＋ ガード：ミラージュ（下）','後ろ ＋ ガード：ミラージュカウンター','前 ＋ ガード：アクアパリィ','前 ＋ パンチ：フロストショット','前 ＋ キック：ミラージュキック'],
       seraphiel:['上 ＋ パンチ：セラフィックアッパー','前 ＋ キック：セラフィックキック','後ろ ＋ パンチ：セラフィックショット','下 → 後ろ ＋ キック：セラフィックサイクロン','下 → 前 ＋ パンチ：セラフィックレイ'],
       flauros:['上 ＋ パンチ：ヘルフレイム（相手の足元から火柱）','前 ＋ パンチ：フレイムクロー（3方向の炎爪）','前 ＋ キック：レオパードラッシュ','上 ＋ キック：インフェルノクロー（壁から急降下→時間差5連斬）'],
@@ -5168,37 +5175,147 @@
 
   function specialJihalBolt(f){
     if(gameOver||!f||f.type!=='jihal'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    const target=f.isPlayer?enemy:player;
+    if(!target)return false;
+
+    const dx=target.x-f.x,dy=target.y-f.y,len=Math.hypot(dx,dy)||1;
+    const nx=dx/len,ny=dy/len;
+    f.face=dx>=0?1:-1;
+
     f.specialType='jihalBolt';f.specialT=.40;f.attack='punch';f.attackT=.40;
-    jihalBolts.push({owner:f,x:f.x+f.face*48,y:f.y-10,vx:f.face*350,vy:0,r:13,t:2.4,damage:5,reflects:0});
-    comboEl.textContent='ボルトショット!';return true;
+    jihalBolts.push({
+      owner:f,
+      x:f.x+nx*48,
+      y:f.y+ny*48-10,
+      vx:nx*350,
+      vy:ny*350,
+      r:13,t:2.4,damage:5,reflects:0
+    });
+    comboEl.textContent='ボルトショット!';
+    return true;
   }
+
   function specialLightningDash(f){
     if(gameOver||!f||f.type!=='jihal'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    const target=f.isPlayer?enemy:player;
+    if(!target)return false;
+
+    const dx=target.x-f.x,dy=target.y-f.y;
+    const dirX=dx>=0?1:-1;
+
+    // 真横 or 45度斜めの3択のみ。
+    // 敵との高さ差が小さければ横、大きければ上/下45度。
+    let nx=dirX,ny=0;
+    if(Math.abs(dy)>Math.max(52,Math.abs(dx)*.28)){
+      nx=dirX*Math.SQRT1_2;
+      ny=(dy>=0?1:-1)*Math.SQRT1_2;
+    }
+
+    f.face=dirX;
     f.jihalDashOriginX=f.x;
-    f.jihalRushDir=f.face||1;
+    f.jihalRushDir=dirX;
+    f.jihalRushVx=nx*920;
+    f.jihalRushVy=ny*920;
     f.specialType='lightningDash';f.specialT=.34;f.attack='kick';f.attackT=.34;
     f.jihalDashHit=false;f.jihalDashHitWindow=.21;
-    f.vx=f.face*920;
+    f.vx=f.jihalRushVx;
+    f.vy=f.jihalRushVy;
     comboEl.textContent='ライトニングダッシュ!';
     return true;
   }
+
   function startThunderCharge(f){
     if(gameOver||!f||f.type!=='jihal'||f.stun>0||f.guard||f.attackT>0||f.jihalCharging)return false;
-    f.jihalCharging=true;f.jihalCharge=0;f.specialType='thunderChargeHold';f.specialT=999;f.vx*=.1;
+    f.jihalCharging=true;f.jihalCharge=0;f.specialType='thunderChargeHold';f.specialT=999;f.vx*=.1;f.vy*=.1;
     comboEl.textContent='サンダーチャージ…';return true;
   }
+
   function releaseThunderCharge(f){
     if(!f||!f.jihalCharging)return false;
     const c=Math.max(0,Math.min(1,f.jihalCharge||0));
+    const target=f.isPlayer?enemy:player;
+
     f.jihalCharging=false;
     f.jihalDashOriginX=f.x;
-    f.jihalRushDir=f.face||1;
     f.specialType='thunderChargeRush';f.specialT=.30;f.attack='kick';f.attackT=.30;
     f.jihalChargePower=c;f.jihalThunderHit=false;
-    f.vx=f.jihalRushDir*(980+520*c);
+
+    let nx=f.face||1,ny=0;
+    if(target){
+      const dx=target.x-f.x,dy=target.y-f.y,len=Math.hypot(dx,dy)||1;
+      nx=dx/len;ny=dy/len;
+      f.face=dx>=0?1:-1;
+    }
+
+    const speed=980+520*c;
+    f.jihalRushDir=f.face||1;
+    f.jihalRushVx=nx*speed;
+    f.jihalRushVy=ny*speed;
+    f.vx=f.jihalRushVx;
+    f.vy=f.jihalRushVy;
+
     comboEl.textContent=c>.75?'フル・サンダーチャージ!':'サンダーチャージ!';
     return true;
   }
+
+  function jihalHasDownCircle(maxMs=1100){
+    const now=performance.now();
+    const dirs=['right','downRight','down','downLeft','left','upLeft','up','upRight'];
+    const hist=(input.commandHistory||[]).filter(v=>now-v.time<=maxMs);
+    if(hist.length<6)return false;
+
+    const vals=hist.map(v=>dirs.indexOf(v.dir)).filter(v=>v>=0);
+    if(vals.length<6)return false;
+
+    // 最初が「下」付近であること。
+    const first=vals[0];
+    if(!(first===1||first===2||first===3))return false;
+
+    let cw=0,ccw=0;
+    for(let i=1;i<vals.length;i++){
+      const d=(vals[i]-vals[i-1]+8)%8;
+      const r=(vals[i-1]-vals[i]+8)%8;
+      if(d===1||d===2)cw++;
+      if(r===1||r===2)ccw++;
+    }
+    return cw>=5||ccw>=5;
+  }
+
+  function specialJihalSkyStrike(f){
+    if(gameOver||!f||f.type!=='jihal'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    const target=f.isPlayer?enemy:player;
+    if(!target)return false;
+
+    input.jihalSkyStrikeReadyUntil=0;
+    input.jihalCircleStarted=false;
+    input.jihalCircleLastAngle=null;
+    input.jihalCircleAccum=0;
+    input.jihalCircleLastTime=0;
+    clearCommand();
+
+    f.specialType='jihalSkyStrike';
+    f.specialT=.72;
+    f.attack='punch';
+    f.attackT=.42;
+
+    // 敵の上空に黒雲を出し、少し遅れて画面下まで一筋の雷。
+    const cloudY=Math.max(70,Math.min(innerHeight*.38,target.y-170));
+    jihalSkyStrikes.push({
+      owner:f,
+      x:Math.max(38,Math.min(innerWidth-38,target.x)),
+      cloudY,
+      t:1.00,
+      life:1.00,
+      hit:false,
+      seed:Math.random()*1000
+    });
+
+    comboEl.textContent='サンダーピラー!';
+    setTimeout(()=>{if(comboEl.textContent==='サンダーピラー!')comboEl.textContent='';},760);
+    return true;
+  }
+
+
   function specialSparkBurst(f){
     if(gameOver||!f||f.type!=='jihal'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
     f.specialType='sparkBurst';f.specialT=.50;f.attack='punch';f.attackT=.42;
@@ -6815,6 +6932,44 @@
     dx*=scale;dy*=scale;
     input.x=dx/max; input.y=dy/max;
 
+    // ジィハル隠し技：下から一回転。
+    // 最初にスティックを下付近へ入れた場合だけ回転計測を開始。
+    if(player && player.type==='jihal'){
+      const mag=Math.hypot(input.x,input.y);
+      if(mag>=.48){
+        const now=performance.now();
+        const a=Math.atan2(input.y,input.x);
+        const downDiff=Math.abs(Math.atan2(Math.sin(a-Math.PI/2),Math.cos(a-Math.PI/2)));
+
+        if(!input.jihalCircleStarted){
+          if(downDiff<.72){
+            input.jihalCircleStarted=true;
+            input.jihalCircleLastAngle=a;
+            input.jihalCircleAccum=0;
+            input.jihalCircleLastTime=now;
+          }
+        }else if(input.jihalCircleLastAngle!=null){
+          if(now-input.jihalCircleLastTime>760){
+            input.jihalCircleStarted=false;
+            input.jihalCircleAccum=0;
+            input.jihalCircleLastAngle=null;
+          }else{
+            let da=a-input.jihalCircleLastAngle;
+            while(da>Math.PI)da-=Math.PI*2;
+            while(da<-Math.PI)da+=Math.PI*2;
+            if(Math.abs(da)<1.5)input.jihalCircleAccum+=da;
+            input.jihalCircleLastAngle=a;
+            input.jihalCircleLastTime=now;
+
+            if(Math.abs(input.jihalCircleAccum)>=Math.PI*1.70){
+              input.jihalSkyStrikeReadyUntil=now+1800;
+              input.jihalCircleStarted=false;
+            }
+          }
+        }
+      }
+    }
+
     // ラファエルの一回転はコマンド履歴ではなく、スティックそのものの軌跡で判定する。
     // ダッシュや通常技の入力処理に横取りされない独立経路。
     if(player && player.type==='yellow'){
@@ -6847,6 +7002,12 @@
     const t=e.changedTouches[0];
     stickId=t.identifier;
     input.dashUsedThisTouch=false;
+    if(player && player.type==='jihal' && performance.now()>input.jihalSkyStrikeReadyUntil){
+      input.jihalCircleStarted=false;
+      input.jihalCircleLastAngle=null;
+      input.jihalCircleAccum=0;
+      input.jihalCircleLastTime=0;
+    }
     if(player && player.type==='yellow' && performance.now()>input.raphaelTornadoReadyUntil){
       input.raphaelCircleLastAngle=null;
       input.raphaelCircleAccum=0;
@@ -6883,6 +7044,20 @@
     const action=btn.dataset.action;
     const down=e=>{
       e.preventDefault();btn.classList.add('pressed');
+
+      // ジィハル隠し技：下から一回転＋パンチ。
+      if(action==='punch' && player && player.type==='jihal'){
+        const now=performance.now();
+        if(input.jihalSkyStrikeReadyUntil>now || jihalHasDownCircle(1100)){
+          player.guard=false;
+          player.attackT=0;
+          player.specialT=0;
+          if(specialJihalSkyStrike(player)){
+            playSfx('special');
+            return;
+          }
+        }
+      }
 
       // ラファエル隠し技は通常 attack()/trySpecial の外で直接発動。
       if(action==='punch' && player && player.type==='yellow'){
@@ -7964,14 +8139,18 @@ function drawBackground(dt){
       });
       meteorDrops=meteorDrops.filter(m=>m.t>0&&m.y<innerHeight+90);
 
-      // ジィハル高速技は発動時の進行方向と速度を維持する。
+      // ジィハル高速技は発動時に決めた2D進行方向と速度を維持する。
       [player,enemy].forEach(f=>{
         if(!f||f.type!=='jihal')return;
-        const dir=f.jihalRushDir||f.face||1;
-        if(f.specialType==='lightningDash'&&f.specialT>0) f.vx=dir*920;
+        if(f.specialType==='lightningDash'&&f.specialT>0){
+          f.vx=f.jihalRushVx||((f.jihalRushDir||f.face||1)*920);
+          f.vy=f.jihalRushVy||0;
+        }
         if(f.specialType==='thunderChargeRush'&&f.specialT>0){
           const c=Math.max(0,Math.min(1,f.jihalChargePower||0));
-          f.vx=dir*(980+520*c);
+          const speed=980+520*c;
+          f.vx=f.jihalRushVx||((f.jihalRushDir||f.face||1)*speed);
+          f.vy=f.jihalRushVy||0;
         }
       });
 
@@ -7986,7 +8165,9 @@ function drawBackground(dt){
           const elapsed=.34-f.specialT;
           if(elapsed<=.21 && !f.jihalDashHit && Math.abs(o.x-f.x)<78 && Math.abs(o.y-f.y)<76){
             f.jihalDashHit=true;
-            damageHit(f,o,9.5*f.damageMul,365*f.face,-45);
+            const vx=f.jihalRushVx||f.face*920,vy=f.jihalRushVy||0;
+            const vl=Math.hypot(vx,vy)||1;
+            damageHit(f,o,9.5*f.damageMul,365*vx/vl,365*vy/vl);
             spawnImpact(o.x,o.y,'hit');
           }
         }
@@ -7996,13 +8177,17 @@ function drawBackground(dt){
           if(!f.jihalThunderHit && Math.abs(o.x-f.x)<86 && Math.abs(o.y-f.y)<84){
             f.jihalThunderHit=true;
             const c=Math.max(0,Math.min(1,f.jihalChargePower||0));
-            const dir=f.jihalRushDir||f.face||1;
-            const keepVx=dir*(980+520*c);
-            damageHit(f,o,(10.5+6*c)*f.damageMul,(410+180*c)*dir,-70);
-            // hit処理後も速度を完全復元し、相手の反対側へ抜ける。
-            f.vx=keepVx;
-            f.x=o.x+dir*(o.radius+f.radius+16);
-            o.x-=dir*8;
+            const speed=980+520*c;
+            const keepVx=f.jihalRushVx||((f.jihalRushDir||f.face||1)*speed);
+            const keepVy=f.jihalRushVy||0;
+            const vl=Math.hypot(keepVx,keepVy)||1;
+            const nx=keepVx/vl,ny=keepVy/vl;
+            damageHit(f,o,(10.5+6*c)*f.damageMul,(410+180*c)*nx,(410+180*c)*ny);
+            // hit処理後も速度を完全復元し、進行方向へそのまま抜ける。
+            f.vx=keepVx;f.vy=keepVy;
+            f.x=o.x+nx*(o.radius+f.radius+16);
+            f.y=o.y+ny*(o.radius+f.radius+16);
+            o.x-=nx*8;o.y-=ny*8;
             spawnImpact(o.x,o.y,'hit');
           }
         }
@@ -8019,6 +8204,25 @@ function drawBackground(dt){
       jihalBolts=jihalBolts.filter(q=>q.t>0&&q.x>-80&&q.x<innerWidth+80);
       jihalBursts.forEach(b=>{b.t-=dt;b.r=b.maxR*(1-b.t/b.life);});
       jihalBursts=jihalBursts.filter(b=>b.t>0);
+
+      jihalSkyStrikes.forEach(st=>{
+        st.t-=dt;
+        const elapsed=st.life-st.t;
+        const target=st.owner.isPlayer?enemy:player;
+        const active=elapsed>=.34 && elapsed<=.56;
+
+        if(active && target && !st.hit && Math.abs(target.x-st.x)<38+target.radius){
+          st.hit=true;
+          if(target.guard){
+            damageHit(st.owner,target,3.8*st.owner.damageMul,0,105);
+            spawnImpact(target.x,target.y,'guard');
+          }else{
+            damageHit(st.owner,target,14.5*st.owner.damageMul,0,240);
+            spawnImpact(target.x,target.y,'hit');
+          }
+        }
+      });
+      jihalSkyStrikes=jihalSkyStrikes.filter(st=>st.t>0);
 
       remielMirages.forEach(m=>{
         m.t-=dt;m.age=(m.age||0)+dt;m.counterT=Math.max(0,(m.counterT||0)-dt);m.ghostTongueT=Math.max(0,(m.ghostTongueT||0)-dt);
@@ -9114,7 +9318,7 @@ function drawBackground(dt){
 
     jihalBolts.forEach(q=>{
       ctx.save();ctx.translate(q.x,q.y);ctx.globalCompositeOperation='lighter';
-      const dir=Math.sign(q.vx)||1;ctx.scale(dir,1);
+      ctx.rotate(Math.atan2(q.vy,q.vx));
       ctx.shadowColor='#ffe44d';ctx.shadowBlur=18;
       // よくある「⚡」シルエットを横向きにして飛ばす。
       ctx.fillStyle='#fff36a';
@@ -9126,6 +9330,61 @@ function drawBackground(dt){
       ctx.restore();
     });
     jihalBursts.forEach(b=>{ctx.save();ctx.translate(b.x,b.y);ctx.globalCompositeOperation='lighter';ctx.globalAlpha=Math.max(0,b.t/b.life);ctx.strokeStyle='#fff09a';ctx.shadowColor='#ffe85b';ctx.shadowBlur=15;ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,b.r,0,Math.PI*2);ctx.stroke();for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(Math.cos(a)*b.r*.45,Math.sin(a)*b.r*.45);ctx.lineTo(Math.cos(a)*b.r,Math.sin(a)*b.r);ctx.stroke();}ctx.restore();});
+
+    jihalSkyStrikes.forEach(st=>{
+      const elapsed=st.life-st.t;
+      ctx.save();
+
+      // 黒い雷雲
+      ctx.translate(st.x,st.cloudY);
+      ctx.globalCompositeOperation='source-over';
+      ctx.globalAlpha=Math.min(1,elapsed/.16)*Math.min(1,st.t/.18);
+      ctx.fillStyle='rgba(28,30,42,.92)';
+      ctx.strokeStyle='rgba(8,10,18,.9)';
+      ctx.lineWidth=2;
+      const puffs=[[-34,6,30,17],[-10,-5,34,21],[18,-7,37,22],[43,6,28,17],[4,9,49,18]];
+      for(const [x,y,rx,ry] of puffs){
+        ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+      }
+
+      // 予兆：雲の中で黄色い光
+      if(elapsed<.34){
+        ctx.globalCompositeOperation='lighter';
+        ctx.globalAlpha=.25+.45*(elapsed/.34);
+        ctx.fillStyle='#fff06b';
+        ctx.beginPath();ctx.ellipse(4,9,28,9,0,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
+
+      // 約0.34秒後、一筋の雷が画面下まで伸びる
+      if(elapsed>=.34 && elapsed<=.62){
+        const fade=Math.max(0,Math.min(1,(.62-elapsed)/.08));
+        const topY=st.cloudY+12;
+        const bottomY=innerHeight+20;
+        const seg=10;
+        ctx.save();
+        ctx.globalCompositeOperation='lighter';
+        ctx.shadowColor='#fff04a';ctx.shadowBlur=28;
+        ctx.strokeStyle='#fff36a';ctx.lineWidth=14;ctx.globalAlpha=.66*fade;
+        ctx.beginPath();ctx.moveTo(st.x,topY);
+        for(let i=1;i<=seg;i++){
+          const y=topY+(bottomY-topY)*i/seg;
+          const x=st.x+(i===seg?0:Math.sin(st.seed+i*2.17)*10);
+          ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+
+        ctx.shadowBlur=16;ctx.strokeStyle='#ffffff';ctx.lineWidth=4;ctx.globalAlpha=.96*fade;
+        ctx.beginPath();ctx.moveTo(st.x,topY);
+        for(let i=1;i<=seg;i++){
+          const y=topY+(bottomY-topY)*i/seg;
+          const x=st.x+(i===seg?0:Math.sin(st.seed+i*2.17)*10);
+          ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    });
 
     remielFakeShots.forEach(q=>{ctx.save();ctx.translate(q.x,q.y);ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.32*Math.min(1,q.t/.18);ctx.shadowColor='#bdefff';ctx.shadowBlur=16;ctx.fillStyle='#d9f8ff';ctx.beginPath();ctx.arc(0,0,q.r,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#9ddbea';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,q.r+2,0,Math.PI*2);ctx.stroke();ctx.restore();});
 
