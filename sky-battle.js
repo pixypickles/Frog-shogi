@@ -1675,6 +1675,28 @@
       const pal=fighterPalette(this.type);
 
       // 全身回転系は翼も含めて回すため、翼を描く前に座標系を回す。
+      // 舌投げは全キャラ共通で、身体と翼を同じ角度で回す。
+      if(this.throwState && Math.abs(this.spinAngle)>.02){
+        ctx.rotate(this.spinAngle);
+      }
+      // リリスの回転技も翼ごと回転。
+      if(this.type==='purple'&&this.specialType==='lilithBackSpin'){
+        const elapsed=(performance.now()-(this.lilithSpinStartTime||performance.now()))/1000;
+        ctx.rotate(elapsed*18*(this.face>0?-1:1));
+      }
+      if(this.type==='purple'&&this.specialType==='lilithDropKick'){
+        const rotDir=this.face>0?-1:1;
+        let angle=rotDir*Math.PI/2;
+        if(this.lilithDropHitAt){
+          const pp=Math.max(0,Math.min(1,(performance.now()-this.lilithDropHitAt)/280));
+          const ee=1-Math.pow(1-pp,2);
+          angle=rotDir*(Math.PI/2 + Math.PI*1.5*ee);
+        }else if(Math.abs(this.lilithDropNy||0)>.02){
+          // 相手への斜め突進に合わせて全身・翼の角度も追加補正。
+          angle+=Math.atan2(this.lilithDropNy||0,Math.abs(this.lilithDropNx||1));
+        }
+        ctx.rotate(angle);
+      }
       if(this.type==='sariel'&&this.specialType==='moonSalt'&&this.specialT>0){
         ctx.rotate(this.moonSaltSpin||0);
       }
@@ -1693,22 +1715,6 @@
       }
 
       drawSkyWings(this);
-      if(this.specialType==='lilithBackSpin'){
-        const elapsed=(performance.now()-(this.lilithSpinStartTime||performance.now()))/1000;
-        ctx.rotate(elapsed*18*(this.face>0?-1:1));
-      }
-      if(this.specialType==='lilithDropKick'){
-        // 足を相手側、頭を後ろ側へ向けて90度横倒し。
-        // ヒットしたら同じ回転方向へさらに270度回って通常姿勢へ戻る。
-        const rotDir=this.face>0?-1:1;
-        let angle=rotDir*Math.PI/2;
-        if(this.lilithDropHitAt){
-          const p=Math.max(0,Math.min(1,(performance.now()-this.lilithDropHitAt)/280));
-          const e=1-Math.pow(1-p,2);
-          angle=rotDir*(Math.PI/2 + Math.PI*1.5*e);
-        }
-        ctx.rotate(angle);
-      }
 
 
       // ピラニア：リヴァイアサンさん
@@ -2025,7 +2031,7 @@
       }
 
       // スピンキックカッターの全身回転は翼を描く前に適用済み。
-      if((this.throwState || Math.abs(this.spinAngle)>.02) &&
+      if(!this.throwState && Math.abs(this.spinAngle)>.02 &&
          !(this.type==='seraphiel'&&this.specialType==='seraphicCyclone')){
         ctx.rotate(this.spinAngle);
       }
@@ -4266,8 +4272,13 @@
     f.lilithDropHitAt=0;
     f.lilithDropHitDone=false;
     f.lilithDropHitCooldown=0;
-    f.vx=f.face*520;
-    f.vy*=.15;
+    // 発動時の相手位置へ、上下差も含めて直接突進する。
+    const dx=target.x-f.x,dy=target.y-f.y,len=Math.hypot(dx,dy)||1;
+    const nx=dx/len,ny=dy/len;
+    f.face=nx>=0?1:-1;
+    f.lilithDropNx=nx;f.lilithDropNy=ny;
+    f.vx=nx*545;
+    f.vy=ny*545;
 
     comboEl.textContent='ドロップキック!';
     setTimeout(()=>{if(comboEl.textContent==='ドロップキック!')comboEl.textContent='';},620);
@@ -7904,25 +7915,24 @@
       // 横移動している間ずっと両足側に攻撃判定を持たせる。
       // 一度ヒット／ガードしたら同じ技中の再ヒットはしない。
       if(other && !f.lilithDropHitDone){
-        const dir=f.face||1;
+        const nx=f.lilithDropNx||f.face||1,ny=f.lilithDropNy||0;
         const elapsed=(performance.now()-(f.lilithDropStart||performance.now()))/1000;
-        // 開始直後から終了直前まで有効。足先は進行方向へ少し長め。
+        // 相手へ向けた進行ベクトルの先端に両足の攻撃判定。
         if(elapsed>=.03 && f.specialT>.08){
-          const footX=f.x+dir*56;
-          const footY=f.y+2;
+          const footX=f.x+nx*58;
+          const footY=f.y+ny*58;
           const hitX=Math.abs(other.x-footX)<other.radius+44;
           const hitY=Math.abs(other.y-footY)<other.radius+46;
-          // 相手が身体の真後ろにいる場合は当てない。
-          const forward=(other.x-f.x)*dir>-18;
+          const forward=(other.x-f.x)*nx+(other.y-f.y)*ny>-18;
           if(hitX && hitY && forward){
             f.lilithDropHitDone=true;
             f.lilithDropHitAt=performance.now();
-            f.vx*=.22;
+            f.vx*=.22;f.vy*=.22;
             if(other.guard){
               spawnImpact(other.x,other.y,'guard');
-              other.vx+=dir*55;
+              other.vx+=nx*55;other.vy+=ny*55;
             }else{
-              damageHit(f,other,8.2*f.damageMul,245*dir,-38);
+              damageHit(f,other,8.2*f.damageMul,245*nx,245*ny);
               spawnImpact(other.x,other.y,'hit');
             }
           }
@@ -8343,6 +8353,14 @@ function drawBackground(dt){
         }
       });
       meteorDrops=meteorDrops.filter(m=>m.t>0&&m.y<innerHeight+90);
+
+      // リリスのドロップキックは発動時に決めた相手方向を維持する。
+      [player,enemy].forEach(f=>{
+        if(f&&f.type==='purple'&&f.specialType==='lilithDropKick'&&f.specialT>0&&!f.lilithDropHitDone){
+          f.vx=(f.lilithDropNx||f.face||1)*545;
+          f.vy=(f.lilithDropNy||0)*545;
+        }
+      });
 
       // セラフィエルキックは発動時に決めた相手方向を維持する。
       [player,enemy].forEach(f=>{
