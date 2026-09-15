@@ -95,6 +95,7 @@
   let gabrielChargePreview=null;
   let gabrielWaterfalls=[];
   let iceWalls = [];
+  let luciferHail = [];
   let samaelGates = [];
   let seraphielRays = [];
   let remielMirages = [];
@@ -372,7 +373,8 @@
       'ヘルクラッシュ：前 ＋ キック',
       'アビスチャージ：後ろ ＋ パンチ長押し → 離す',
       'アイスショット：前 ＋ パンチ',
-      'アイスウォール：後ろ ＋ ガード'
+      'アイスウォール：後ろ ＋ ガード',
+      'ダイヤモンドヘイル：下 ＋ パンチ（氷晶・雹を時間差で大量落下）'
     ],
     purple:[
       '舌ラッシュ：舌連打',
@@ -3492,7 +3494,7 @@
       blue:['上 ＋ パンチ：アクアトルネード','下 ＋ キック：アクアストリーム','後ろ ＋ パンチ：アクアボルテックス','前 ＋ パンチ：アクアショット'],
       yellow:['前 ＋ パンチ：水圧カッター（相手方向）','上 ＋ パンチ：エア（水圧）ブレード','下 ＋ パンチ：エアギロチン','上 ＋ キック：高速バブル上昇','下 ＋ キック：高速バブル下降','ガード ×2：ヒーリングバブル'],
       orange:['下 → 後ろ ＋ ガード：ホワイトカウンター','後ろ → 前 ＋ ガード：ガーディアンタックル','ガード長押し：ホワイトオーラ','オーラ中 パンチ / キック：白い長リーチ攻撃','ガード ＋ パンチ：ホワイトショット'],
-      black:['前 ＋ キック：ヘルクラッシュ（氷オーラの蹴り・特大ノックバック）','後ろ ＋ パンチ長押し → 離す：アビスチャージ（周囲を一瞬凍結）','前 ＋ パンチ：アイスショット','後ろ ＋ ガード：アイスウォール'],
+      black:['前 ＋ キック：ヘルクラッシュ（氷オーラの蹴り・特大ノックバック）','後ろ ＋ パンチ長押し → 離す：アビスチャージ（周囲を一瞬凍結）','前 ＋ パンチ：アイスショット','後ろ ＋ ガード：アイスウォール','下 ＋ パンチ：ダイヤモンドヘイル（氷晶・雹を時間差で大量落下）'],
       purple:['舌連打：舌ラッシュ','後ろ ＋ 舌：バブルショット','後ろ ＋ キック：バックスピンキック（追加入力で追加回転）','前 ＋ キック：ドロップキック'],
       beelzebub:['下 → 後ろ ＋ ガード：ヴェノム・ウォーター','上 ＋ パンチ：アビスショック（上弧）','下 ＋ キック：アビスショック（下弧）','前 ＋ パンチ：ベノムショット'],
       sariel:['上 ＋ パンチ：ルナ・スラッシュ（上弧）','下 ＋ パンチ：ルナ・スラッシュ（下弧）','前 ＋ ガード：イーブルアイ','後ろ ＋ ガード：ブラッドムーン','上 ＋ キック：ムーンサルトキック'],
@@ -5788,12 +5790,38 @@
     f.guard=false;
     f.specialType='iceWall'; f.specialT=.42; f.attack=null; f.attackT=.18;
     const x=Math.max(58,Math.min(innerWidth-58,f.x+f.face*60));
-    const y=Math.max(90,Math.min(innerHeight-85,f.y+5));
+    // 雲上戦では上下方向を大きく覆う縦長の氷壁。
+    const h=Math.max(260,Math.min(innerHeight-110,560));
+    const y=innerHeight*.50;
     // 同じルシファーの古い壁は消し、1枚だけ設置できる。
     iceWalls=iceWalls.filter(w=>w.owner!==f);
-    iceWalls.push({owner:f,x,y,w:25,h:112,t:3.0,life:3.0,hitCd:0});
+    iceWalls.push({owner:f,x,y,w:30,h,t:3.0,life:3.0,hitCd:0});
     comboEl.textContent='アイスウォール!';
     setTimeout(()=>{if(comboEl.textContent==='アイスウォール!')comboEl.textContent='';},650);
+    return true;
+  }
+
+  function specialDiamondHail(f){
+    if(gameOver||!f||f.type!=='black'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    const target=f.isPlayer?enemy:player;if(!target)return false;
+    f.specialType='diamondHail';f.specialT=.72;f.attack='punch';f.attackT=.72;
+
+    // 相手の上空を中心に、大小の氷晶をジグザグに時間差落下。
+    // ガブリエルの水弾雨と違い、細い氷柱が斜めに刺さる見た目。
+    const cx=Math.max(70,Math.min(innerWidth-70,target.x));
+    for(let i=0;i<13;i++){
+      const lane=(i%5)-2;
+      const x=Math.max(20,Math.min(innerWidth-20,cx+lane*34+((i%2)?15:-15)));
+      const delay=.10+i*.055;
+      const big=(i%4===0);
+      luciferHail.push({
+        owner:f,x,y:-35-(i%3)*24,vx:(lane%2===0?26:-26),vy:big?470:535,
+        r:big?10:6,delay,t:2.4,life:2.4,hit:false,spin:(i%2?1:-1)*(.9+i*.11),
+        damage:big?1.25:.72
+      });
+    }
+    comboEl.textContent='ダイヤモンドヘイル!';
+    setTimeout(()=>{if(comboEl.textContent==='ダイヤモンドヘイル!')comboEl.textContent='';},720);
     return true;
   }
 
@@ -6572,6 +6600,7 @@
 
     if(f.type==='black'){
       if(kind==='kick' && water2HeldDir(f,'forward')){ clearCommand(); f.attackT=0; f.attack=null; return specialHellCrash(f); }
+      if(kind==='punch' && water2HeldDir(f,'down')){ clearCommand(); return specialDiamondHail(f); }
       if(kind==='punch' && water2HeldDir(f,'forward')){
         clearCommand(); return specialWater2Shot(f,{name:'アイスショット',attack:'punch',color:'ice',style:'iceOrb',speed:255,damage:5.2,r:17,charge:.44,maxReflect:5});
       }
@@ -8202,6 +8231,27 @@ function drawBackground(dt){
       });
       iceWalls=iceWalls.filter(w=>w.t>0);
 
+      // ルシファー：ダイヤモンドヘイル。極小ダメージの氷晶を時間差で落とす。
+      luciferHail.forEach(h=>{
+        h.t-=dt;
+        if(h.delay>0){h.delay-=dt;return;}
+        h.x+=h.vx*dt;h.y+=h.vy*dt;
+        const target=h.owner&&h.owner.isPlayer?enemy:player;
+        if(target&&!h.hit&&Math.hypot(target.x-h.x,target.y-h.y)<target.radius+h.r+5){
+          h.hit=true;h.t=0;
+          h.owner._projectileHit=true;
+          if(target.guard){
+            damageHit(h.owner,target,.18*h.owner.damageMul,18*Math.sign(h.vx||1),12);
+            spawnImpact(h.x,h.y,'guard');
+          }else{
+            damageHit(h.owner,target,h.damage*h.owner.damageMul,24*Math.sign(h.vx||1),35);
+            spawnImpact(h.x,h.y,'hit');
+          }
+          h.owner._projectileHit=false;
+        }
+      });
+      luciferHail=luciferHail.filter(h=>h.t>0&&h.y<innerHeight+80);
+
       // サリエル：月刃・邪眼・血月・ムーンサルト。
       [player,enemy].forEach(f=>{
         if(!f)return;
@@ -9445,13 +9495,33 @@ function drawBackground(dt){
     });
 
     iceWalls.forEach(w=>{
-      const a=Math.max(0,Math.min(1,w.t/.25,w.t));
-      ctx.save(); ctx.translate(w.x,w.y); ctx.globalAlpha=.82*Math.min(1,w.t/.18); ctx.globalCompositeOperation='lighter';
+      const hh=w.h*.5;
+      ctx.save();ctx.translate(w.x,w.y);ctx.globalAlpha=.82*Math.min(1,w.t/.18);ctx.globalCompositeOperation='lighter';
       ctx.shadowColor='#9feeff';ctx.shadowBlur=20;
-      const g=ctx.createLinearGradient(-14,-55,14,55);g.addColorStop(0,'rgba(238,255,255,.92)');g.addColorStop(.45,'rgba(126,225,246,.78)');g.addColorStop(1,'rgba(70,155,205,.72)');
+      const g=ctx.createLinearGradient(-16,-hh,16,hh);g.addColorStop(0,'rgba(238,255,255,.94)');g.addColorStop(.45,'rgba(126,225,246,.80)');g.addColorStop(1,'rgba(70,155,205,.74)');
       ctx.fillStyle=g;ctx.strokeStyle='#efffff';ctx.lineWidth=3;
-      ctx.beginPath();ctx.moveTo(-10,-56);ctx.lineTo(14,-48);ctx.lineTo(11,-18);ctx.lineTo(18,7);ctx.lineTo(9,55);ctx.lineTo(-15,49);ctx.lineTo(-12,15);ctx.lineTo(-19,-8);ctx.closePath();ctx.fill();ctx.stroke();
-      ctx.globalAlpha=.65;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-8,-40);ctx.lineTo(7,-18);ctx.lineTo(-5,4);ctx.lineTo(10,27);ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-10,-hh);ctx.lineTo(14,-hh+12);
+      for(let y=-hh+42,flip=1;y<hh-35;y+=44,flip*=-1)ctx.lineTo(flip*17,y);
+      ctx.lineTo(10,hh);ctx.lineTo(-14,hh-10);
+      for(let y=hh-48,flip=-1;y>-hh+35;y-=46,flip*=-1)ctx.lineTo(flip*15,y);
+      ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.globalAlpha=.62;ctx.lineWidth=2;
+      for(let y=-hh+35;y<hh-20;y+=62){
+        ctx.beginPath();ctx.moveTo(-9,y);ctx.lineTo(8,y+24);ctx.lineTo(-5,y+42);ctx.stroke();
+      }
+      ctx.restore();
+    });
+
+    luciferHail.forEach(h=>{
+      if(h.delay>0)return;
+      ctx.save();ctx.translate(h.x,h.y);ctx.rotate(h.spin*(h.life-h.t)*4);
+      ctx.globalCompositeOperation='lighter';ctx.shadowColor='#bdf6ff';ctx.shadowBlur=12;
+      ctx.fillStyle='rgba(224,252,255,.96)';ctx.strokeStyle='#78d7f0';ctx.lineWidth=1.5;
+      // 菱形＋尖った下端で、丸い水弾ではなく氷晶に見せる。
+      ctx.beginPath();ctx.moveTo(0,-h.r*1.7);ctx.lineTo(h.r*.72,-h.r*.15);
+      ctx.lineTo(0,h.r*2.0);ctx.lineTo(-h.r*.72,-h.r*.15);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.globalAlpha=.72;ctx.beginPath();ctx.moveTo(0,-h.r*1.25);ctx.lineTo(0,h.r*1.45);ctx.stroke();
       ctx.restore();
     });
 
