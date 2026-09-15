@@ -5679,21 +5679,29 @@
   function specialDisasterFlare(f){
     if(gameOver||!f||f.type!=='satanael'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
     f.specialType='disasterFlare';f.specialT=.62;f.attack='punch';f.attackT=.62;
-    satanaelFlares.push({owner:f,x:f.x+f.face*58,y:f.y-6,vx:f.face*118,r:31,t:6,hit:false});
+    const target=f.isPlayer?enemy:player;
+    let dx=f.face||1,dy=0;if(target){dx=target.x-f.x;dy=target.y-f.y;}
+    const dl=Math.hypot(dx,dy)||1,nx=dx/dl,ny=dy/dl;
+    f.face=nx>=0?1:-1;
+    satanaelFlares.push({owner:f,x:f.x+nx*58,y:f.y+ny*58-6,vx:nx*118,vy:ny*118,r:31,t:6,hit:false,homing:.72});
     comboEl.textContent='ディザスターフレア…';
     return true;
   }
   function specialDarkRay(f){
     if(gameOver||!f||f.type!=='satanael'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
     f.specialType='darkRay';f.specialT=.92;f.attack='punch';f.attackT=.92;
-    satanaelRays.push({owner:f,x:f.x+f.face*55,y:f.y-8,dir:f.face,t:.62,life:.62,active:false,hit:false});
+    const target=f.isPlayer?enemy:player;
+    let dx=f.face||1,dy=0;if(target){dx=target.x-f.x;dy=target.y-f.y;}
+    const dl=Math.hypot(dx,dy)||1,nx=dx/dl,ny=dy/dl;
+    f.face=nx>=0?1:-1;
+    satanaelRays.push({owner:f,x:f.x+nx*55,y:f.y+ny*55-8,nx,ny,t:.62,life:.62,active:false,hit:false});
     comboEl.textContent='ダークレイ…';
     return true;
   }
   function specialDarkPressure(f){
     if(gameOver||!f||f.type!=='satanael'||f.stun>0||f.specialT>0||f.attackT>0)return false;
-    f.guard=false;f.specialType='darkPressure';f.specialT=.82;
-    satanaelPressures.push({owner:f,t:.78,life:.78});
+    f.guard=false;f.specialType='darkPressure';f.specialT=1.12;
+    satanaelPressures.push({owner:f,t:1.08,life:1.08});
     comboEl.textContent='ダークプレッシャー…';
     return true;
   }
@@ -8407,7 +8415,7 @@ function drawBackground(dt){
           else{damageHit(q.owner,target,q.damage,Math.sign(q.vx)*100,-24);spawnImpact(q.x,q.y,'hit');q.t=0;}
         }
       });
-      gravityBalls=gravityBalls.filter(q=>q.t>0&&q.x>-100&&q.x<innerWidth+100);
+      gravityBalls=gravityBalls.filter(q=>q.t>0&&q.x>-100&&q.x<innerWidth+100&&q.y>-100&&q.y<innerHeight+100);
       gravityZones.forEach(z=>{
         z.t-=dt;z.arm=Math.max(0,z.arm-dt);
         const target=z.owner.isPlayer?enemy:player;if(!target||z.t<=0)return;
@@ -8561,7 +8569,6 @@ function drawBackground(dt){
       remielMirages=remielMirages.filter(m=>m.t>0);
       remielFakeShots.forEach(q=>{
         q.t-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;
-        const target=q.owner.isPlayer?enemy:player;
         if(target&&!q.hit&&Math.abs(q.x-target.x)<(q.r||14)+target.radius*.62&&Math.abs(q.y-target.y)<(q.r||14)+target.radius*.62){
           q.hit=true;q.t=0;
           if(target.guard)spawnImpact(target.x,target.y,'guard');
@@ -8599,16 +8606,27 @@ function drawBackground(dt){
 
       // サタナエル：ディザスターフレア。遅い赤黒炎は通常弾を飲み込み、ガードでも消滅しない。
       satanaelFlares.forEach(q=>{
-        q.t-=dt;q.x+=q.vx*dt;
+        q.t-=dt;
+        const target=q.owner.isPlayer?enemy:player;
+        if(target&&q.homing>0){
+          q.homing-=dt;
+          const dx=target.x-q.x,dy=target.y-q.y,dl=Math.hypot(dx,dy)||1;
+          const speed=Math.hypot(q.vx,q.vy)||118;
+          // 遅い弾なので、急旋回しすぎない程度に少しだけ追尾。
+          const steer=Math.min(1,dt*1.35);
+          q.vx+=(dx/dl*speed-q.vx)*steer;
+          q.vy+=(dy/dl*speed-q.vy)*steer;
+          const vl=Math.hypot(q.vx,q.vy)||1;q.vx=q.vx/vl*speed;q.vy=q.vy/vl*speed;
+        }
+        q.x+=q.vx*dt;q.y+=(q.vy||0)*dt;
         for(const p of water2Shots){
           if(p.owner!==q.owner&&p.t>0&&Math.abs(p.x-q.x)<q.r+(p.r||12)&&Math.abs(p.y-q.y)<q.r+(p.r||12)){
             p.t=0;spawnImpact(p.x,p.y,'guard');
           }
         }
-        const target=q.owner.isPlayer?enemy:player;
         if(target&&!q.hit&&Math.abs(target.x-q.x)<q.r+target.radius*.65&&Math.abs(target.y-q.y)<q.r+target.radius*.65){
-          if(target.guard){damageHit(q.owner,target,3.4*q.owner.damageMul,38*Math.sign(q.vx),-8);spawnImpact(target.x,target.y,'guard');}
-          else{damageHit(q.owner,target,12.5*q.owner.damageMul,185*Math.sign(q.vx),-45);spawnImpact(target.x,target.y,'hit');}
+          if(target.guard){damageHit(q.owner,target,3.4*q.owner.damageMul,38*(q.vx/118),38*((q.vy||0)/118));spawnImpact(target.x,target.y,'guard');}
+          else{damageHit(q.owner,target,12.5*q.owner.damageMul,185*(q.vx/118),185*((q.vy||0)/118));spawnImpact(target.x,target.y,'hit');}
           q.hit=true; // 本体への多段防止。弾そのものは画面外まで残る。
         }
       });
@@ -8619,10 +8637,12 @@ function drawBackground(dt){
         r.t-=dt;const elapsed=r.life-r.t;r.active=elapsed>.32&&elapsed<.50;
         const target=r.owner.isPlayer?enemy:player;
         if(r.active&&target&&!r.hit){
-          const ahead=(target.x-r.x)*r.dir;
-          if(ahead>0&&ahead<innerWidth&&Math.abs(target.y-r.y)<34+target.radius*.45){
-            if(target.guard){damageHit(r.owner,target,3.2*r.owner.damageMul,80*r.dir,-15);spawnImpact(target.x,target.y,'guard');}
-            else{damageHit(r.owner,target,16.2*r.owner.damageMul,275*r.dir,-55);spawnImpact(target.x,target.y,'hit');}
+          const nx=r.nx??r.dir,ny=r.ny??0;
+          const tx=target.x-r.x,ty=target.y-r.y;
+          const ahead=tx*nx+ty*ny,perp=Math.abs(tx*ny-ty*nx);
+          if(ahead>0&&ahead<innerWidth*1.5&&perp<34+target.radius*.45){
+            if(target.guard){damageHit(r.owner,target,3.2*r.owner.damageMul,80*nx,80*ny);spawnImpact(target.x,target.y,'guard');}
+            else{damageHit(r.owner,target,16.2*r.owner.damageMul,275*nx,275*ny);spawnImpact(target.x,target.y,'hit');}
             r.hit=true;
           }
         }
@@ -8632,7 +8652,7 @@ function drawBackground(dt){
       // ダークプレッシャー：上から降りる黒い光。0ダメージで相手を底へ押し下げる。
       satanaelPressures.forEach(p=>{
         p.t-=dt;const elapsed=p.life-p.t;const target=p.owner.isPlayer?enemy:player;
-        if(target&&elapsed>.18&&elapsed<.68){
+        if(target&&elapsed>.18&&elapsed<.98){
           const floorY=innerHeight-72;
           target.y+=(floorY-target.y)*Math.min(1,dt*7.5);
           target.vy=Math.max(target.vy,240);
@@ -8646,8 +8666,8 @@ function drawBackground(dt){
         if(p.t<=0&&!p.fired){p.fired=true;p.t=p.life;}
         if(p.fired){
           const target=p.owner.isPlayer?enemy:player;
-          // 炎柱は底から約150pxまで。画面上側にいる相手には絶対に当たらない。
-          if(target&&!p.hit&&Math.abs(target.x-p.x)<38&&target.y>innerHeight-150){
+          // 炎柱は底から約225pxまで。画面上側にいる相手には絶対に当たらない。
+          if(target&&!p.hit&&Math.abs(target.x-p.x)<38&&target.y>innerHeight-225){
             p.hit=true;
             if(target.guard){damageHit(p.owner,target,1.6*p.owner.damageMul,45*p.owner.face,-25);spawnImpact(target.x,target.y,'guard');}
             else{damageHit(p.owner,target,5.0*p.owner.damageMul,115*p.owner.face,-95);spawnImpact(target.x,target.y,'hit');}
@@ -9873,7 +9893,7 @@ function drawBackground(dt){
         ctx.shadowBlur=16;
         ctx.beginPath();
         ctx.moveTo(r.x,r.y);
-        ctx.lineTo(r.x+r.dir*innerWidth,r.y);
+        ctx.lineTo(r.x+(r.nx??r.dir)*innerWidth*1.5,r.y+(r.ny??0)*innerWidth*1.5);
         ctx.stroke();
 
         ctx.globalCompositeOperation='lighter';
@@ -9893,7 +9913,7 @@ function drawBackground(dt){
         ctx.shadowBlur=34;
         ctx.beginPath();
         ctx.moveTo(r.x,r.y);
-        ctx.lineTo(r.x+r.dir*innerWidth,r.y);
+        ctx.lineTo(r.x+(r.nx??r.dir)*innerWidth*1.5,r.y+(r.ny??0)*innerWidth*1.5);
         ctx.stroke();
 
         ctx.globalAlpha=.90*fade;
@@ -9901,7 +9921,7 @@ function drawBackground(dt){
         ctx.lineWidth=15;
         ctx.beginPath();
         ctx.moveTo(r.x,r.y);
-        ctx.lineTo(r.x+r.dir*innerWidth,r.y);
+        ctx.lineTo(r.x+(r.nx??r.dir)*innerWidth*1.5,r.y+(r.ny??0)*innerWidth*1.5);
         ctx.stroke();
 
         ctx.globalAlpha=.82*fade;
@@ -9909,7 +9929,7 @@ function drawBackground(dt){
         ctx.lineWidth=4;
         ctx.beginPath();
         ctx.moveTo(r.x,r.y);
-        ctx.lineTo(r.x+r.dir*innerWidth,r.y);
+        ctx.lineTo(r.x+(r.nx??r.dir)*innerWidth*1.5,r.y+(r.ny??0)*innerWidth*1.5);
         ctx.stroke();
       }
       ctx.restore();
@@ -9917,7 +9937,7 @@ function drawBackground(dt){
 
     satanaelPressures.forEach(p=>{
       const elapsed=p.life-p.t;
-      const progress=Math.max(0,Math.min(1,(elapsed-.08)/.60));
+      const progress=Math.max(0,Math.min(1,(elapsed-.08)/.90));
       const frontY=-120+progress*(innerHeight+170);
       ctx.save();
 
@@ -9953,7 +9973,7 @@ function drawBackground(dt){
       ctx.globalAlpha=.92*a;
 
       // インフェルノウェーブ：底から黒炎柱
-      const fg=ctx.createLinearGradient(p.x,p.y,p.x,p.y-150);
+      const fg=ctx.createLinearGradient(p.x,p.y,p.x,p.y-225);
       fg.addColorStop(0,'#160006');
       fg.addColorStop(.20,'#8d0a20');
       fg.addColorStop(.48,'#250008');
@@ -9964,15 +9984,15 @@ function drawBackground(dt){
       ctx.shadowBlur=26;
       ctx.beginPath();
       ctx.moveTo(p.x-32,p.y);
-      ctx.bezierCurveTo(p.x-31,p.y-58,p.x-19,p.y-102,p.x-4,p.y-150);
-      ctx.bezierCurveTo(p.x+14,p.y-116,p.x+30,p.y-52,p.x+32,p.y);
+      ctx.bezierCurveTo(p.x-31,p.y-86,p.x-19,p.y-153,p.x-4,p.y-225);
+      ctx.bezierCurveTo(p.x+14,p.y-174,p.x+30,p.y-78,p.x+32,p.y);
       ctx.closePath();ctx.fill();
 
       ctx.globalAlpha=.62*a;
       ctx.fillStyle='#d31a2f';
       ctx.beginPath();
       ctx.moveTo(p.x-10,p.y);
-      ctx.quadraticCurveTo(p.x-8,p.y-82,p.x+1,p.y-116);
+      ctx.quadraticCurveTo(p.x-8,p.y-123,p.x+1,p.y-174);
       ctx.quadraticCurveTo(p.x+13,p.y-78,p.x+11,p.y);
       ctx.closePath();ctx.fill();
       ctx.restore();
