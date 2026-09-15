@@ -360,7 +360,7 @@
       'バーニングサイクロン：下 → 後ろ ＋ キック'
     ],
     blue:['上＋ガード：ウォータージェット上昇','上昇中＋パンチ：ジェットアッパー','上＋パンチ：ビッグウォータードロップ','後ろ＋キック：クラウドレインショット','下＋キック：スカイレインバースト','下→前＋パンチ：ギガウォーターキャノン'],
-    yellow:['方向＋パンチ：逃げながら逆方向へ三日月エアカッター（強追尾）','方向＋キック：ウィンドタックル','ガード×2：ヒールウィンド（徐々に回復＋少し速度UP）','隠し：スティック1回転（上下左右を通過）＋パンチ：グランドトルネード'],
+    yellow:['方向＋パンチ：逃げながら逆方向へ三日月エアカッター（強追尾）','方向＋キック：ウィンドタックル','ガード×2：ヒールウィンド（徐々に回復＋少し速度UP）','隠し技・グランドトルネード：スティック1回転（上下左右を通過）＋パンチ（クールタイム10秒）'],
     orange:[
       'ホワイトカウンター：下 → 後ろ ＋ ガード',
       'ガーディアンタックル：後ろ → 前 ＋ ガード',
@@ -404,7 +404,7 @@
       'ライトニングダッシュ：前 ＋ キック',
       'サンダーチャージ：後ろ ＋ キック長押し → 離す',
       'スパークバースト：下 ＋ パンチ',
-      '隠し・サンダーピラー：下から方向キー1回転 ＋ パンチ'
+      '隠し技・サンダーフォール：下から方向キー1回転 ＋ パンチ'
     ],
     remiel:[
       'ミラージュ（上）：上 ＋ ガード','ミラージュ（下）：下 ＋ ガード','ミラージュカウンター：後ろ ＋ ガード','アクアパリィ：前 ＋ ガード / ジャストガード','フロストショット：前 ＋ パンチ','ミラージュキック：前 ＋ キック'
@@ -3491,7 +3491,7 @@
       beelzebub:['下 → 後ろ ＋ ガード：ヴェノム・ウォーター','上 ＋ パンチ：アビスショック（上弧）','下 ＋ キック：アビスショック（下弧）','前 ＋ パンチ：ベノムショット'],
       sariel:['上 ＋ パンチ：ルナ・スラッシュ（上弧）','下 ＋ パンチ：ルナ・スラッシュ（下弧）','前 ＋ ガード：イーブルアイ','後ろ ＋ ガード：ブラッドムーン','上 ＋ キック：ムーンサルトキック'],
       kokabiel:['前 ＋ パンチ：グラビティボール','後ろ ＋ ガード：グラビティゾーン','下 ＋ パンチ：メテオレイン','下 ＋ キック：グラビティダイブ'],
-      jihal:['前 ＋ パンチ：ボルトショット（相手方向）','前 ＋ キック：ライトニングダッシュ（横/斜め45°自動補正）','後ろ ＋ キック長押し → 離す：サンダーチャージ（相手方向）','下 ＋ パンチ：スパークバースト','隠し：下から方向キー1回転 ＋ パンチ：サンダーピラー'],
+      jihal:['前 ＋ パンチ：ボルトショット（相手方向）','前 ＋ キック：ライトニングダッシュ（横/斜め45°自動補正）','後ろ ＋ キック長押し → 離す：サンダーチャージ（相手方向）','下 ＋ パンチ：スパークバースト','隠し技・サンダーフォール：下から方向キー1回転 ＋ パンチ'],
       remiel:['上 ＋ ガード：ミラージュ（上）','下 ＋ ガード：ミラージュ（下）','後ろ ＋ ガード：ミラージュカウンター','前 ＋ ガード：アクアパリィ','前 ＋ パンチ：フロストショット','前 ＋ キック：ミラージュキック'],
       seraphiel:['上 ＋ パンチ：セラフィックアッパー','前 ＋ キック：セラフィックキック','後ろ ＋ パンチ：セラフィックショット','下 → 後ろ ＋ キック：セラフィックサイクロン','下 → 前 ＋ パンチ：セラフィックレイ'],
       flauros:['上 ＋ パンチ：ヘルフレイム（相手の足元から火柱）','前 ＋ パンチ：フレイムクロー（3方向の炎爪）','前 ＋ キック：レオパードラッシュ','上 ＋ キック：インフェルノクロー（壁から急降下→時間差5連斬）'],
@@ -4831,8 +4831,8 @@
       other.vx=f.face*330;
       other.vy=390;
       damageHit(f,other,8.0*f.damageMul,150*f.face,210);
-      comboEl.textContent='SECRET!';
-      setTimeout(()=>{if(comboEl.textContent==='SECRET!')comboEl.textContent='';},600);
+      comboEl.textContent='隠し技・舌パイルドライバー!';
+      setTimeout(()=>{if(comboEl.textContent==='隠し技・舌パイルドライバー!')comboEl.textContent='';},600);
     },120);
     return true;
   }
@@ -5310,8 +5310,8 @@
       seed:Math.random()*1000
     });
 
-    comboEl.textContent='サンダーピラー!';
-    setTimeout(()=>{if(comboEl.textContent==='サンダーピラー!')comboEl.textContent='';},760);
+    comboEl.textContent='隠し技・サンダーフォール!';
+    setTimeout(()=>{if(comboEl.textContent==='隠し技・サンダーフォール!')comboEl.textContent='';},760);
     return true;
   }
 
@@ -6174,9 +6174,9 @@
     input.commandHistory=[];
 
     // ここまで来たら、0.10.3と同じタイミングで表示。
-    comboEl.textContent='グランドトルネード!';
+    comboEl.textContent='隠し技・グランドトルネード!';
     comboEl.style.opacity='1';
-    setTimeout(()=>{if(comboEl.textContent==='グランドトルネード!')comboEl.textContent='';},900);
+    setTimeout(()=>{if(comboEl.textContent==='隠し技・グランドトルネード!')comboEl.textContent='';},900);
 
     f._raphaelTornadoLockUntil=performance.now()+700;
     f._raphaelTornadoCooldownUntil=performance.now()+10000;
@@ -7064,14 +7064,21 @@
         const now=performance.now();
         if((player._raphaelTornadoLockUntil||0)>now ||
            (player._raphaelTornadoCooldownUntil||0)>now){
-          // 発動直後または10秒クールタイム中は再発動させない
+          // クールタイム中は残り時間を表示。
+          const remain=Math.max(0,((player._raphaelTornadoCooldownUntil||0)-now)/1000);
+          if(remain>0){
+            comboEl.textContent=`グランドトルネード CT ${remain.toFixed(1)}秒`;
+            setTimeout(()=>{
+              if(comboEl.textContent.startsWith('グランドトルネード CT'))comboEl.textContent='';
+            },650);
+          }
         }else if(input.raphaelTornadoReadyUntil>now || raphaelHasFullCircle(1250)){
           input.raphaelTornadoReadyUntil=0;
           player.guard=false;
           player.attackT=0;
           player.specialT=0;
           if(raphaelGiantTornado(player)){
-            comboEl.textContent='グランドトルネード!';
+            comboEl.textContent='隠し技・グランドトルネード!';
             playSfx('special');
             return;
           }
