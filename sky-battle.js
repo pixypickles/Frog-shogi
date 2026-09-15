@@ -897,7 +897,7 @@
   }
 
   function fighterPalette(type){
-    if(type==='awakenedKokabiel') return {body:'#d6b83f',limb:'#9f8124',light:'#f2dc73',belly:'#f7edb8',eyeBump:'#c7a431'};
+    if(type==='awakenedKokabiel') return {body:'#d6b83f',limb:'#9f8124',light:'#70dce9',belly:'#bceff3',eyeBump:'#70dce9'};
     if(type==='mob') return {body:'#79b85a',limb:'#5a9442',light:'#a9d97d',belly:'#eef7d8',eyeBump:'#8fc96a'};
     if(type==='flauros'){
       return {body:'#c92825',limb:'#b91f20',light:'#ff6a3d',belly:'#ef9b58',eyeBump:'#e64631'};
@@ -1855,7 +1855,16 @@
         ctx.ellipse(-2,16,28,34,0,0,Math.PI*2);
         ctx.fill();
 
-        if((this.type==='kokabiel'||this.type==='awakenedKokabiel')&&(this.specialType==='gravityBall'||this.specialType==='gravityZone'||this.specialType==='meteorRain')){
+        if(this.type==='awakenedKokabiel'){
+        ctx.save();ctx.globalCompositeOperation='lighter';
+        ctx.globalAlpha=.24+.07*Math.sin(performance.now()/120);
+        ctx.strokeStyle='#78e7ef';ctx.lineWidth=3;ctx.shadowColor='#55dce8';ctx.shadowBlur=18;
+        ctx.beginPath();ctx.ellipse(0,16,38,49,0,0,Math.PI*2);ctx.stroke();
+        ctx.globalAlpha=.18;ctx.fillStyle='#7be9ef';ctx.beginPath();ctx.arc(-22,-27,13,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(22,-27,13,0,Math.PI*2);ctx.fill();ctx.restore();
+      }
+
+      if((this.type==='kokabiel'||this.type==='awakenedKokabiel')&&(this.specialType==='gravityBall'||this.specialType==='gravityZone'||this.specialType==='meteorRain')){
         ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.28;ctx.strokeStyle='#75e6ee';ctx.lineWidth=2.5;ctx.shadowColor='#6de6ef';ctx.shadowBlur=12;ctx.beginPath();ctx.ellipse(0,18,46,59,0,0,Math.PI*2);ctx.stroke();ctx.restore();
       }
 
@@ -5240,40 +5249,58 @@
     comboEl.textContent='ムーンサルトウイング!';return true;
   }
 
+  function isKokabielForm(f){
+    return !!f && (f.type==='kokabiel'||f.type==='awakenedKokabiel');
+  }
   function specialGravityBall(f){
-    const specialGravityBall_awakenedBoost=(f&&f.type==='awakenedKokabiel')?1.65:1;
-    if(gameOver||!f||f.type!=='kokabiel'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    if(gameOver||!isKokabielForm(f)||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    const awakened=f.type==='awakenedKokabiel';
+    const target=f.isPlayer?enemy:player;
+    let dx=f.face||1,dy=0;if(target){dx=target.x-f.x;dy=target.y-f.y;}
+    const dl=Math.hypot(dx,dy)||1,nx=dx/dl,ny=dy/dl;
+    f.face=nx>=0?1:-1;
     f.specialType='gravityBall';f.specialT=.54;f.attack='punch';f.attackT=.54;
-    gravityBalls.push(aimShotAtTarget({owner:f,x:f.x+f.face*48,y:f.y-8,vx:f.face*185,vy:0,r:20,t:4,damage:4.4,reflects:0,maxReflect:4,pull:210}));
-    comboEl.textContent='グラビティボール…';return true;
+    const speed=awakened?205:185, spreads=awakened?[-.14,0,.14]:[0];
+    spreads.forEach(a=>{
+      const ca=Math.cos(a),sa=Math.sin(a),ax=nx*ca-ny*sa,ay=nx*sa+ny*ca;
+      gravityBalls.push({owner:f,x:f.x+ax*48,y:f.y+ay*48-8,vx:ax*speed,vy:ay*speed,
+        r:awakened?23:20,t:4.4,damage:awakened?5.2:4.4,reflects:0,maxReflect:4,
+        pull:awakened?310:210,awakened});
+    });
+    comboEl.textContent=awakened?'強化グラビティボール×3!':'グラビティボール…';return true;
   }
   function specialGravityZone(f){
-    const specialGravityZone_awakenedBoost=(f&&f.type==='awakenedKokabiel')?1.65:1;
-    if(gameOver||!f||f.type!=='kokabiel'||f.stun>0||f.specialT>0)return false;
+    if(gameOver||!isKokabielForm(f)||f.stun>0||f.specialT>0)return false;
+    const awakened=f.type==='awakenedKokabiel';
     f.guard=false;f.specialType='gravityZone';f.specialT=.58;
     const t=f.isPlayer?enemy:player;
     const x=t?Math.max(80,Math.min(innerWidth-80,t.x-f.face*85)):f.x+f.face*150;
     const y=t?t.y:f.y;
     gravityZones=gravityZones.filter(z=>z.owner!==f);
-    gravityZones.push({owner:f,x,y,r:22,maxR:132,t:3.2,life:3.2,arm:.42});
-    comboEl.textContent='グラビティゾーン…';return true;
+    gravityZones.push({owner:f,x,y,r:22,maxR:awakened?235:132,t:awakened?6.2:3.2,
+      life:awakened?6.2:3.2,arm:awakened?.34:.42,power:awakened?1.85:1,awakened});
+    comboEl.textContent=awakened?'超重力グラビティゾーン!':'グラビティゾーン…';return true;
   }
   function specialMeteorRain(f){
-    const specialMeteorRain_awakenedBoost=(f&&f.type==='awakenedKokabiel')?1.65:1;
-    if(gameOver||!f||f.type!=='kokabiel'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    if(gameOver||!isKokabielForm(f)||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
     const t=f.isPlayer?enemy:player;if(!t)return false;
-    f.specialType='meteorRain';f.specialT=.85;f.attack='punch';f.attackT=.42;
-    const base=t.x,offs=[-90,-38,35,82,0];
-    offs.forEach((ox,i)=>meteorDrops.push({owner:f,x:Math.max(55,Math.min(innerWidth-55,base+ox)),y:-45-i*18,vy:265+i*18,r:18+(i%2)*3,delay:.18+i*.13,t:2.4,active:false,damage:4}));
-    comboEl.textContent='メテオレイン…';return true;
+    const awakened=f.type==='awakenedKokabiel';
+    f.specialType='meteorRain';f.specialT=awakened?1.02:.85;f.attack='punch';f.attackT=.42;
+    const base=t.x,offs=awakened?[-150,-112,-76,-40,0,38,74,110,148,-58,58]:[-90,-38,35,82,0];
+    offs.forEach((ox,i)=>meteorDrops.push({owner:f,x:Math.max(45,Math.min(innerWidth-45,base+ox)),
+      y:-45-(i%6)*22,vy:(awakened?285:265)+(i%5)*16,r:(awakened?19:18)+(i%2)*3,
+      delay:.12+i*(awakened?.075:.13),t:awakened?3.1:2.4,active:false,damage:awakened?4.5:4}));
+    comboEl.textContent=awakened?'強化メテオレイン!':'メテオレイン…';return true;
   }
-
   function specialGravityDive(f){
-    const specialGravityDive_awakenedBoost=(f&&f.type==='awakenedKokabiel')?1.65:1;
-    if(gameOver||!f||f.type!=='kokabiel'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
-    f.specialType='gravityDive';f.specialT=.58;f.attack='kick';f.attackT=.58;
-    f.gravityDiveHit=false;f.vx=f.face*285;f.vy=430;
-    comboEl.textContent='グラビティダイブ!';return true;
+    if(gameOver||!isKokabielForm(f)||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    const awakened=f.type==='awakenedKokabiel';
+    const target=f.isPlayer?enemy:player;
+    const sx=target?(Math.sign(target.x-f.x)||f.face):f.face;
+    f.face=sx;f.specialType='gravityDive';f.specialT=awakened?1.02:.58;f.attack='kick';f.attackT=awakened?1.02:.58;
+    f.gravityDiveHit=false;f.gravityDiveAwakened=awakened;
+    f.vx=sx*(awakened?405:285);f.vy=awakened?455:430;
+    comboEl.textContent=awakened?'強化グラビティダイブ!':'グラビティダイブ!';return true;
   }
 
   function specialJihalBolt(f){
@@ -7330,7 +7357,7 @@
             if(fwd&&specialEvilEye(player)){btn.classList.remove('pressed');return;}
             if(back&&specialBloodMoon(player)){btn.classList.remove('pressed');return;}
           }
-          if(player.type==='kokabiel'){
+          if(player.type==='kokabiel'||player.type==='awakenedKokabiel'){
             const backHeld=(player.face>0&&input.x<-.35)||(player.face<0&&input.x>.35);
             if(backHeld&&specialGravityZone(player)){btn.classList.remove('pressed');return;}
           }
@@ -8393,14 +8420,16 @@ function drawBackground(dt){
           f.vy+=360*dt;
           if(f.vy<0)f.vy*=.88;
         }
-        if(f.type!=='kokabiel'||f.specialType!=='gravityDive'||f.specialT<=0)return;
-        f.vy=Math.max(f.vy,390);
+        if(!isKokabielForm(f)||f.specialType!=='gravityDive'||f.specialT<=0)return;
+        const awakened=!!f.gravityDiveAwakened;
+        f.vy=Math.max(f.vy,awakened?420:390);
+        if(awakened)f.vx=f.face*Math.max(Math.abs(f.vx),365);
         const o=f.isPlayer?enemy:player;
-        if(o&&!f.gravityDiveHit&&Math.abs(o.x-f.x)<78&&Math.abs(o.y-f.y)<82){
+        if(o&&!f.gravityDiveHit&&Math.abs(o.x-f.x)<(awakened?92:78)&&Math.abs(o.y-f.y)<(awakened?96:82)){
           f.gravityDiveHit=true;
-          damageHit(f,o,8.2*f.damageMul,145*f.face,135);
-          o.gravityHeavyT=2.25;o.vy=Math.max(o.vy,180);
-          spawnImpact(o.x,o.y,'hit');comboEl.textContent='ヘヴィ・グラビティ!';
+          damageHit(f,o,(awakened?10.4:8.2)*f.damageMul,(awakened?205:145)*f.face,awakened?175:135);
+          o.gravityHeavyT=awakened?4.2:2.25;o.vy=Math.max(o.vy,awakened?235:180);
+          spawnImpact(o.x,o.y,'hit');comboEl.textContent=awakened?'超重力ダイブ!':'ヘヴィ・グラビティ!';
         }
       });
 
@@ -8419,7 +8448,7 @@ function drawBackground(dt){
         z.t-=dt;z.arm=Math.max(0,z.arm-dt);
         const target=z.owner.isPlayer?enemy:player;if(!target||z.t<=0)return;
         const dx=z.x-target.x,dy=z.y-target.y,d=Math.hypot(dx,dy)||1;
-        if(z.arm<=0&&d<z.maxR){const f=(1-d/z.maxR)*520+95;target.vx+=dx/d*f*dt;target.vy+=dy/d*f*.78*dt;}
+        if(z.arm<=0&&d<z.maxR){const force=((1-d/z.maxR)*520+95)*(z.power||1);target.vx+=dx/d*force*dt;target.vy+=dy/d*force*.78*dt;}
       });
       gravityZones=gravityZones.filter(z=>z.t>0);
       meteorDrops.forEach(m=>{
@@ -9709,7 +9738,7 @@ function drawBackground(dt){
 
     gravityZones.forEach(z=>{
       ctx.save();ctx.translate(z.x,z.y);ctx.globalCompositeOperation='lighter';
-      const rr=z.arm>0?22+(z.maxR-22)*(1-z.arm/.42):z.maxR;
+      const armBase=z.awakened?.34:.42;const rr=z.arm>0?22+(z.maxR-22)*(1-z.arm/armBase):z.maxR;
       ctx.globalAlpha=z.arm>0?.42:.26;ctx.strokeStyle='#72e4ed';ctx.lineWidth=3;ctx.shadowColor='#52dce8';ctx.shadowBlur=18;
       ctx.beginPath();ctx.arc(0,0,rr,0,Math.PI*2);ctx.stroke();
       ctx.globalAlpha=.18;ctx.fillStyle='#151b34';ctx.beginPath();ctx.arc(0,0,rr*.62,0,Math.PI*2);ctx.fill();
