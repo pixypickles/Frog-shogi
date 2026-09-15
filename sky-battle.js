@@ -431,7 +431,8 @@
       'ハイドロラッシュ：パンチ連打',
       'クロスラッシュ：前 ＋ パンチ（パンチ→パンチ→キック→キック→両サイドアッパー）',
       'ミラージュキック：前 ＋ キック',
-      'スピンキックカッター：後ろ ＋ キック（カッター3連発）'
+      'スピンキックカッター：後ろ ＋ キック（カッター3連発）',
+      '隠し技・セブンスカイキック：方向キー1回転 ＋ キック'
     ],
     piranha:[
       '高速突進噛みつき：後ろ → 前 ＋ 舌',
@@ -3502,7 +3503,7 @@
       'インフェルノウェーブ：下 ＋ キック'
     ],
     samael:['方向 ＋ パンチ：ポイズンゲート（指定方向から毒弾）','舌：ヴェノムタン（舌先から毒弾）','前 → 下 → 後ろ ＋ キック：デッドリー・アクア'],
-      kawazu:['パンチ連打：ハイドロラッシュ','前 ＋ パンチ：クロスラッシュ（P→P→K→K→左右アッパー）','前 ＋ キック：ミラージュキック','後ろ ＋ キック：スピンキックカッター（カッター3連発）']
+      kawazu:['パンチ連打：ハイドロラッシュ','前 ＋ パンチ：クロスラッシュ（P→P→K→K→左右アッパー）','前 ＋ キック：ミラージュキック','後ろ ＋ キック：スピンキックカッター（カッター3連発）','隠し技・セブンスカイキック：方向キー1回転 ＋ キック']
     };
     return map[type] || ['専用必殺技：練習対象外'];
   }
@@ -4811,29 +4812,91 @@
     return taps.length>=2;
   }
 
-  function specialKawazuTonguePiledriver(f){
-    if(gameOver || !f || f.type!=='kawazu' || f.stun>0 || f.specialT>0) return false;
-    const other=f.isPlayer?enemy:player;
-    if(!other) return false;
-    if(Math.abs(other.x-f.x)>18) f.face=Math.sign(other.x-f.x)||f.face;
+  function specialKawazuSkySevenKick(f){
+    if(gameOver||!f||f.type!=='kawazu'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
+    const target=f.isPlayer?enemy:player;
+    if(!target)return false;
 
-    f.attack='tongue'; f.attackT=.42; f.tongueT=.42;
     clearCommand();
+    input.raphaelCircleAccum=0;
+    input.raphaelCircleLastAngle=null;
+    input.raphaelCircleLastTime=0;
+    input.raphaelTornadoReadyUntil=0;
 
-    const dx=(other.x-f.x)*f.face, dy=Math.abs(other.y-f.y);
-    if(dx<=0 || dx>f.tongueRange*1.18 || dy>105) return true;
+    f.specialType='kawazuSkySevenKick';
+    f.specialT=2.30;
+    f.attack='kick';
+    f.attackVariant='down';
+    f.attackT=2.05;
+    f.vx=0;f.vy=0;
+    f._kawazuSkySecret=true;
+
+    const hitFromAbove=(side,index,finisher=false)=>{
+      setTimeout(()=>{
+        if(gameOver||!target||!f._kawazuSkySecret)return;
+
+        // 右上・左上を交互に瞬間移動。常に相手の頭上から蹴る。
+        const xOff=finisher?0:side*72;
+        f.x=Math.max(52,Math.min(innerWidth-52,target.x+xOff));
+        f.y=Math.max(62,Math.min(innerHeight-80,target.y-(finisher?105:92)));
+        f.face=target.x>=f.x?1:-1;
+        f.attack='kick';f.attackVariant='down';f.attackT=.18;
+        f.vx=0;f.vy=finisher?760:120;
+
+        // 瞬間移動感を出す短い残像。
+        kawazuGhosts.push({x:f.x,y:f.y,t:.18,life:.18,angle:0});
+
+        if(finisher){
+          target.stun=Math.max(target.stun,.72);
+          damageHit(f,target,7.8*f.damageMul,0,760);
+          spawnImpact(target.x,target.y,'hit');
+
+          // 7発目は相手を画面下へ完全に落とす。
+          target.vx=0;
+          target.vy=900;
+          target.skyDropT=Math.max(target.skyDropT||0,.72);
+          target._kawazuKnockOutDown=true;
+
+          // カワズさん自身は上空に残して、相手だけ落下。
+          f.vy=-40;
+        }else{
+          if(target.guard){
+            damageHit(f,target,.55*f.damageMul,side*22,72);
+            spawnImpact(target.x,target.y,'guard');
+          }else{
+            damageHit(f,target,2.15*f.damageMul,side*24,68);
+            spawnImpact(target.x,target.y,'hit');
+          }
+          target.stun=Math.max(target.stun,.16);
+        }
+      },index*155);
+    };
+
+    // 1〜6発：右上→左上を交互。
+    for(let i=0;i<6;i++) hitFromAbove(i%2===0?1:-1,i+1,false);
+    // 7発目：真上から画面下へ叩き落とす。
+    hitFromAbove(0,7,true);
+
+    // 少しして画面下から相手が復帰。
+    setTimeout(()=>{
+      if(gameOver||!target)return;
+      if(target._kawazuKnockOutDown){
+        target.x=Math.max(58,Math.min(innerWidth-58,target.x));
+        target.y=innerHeight+90;
+        target.vx=0;target.vy=-520;
+        target.skyDropT=0;
+        target._kawazuKnockOutDown=false;
+        target.stun=Math.max(target.stun,.42);
+      }
+    },1550);
 
     setTimeout(()=>{
-      if(gameOver || !other || other.guard) return;
-      f.specialType='kawazuTonguePiledriver'; f.specialT=.88;
-      other.stun=Math.max(other.stun,.82);
-      // 水中版は絡めたあと斜め前下へ強く落とす。
-      other.vx=f.face*330;
-      other.vy=390;
-      damageHit(f,other,8.0*f.damageMul,150*f.face,210);
-      comboEl.textContent='隠し技・舌パイルドライバー!';
-      setTimeout(()=>{if(comboEl.textContent==='隠し技・舌パイルドライバー!')comboEl.textContent='';},600);
-    },120);
+      f._kawazuSkySecret=false;
+      if(f.specialType==='kawazuSkySevenKick')f.specialType=null;
+    },2050);
+
+    comboEl.textContent='隠し技・セブンスカイキック!';
+    setTimeout(()=>{if(comboEl.textContent==='隠し技・セブンスカイキック!')comboEl.textContent='';},900);
     return true;
   }
 
@@ -6236,6 +6299,9 @@
   }
 
   function trySpecial(f,kind){
+    if(f && f.type==='kawazu' && kind==='kick' && raphaelHasFullCircle(1250)){
+      return specialKawazuSkySevenKick(f);
+    }
     if(f && f.type==='yellow' && kind==='punch' &&
        (f._raphaelTornadoLockUntil||0)<=performance.now() &&
        (f._raphaelTornadoCooldownUntil||0)<=performance.now() &&
@@ -6972,7 +7038,7 @@
 
     // ラファエルの一回転はコマンド履歴ではなく、スティックそのものの軌跡で判定する。
     // ダッシュや通常技の入力処理に横取りされない独立経路。
-    if(player && player.type==='yellow'){
+    if(player && (player.type==='yellow'||player.type==='kawazu')){
       const mag=Math.hypot(input.x,input.y);
       if(mag>=.48){
         const now=performance.now();
@@ -7008,7 +7074,7 @@
       input.jihalCircleAccum=0;
       input.jihalCircleLastTime=0;
     }
-    if(player && player.type==='yellow' && performance.now()>input.raphaelTornadoReadyUntil){
+    if(player && (player.type==='yellow'||player.type==='kawazu') && performance.now()>input.raphaelTornadoReadyUntil){
       input.raphaelCircleLastAngle=null;
       input.raphaelCircleAccum=0;
       input.raphaelCircleLastTime=0;
@@ -7044,6 +7110,21 @@
     const action=btn.dataset.action;
     const down=e=>{
       e.preventDefault();btn.classList.add('pressed');
+
+      // カワズさん隠し技：方向キー1回転＋キック。
+      if(action==='kick' && player && player.type==='kawazu'){
+        const now=performance.now();
+        if(input.raphaelTornadoReadyUntil>now || raphaelHasFullCircle(1250)){
+          input.raphaelTornadoReadyUntil=0;
+          player.guard=false;
+          player.attackT=0;
+          player.specialT=0;
+          if(specialKawazuSkySevenKick(player)){
+            playSfx('special');
+            return;
+          }
+        }
+      }
 
       // ジィハル隠し技：下から一回転＋パンチ。
       if(action==='punch' && player && player.type==='jihal'){
