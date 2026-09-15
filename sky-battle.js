@@ -393,7 +393,7 @@
       'ルナ・スラッシュ（下弧）：下 ＋ パンチ',
       'イーブルアイ：前 ＋ ガード',
       'ブラッドムーン：後ろ ＋ ガード',
-      'ムーンサルトキック：上 ＋ キック'
+      'ムーンサルトウイング：上 ＋ キック'
     ],
     kokabiel:[
       'グラビティボール：前 ＋ パンチ',
@@ -3512,12 +3512,12 @@
       black:['前 ＋ キック：ヘルクラッシュ（氷オーラの蹴り・特大ノックバック）','後ろ ＋ パンチ長押し → 離す：アビスチャージ（周囲を一瞬凍結）','前 ＋ パンチ：アイスショット','後ろ ＋ ガード：アイスウォール','下 ＋ パンチ：ダイヤモンドヘイル（氷晶・雹を時間差で大量落下）'],
       purple:['舌連打：舌ラッシュ','後ろ ＋ 舌：バブルショット','後ろ ＋ キック：バックスピンウイング（追加入力で追加回転）','前 ＋ キック：ドロップキック'],
       beelzebub:['下 → 後ろ ＋ ガード：ヴェノム・ウォーター','方向 ＋ パンチ：ベノムブレード（約120°薙ぎ払い・自動補正）','前 ＋ キック：ベノムショット（3発同時）'],
-      sariel:['上 ＋ パンチ：ルナ・スラッシュ（上弧）','下 ＋ パンチ：ルナ・スラッシュ（下弧）','前 ＋ ガード：イーブルアイ','後ろ ＋ ガード：ブラッドムーン','上 ＋ キック：ムーンサルトキック'],
+      sariel:['上 ＋ パンチ：ルナ・スラッシュ（上弧）','下 ＋ パンチ：ルナ・スラッシュ（下弧）','前 ＋ ガード：イーブルアイ','後ろ ＋ ガード：ブラッドムーン','上 ＋ キック：ムーンサルトウイング'],
       kokabiel:['前 ＋ パンチ：グラビティボール','後ろ ＋ ガード：グラビティゾーン','下 ＋ パンチ：メテオレイン','下 ＋ キック：グラビティダイブ'],
       jihal:['前 ＋ パンチ：ボルトショット（相手方向）','前 ＋ キック：ライトニングダッシュ（横/斜め45°自動補正）','後ろ ＋ キック長押し → 離す：サンダーチャージ（相手方向）','下 ＋ パンチ：スパークバースト','隠し技・サンダーフォール：下から方向キー1回転 ＋ パンチ'],
       remiel:['上 ＋ ガード：ミラージュ（上）','下 ＋ ガード：ミラージュ（下）','後ろ ＋ ガード：ミラージュカウンター','前 ＋ ガード：アクアパリィ','前 ＋ パンチ：フロストショット','前 ＋ キック：ミラージュキック'],
       seraphiel:['上 ＋ パンチ：セラフィックアッパー','前 ＋ キック：セラフィックキック','後ろ ＋ パンチ：セラフィックショット','下 → 後ろ ＋ キック：セラフィックサイクロン','下 → 前 ＋ パンチ：セラフィックレイ'],
-      flauros:['上 ＋ パンチ：ヘルフレイム（相手の足元から火柱）','前 ＋ パンチ：フレイムクロー（3方向の炎爪）','前 ＋ キック：レオパードラッシュ','上 ＋ キック：インフェルノクロー（壁から急降下→時間差5連斬）'],
+      flauros:['上 ＋ パンチ：ヘルフレイム（相手の足元から火柱）','前 ＋ パンチ：フレイムクロー（3方向の炎爪）','前 ＋ キック：レオパードストライク','後ろ ＋ キック：インフェルノクロー（相手へ直行→時間差5連斬）'],
       satanael:[
       'ディザスターフレア：後ろ ＋ パンチ',
       'ダークレイ：前 ＋ パンチ',
@@ -5238,7 +5238,7 @@
   function specialMoonSaltKick(f){
     if(gameOver||!f||f.type!=='sariel'||f.stun>0||f.guard||f.specialT>0||f.attackT>0)return false;
     f.specialType='moonSalt';f.specialT=.82;f.attack='kick';f.attackT=.82;f.moonSaltHits=0;f.moonSaltHitCd=0;f.moonSaltSpin=0;f.vy=-145;f.vx=f.face*78;
-    comboEl.textContent='ムーンサルトキック!';return true;
+    comboEl.textContent='ムーンサルトウイング!';return true;
   }
 
   function specialGravityBall(f){
@@ -5914,15 +5914,23 @@
   function specialLeopardRush(f){
     if(gameOver||!f||f.stun>0||f.guard||f.specialT>0)return false;
     f.specialType='leopardRush';f.specialT=.46;f.attack='kick';f.attackT=.46;f.flaurosRushHit=false;f.flaurosRushDir=f.face;f.vx=f.face*760;f.vy=-55;
-    comboEl.textContent='レオパードラッシュ!';return true;
+    comboEl.textContent='レオパードストライク!';return true;
   }
   function specialInfernoClaw(f){
     if(gameOver||!f||f.stun>0||f.guard||f.specialT>0)return false;
-    f.specialType='infernoClaw';f.specialT=1.10;f.attack='kick';f.attackT=1.10;f.infernoPhase=0;f.infernoHit=false;f.infernoStart=performance.now();
-    // まず「自分の後ろ側」の上壁へ飛ぶ。右向きなら左上、左向きなら右上。
-    f.infernoFromX=f.x;f.infernoFromY=f.y;
-    f.infernoWallX=f.face>0?62:innerWidth-62;f.infernoWallY=92;
-    f.infernoEndX=f.face>0?innerWidth-62:62;f.infernoEndY=innerHeight-76;
+    const target=f.isPlayer?enemy:player;if(!target)return false;
+
+    f.specialType='infernoClaw';f.specialT=.72;f.attack='kick';f.attackT=.72;
+    f.infernoHit=false;f.infernoStart=performance.now();
+
+    // 雲上版：壁は使わず、発動時の相手位置へ一直線。
+    // 横方向だけでなく、相手が上なら上・下なら下へ自動で向く。
+    const dx=target.x-f.x,dy=target.y-f.y,len=Math.hypot(dx,dy)||1;
+    f.infernoNx=dx/len;f.infernoNy=dy/len;
+    f.face=f.infernoNx>=0?1:-1;
+    f.vx=f.infernoNx*650;
+    f.vy=f.infernoNy*650;
+
     comboEl.textContent='インフェルノクロー!';return true;
   }
 
@@ -6485,7 +6493,7 @@
     if(f.type==='flauros'){
       if(kind==='punch'&&water2HeldDir(f,'up')){clearCommand();return specialHellFlame(f);}
       if(kind==='punch'&&water2HeldDir(f,'forward')){clearCommand();return specialFlameClaw(f);}
-      if(kind==='kick'&&water2HeldDir(f,'up')){clearCommand();return specialInfernoClaw(f);}
+      if(kind==='kick'&&water2HeldDir(f,'back')){clearCommand();return specialInfernoClaw(f);}
       if(kind==='kick'&&water2HeldDir(f,'forward')){clearCommand();return specialLeopardRush(f);}
     }
 
@@ -7886,26 +7894,28 @@
         if(o&&!f.flaurosRushHit&&Math.abs(o.x-f.x)<76&&Math.abs(o.y-f.y)<72){f.flaurosRushHit=true;damageHit(f,o,8.0*f.damageMul,300*(f.flaurosRushDir||f.face),-55);spawnImpact(o.x,o.y,'hit');}
       }
       if(f.specialType==='infernoClaw'&&f.specialT>0){
-        const elapsed=(performance.now()-(f.infernoStart||performance.now()))/1000;
-        const wallT=.25, diveT=.48;
-        f.vx=0;f.vy=0;
-        if(elapsed<wallT){
-          // 現在地→後ろ上の壁。少しイーズアウトして「壁へ飛びつく」動き。
-          let t=Math.max(0,Math.min(1,elapsed/wallT));t=1-Math.pow(1-t,2);
-          f.x=f.infernoFromX+(f.infernoWallX-f.infernoFromX)*t;
-          f.y=f.infernoFromY+(f.infernoWallY-f.infernoFromY)*t;
-        }else{
-          if(f.infernoPhase===0)f.infernoPhase=1;
-          // 壁から反対側の下端まで、軌道を曲げず対角線に一直線。
-          const t=Math.max(0,Math.min(1,(elapsed-wallT)/diveT));
-          f.x=f.infernoWallX+(f.infernoEndX-f.infernoWallX)*t;
-          f.y=f.infernoWallY+(f.infernoEndY-f.infernoWallY)*t;
-          const dir=Math.sign(f.infernoEndX-f.infernoWallX)||f.face;
-          if(o&&!f.infernoHit&&Math.abs(o.x-f.x)<76&&Math.abs(o.y-f.y)<70){
-            f.infernoHit=true;const guarded=o.guard;spawnImpact(o.x,o.y,guarded?'guard':'hit');
-            if(guarded){damageHit(f,o,1.0,55*dir,10);}else{
-              const bx=o.x,by=o.y;for(let i=0;i<5;i++)flaurosClaws.push({owner:f,target:o,x:bx,y:by,t:.10+i*.065,life:.30,index:i,hit:false});
+        const nx=f.infernoNx||f.face||1,ny=f.infernoNy||0;
+        // 発動時に決めた相手方向へ高速直進。
+        f.vx=nx*650;f.vy=ny*650;
+
+        if(o&&!f.infernoHit){
+          const dx=o.x-f.x,dy=o.y-f.y;
+          const ahead=dx*nx+dy*ny;
+          const side=Math.abs(dx*ny-dy*nx);
+          if(ahead>-20 && side<o.radius+58 && Math.hypot(dx,dy)<105){
+            f.infernoHit=true;
+            const guarded=o.guard;
+            spawnImpact(o.x,o.y,guarded?'guard':'hit');
+            if(guarded){
+              damageHit(f,o,1.0,70*nx,70*ny);
+            }else{
+              // 直撃後に従来の時間差5連斬。
+              const bx=o.x,by=o.y;
+              for(let i=0;i<5;i++){
+                flaurosClaws.push({owner:f,target:o,x:bx,y:by,t:.10+i*.065,life:.30,index:i,hit:false});
+              }
             }
+            f.vx*=.20;f.vy*=.20;
           }
         }
       }
@@ -8323,12 +8333,31 @@ function drawBackground(dt){
           f.vy=Math.min(f.vy,-72);
           f.moonSaltSpin=(f.moonSaltSpin||0)+dt*34;
           f.moonSaltHitCd=Math.max(0,(f.moonSaltHitCd||0)-dt);
-          // 回転そのものが攻撃。最大6ヒット、約0.09秒ごとに再ヒット可能。
-          if((f.moonSaltHits||0)<6&&f.moonSaltHitCd<=0&&Math.abs(o.x-f.x)<82&&Math.abs(o.y-f.y)<88){
-            f.moonSaltHits=(f.moonSaltHits||0)+1;f.moonSaltHitCd=.09;
-            const last=f.moonSaltHits>=6;
-            damageHit(f,o,(last?3.8:1.45)*f.damageMul,(last?145:24)*f.face,last?-210:-22);
-            spawnImpact(o.x,o.y,'hit');
+          // ムーンサルトウイング：身体ではなく、回転する左右の翼に攻撃判定。
+          // 翼の根元～先端を複数点で追い、見た目どおり翼が触れた時だけヒットする。
+          if((f.moonSaltHits||0)<6&&f.moonSaltHitCd<=0){
+            const wingPts=[
+              [-30,-7],[-50,-10],[-70,1],[-57,18],
+              [ 30,-7],[ 50,-10],[ 70,1],[ 57,18]
+            ];
+            let hitWing=null;
+            for(const [wx,wy] of wingPts){
+              const rp=rotatePoint(wx,wy,f.moonSaltSpin||0);
+              if(Math.hypot(o.x-(f.x+rp.x),o.y-(f.y+rp.y))<o.radius+23){
+                hitWing=rp;break;
+              }
+            }
+            if(hitWing){
+              f.moonSaltHits=(f.moonSaltHits||0)+1;f.moonSaltHitCd=.09;
+              const last=f.moonSaltHits>=6;
+              const hl=Math.hypot(hitWing.x,hitWing.y)||1;
+              damageHit(
+                f,o,(last?3.8:1.45)*f.damageMul,
+                (hitWing.x/hl)*(last?155:30),
+                (hitWing.y/hl)*(last?155:30)
+              );
+              spawnImpact(o.x,o.y,'hit');
+            }
           }
         }
       });
