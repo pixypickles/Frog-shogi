@@ -1022,8 +1022,17 @@
     ctx.globalAlpha=dropping?.60:.95;
 
     if(kind==='demon'){
-      ctx.fillStyle='rgba(54,34,82,.82)';
-      ctx.strokeStyle='rgba(28,15,48,.88)';
+      if(f.type==='beelzebub'){
+        const wg=ctx.createLinearGradient(-88,-30,-8,30);
+        wg.addColorStop(0,'rgba(113,20,145,.94)');
+        wg.addColorStop(.52,'rgba(65,22,94,.94)');
+        wg.addColorStop(1,'rgba(111,255,44,.70)');
+        ctx.fillStyle=wg;ctx.strokeStyle='rgba(142,255,58,.92)';
+        ctx.shadowColor='rgba(119,255,39,.45)';ctx.shadowBlur=8;
+      }else{
+        ctx.fillStyle='rgba(54,34,82,.82)';
+        ctx.strokeStyle='rgba(28,15,48,.88)';
+      }
       ctx.lineWidth=2.2;
       const drawBatWing=(mirror)=>{
         ctx.save();
@@ -4392,8 +4401,8 @@
 
     toxicWaters.push({
       owner:f,
-      t:4.2,
-      life:4.2,
+      t:2.65,
+      life:2.65,
       tick:0,
       // v6.34: ベルゼブブ本人を中心に毒煙が広がる。
       originX:f.x,
@@ -4404,6 +4413,28 @@
     comboEl.textContent='ヴェノム・ウォーター!';
     setTimeout(()=>{if(comboEl.textContent==='ヴェノム・ウォーター!')comboEl.textContent='';},800);
     clearCommand();
+    return true;
+  }
+
+  function specialBeelzebubTripleVenom(f){
+    if(gameOver||!f||f.type!=='beelzebub'||f.stun>0||f.guard||f.specialT>0)return false;
+    const target=f.isPlayer?enemy:player;if(!target)return false;
+    f.specialType='water2ShotWindup';f.specialT=.62;f.attack='punch';f.attackT=.62;
+    comboEl.textContent='ベノムショット…';
+    setTimeout(()=>{
+      if(gameOver||!f)return;
+      const dx=target.x-f.x,dy=target.y-f.y,base=Math.atan2(dy,dx);
+      f.face=dx>=0?1:-1;
+      [-.115,0,.115].forEach(off=>{
+        const a=base+off,nx=Math.cos(a),ny=Math.sin(a);
+        water2Shots.push({owner:f,x:f.x+nx*56,y:f.y+ny*24,vx:nx*255,vy:ny*255,r:17,
+          age:0,maxAge:18,t:1,life:1,damage:4.0,name:'ベノムショット',color:'venom',
+          reflected:0,hit:false,spin:0,style:'venomGloss',poisonDuration:2.2,curve:0,
+          arcFlip:1,wobble:0,baseVy:ny*255,maxReflect:4});
+      });
+      comboEl.textContent='ベノムショット!';
+      setTimeout(()=>{if(comboEl.textContent==='ベノムショット!')comboEl.textContent='';},520);
+    },340);
     return true;
   }
 
@@ -6701,7 +6732,7 @@
     }
 
     if(f.type==='beelzebub'){
-      if(kind==='punch' && water2HeldDir(f,'forward')){ clearCommand(); return specialWater2Shot(f,{name:'ベノムショット',attack:'punch',color:'venom',style:'venomGloss',speed:235,damage:(f&&f.type==='awakenedKokabiel'?7.0:4.5),r:16,charge:.50,poisonDuration:2.2,maxReflect:4}); }
+      if(kind==='punch' && water2HeldDir(f,'forward')){ clearCommand(); return specialBeelzebubTripleVenom(f); }
       if(kind==='punch' && water2HeldDir(f,'up')){ clearCommand(); return specialAbyssShock(f,'upper'); }
       if(kind==='kick' && water2HeldDir(f,'down')){ clearCommand(); return specialAbyssShock(f,'lower'); }
     }
@@ -7672,7 +7703,7 @@
           if(roll<dt*.10){ specialVenomWater(enemy); return; }
           if(roll<dt*.26){ specialAbyssShock(enemy,dy<0?'upper':'lower'); return; }
         }
-        if(dist>150 && roll<dt*.46){ specialWater2Shot(enemy,{name:'ベノムショット',attack:'punch',color:'venom',style:'venomGloss',speed:235,damage:4.5,r:16,charge:.50,poisonDuration:2.2,maxReflect:4}); return; }
+        if(dist>150 && roll<dt*.46){ specialBeelzebubTripleVenom(enemy); return; }
       }
       if(enemy.type==='satanael'&&enemy.specialT<=0){const r=Math.random();if(dist>190&&r<dt*.16){specialDisasterFlare(enemy);return;}if(dist>220&&r<dt*.28){specialDarkRay(enemy);return;}if(r<dt*.38){specialDarkPressure(enemy);return;}if(r<dt*.50){specialInfernoWave(enemy);return;}}
       if(enemy.type==='flauros'&&enemy.specialT<=0){const r=Math.random();if(dist>180&&r<dt*.20){specialHellFlame(enemy);return;}if(dist>170&&r<dt*.38){specialFlameClaw(enemy);return;}if(dist<250&&r<dt*.52){specialLeopardRush(enemy);return;}if(dist>130&&r<dt*.59){specialInfernoClaw(enemy);return;}}
@@ -9340,11 +9371,11 @@ function drawBackground(dt){
       // 土煙のようにベルゼブブから紫の毒が一気に広がる。
       // 発動直後 -> 画面がほぼ見えない濃さ -> その後は薄い毒水として残る。
       const age=v.life-v.t;
-      const spread=Math.min(1,age/.82);
-      const denseIn=Math.min(1,age/.48);
-      const denseOut=age<1.45 ? 1 : Math.max(0,1-(age-1.45)/1.05);
+      const spread=Math.min(1,age/.40);
+      const denseIn=Math.min(1,age/.16);
+      const denseOut=age<.48 ? 1 : Math.max(0,1-(age-.48)/.48);
       const dense=denseIn*denseOut;
-      const linger=Math.max(0,Math.min(1,v.t/1.0));
+      const linger=Math.max(0,Math.min(1,v.t/.50));
       const ox=Number.isFinite(v.originX)?v.originX:(v.owner?v.owner.x:innerWidth/2);
       const oy=Number.isFinite(v.originY)?v.originY:(v.owner?v.owner.y:innerHeight/2);
       const maxR=Math.hypot(innerWidth,innerHeight)*1.15;
@@ -9390,11 +9421,23 @@ function drawBackground(dt){
       }
 
       // ピーク後は従来より薄い紫の水だけが残る。
-      const thin=Math.max(0,Math.min(1,(age-1.6)/.9))*linger;
+      const thin=Math.max(0,Math.min(1,(age-.45)/.35))*linger;
       if(thin>0){
-        ctx.globalAlpha=.15*thin;
-        ctx.fillStyle='#7d24a8';
-        ctx.fillRect(0,0,innerWidth,innerHeight);
+        // 晴れた後は、流れる雲が紫に染まったような毒雲だけが残る。
+        ctx.globalAlpha=.18*thin;
+        for(let band=0;band<3;band++){
+          const yy=innerHeight*(.28+band*.23)+Math.sin(now*.7+band)*18;
+          const drift=((now*58+band*210+(v.seed||0)*13)%(innerWidth+360))-180;
+          ctx.fillStyle=band===1?'#71118f':'#9d27bd';
+          for(let j=-2;j<5;j++){
+            const xx=drift+j*190;
+            ctx.beginPath();
+            ctx.ellipse(xx,yy,125,38,0,0,Math.PI*2);
+            ctx.ellipse(xx+72,yy-14,86,32,0,0,Math.PI*2);
+            ctx.ellipse(xx-70,yy+10,80,29,0,0,Math.PI*2);
+            ctx.fill();
+          }
+        }
       }
       ctx.restore();
     });
@@ -10044,8 +10087,8 @@ function drawBackground(dt){
         ctx.fillStyle='rgba(255,255,255,.78)';ctx.beginPath();ctx.ellipse(-q.r*.32,-q.r*.35,q.r*.22,q.r*.12,-.6,0,Math.PI*2);ctx.fill();
       }else if(q.style==='venomGloss'){
         const rg=ctx.createRadialGradient(-q.r*.3,-q.r*.35,1,0,0,q.r*1.15);
-        rg.addColorStop(0,'#f3c4ff');rg.addColorStop(.18,'#c55cff');rg.addColorStop(.68,'#7023a8');rg.addColorStop(1,'#3e0f62');
-        ctx.shadowColor='#c865ff';ctx.shadowBlur=22;ctx.fillStyle=rg;ctx.beginPath();ctx.arc(0,0,q.r,0,Math.PI*2);ctx.fill();
+        rg.addColorStop(0,'#d14aff');rg.addColorStop(.16,'#8d0fc3');rg.addColorStop(.62,'#4b006c');rg.addColorStop(1,'#20002e');
+        ctx.shadowColor='#8915bd';ctx.shadowBlur=22;ctx.fillStyle=rg;ctx.beginPath();ctx.arc(0,0,q.r,0,Math.PI*2);ctx.fill();
         ctx.fillStyle='rgba(255,255,255,.72)';ctx.beginPath();ctx.ellipse(-q.r*.28,-q.r*.32,q.r*.23,q.r*.12,-.6,0,Math.PI*2);ctx.fill();
       }else if(q.style==='samaelVenom'){
         const rg=ctx.createRadialGradient(-q.r*.32,-q.r*.35,1,0,0,q.r*1.2);
