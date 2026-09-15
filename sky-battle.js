@@ -9500,17 +9500,29 @@ function drawBackground(dt){
       ctx.save();ctx.translate(b.owner.x,b.owner.y);ctx.rotate(b.angle+sweep);
       ctx.globalCompositeOperation='source-over';
       ctx.globalAlpha=Math.max(0,b.t/b.life);
-      // 光らない、濃い毒液の刃。
+      // 細身の濃紫毒刃。発光ではなく、濡れた刃の表面に細い光沢を走らせる。
       const g=ctx.createLinearGradient(22,0,b.r,0);
-      g.addColorStop(0,'rgba(54,0,66,.18)');
-      g.addColorStop(.38,'rgba(74,0,91,.82)');
-      g.addColorStop(.76,'rgba(45,0,59,.96)');
-      g.addColorStop(1,'rgba(24,0,34,.92)');
-      ctx.fillStyle=g;ctx.strokeStyle='#3b004c';ctx.lineWidth=3;
-      ctx.beginPath();ctx.moveTo(18,-8);
-      ctx.quadraticCurveTo(b.r*.58,-34,b.r,-5);
-      ctx.quadraticCurveTo(b.r*.72,17,20,10);
+      g.addColorStop(0,'rgba(55,0,68,.94)');
+      g.addColorStop(.38,'rgba(79,0,96,.98)');
+      g.addColorStop(.76,'rgba(47,0,62,1)');
+      g.addColorStop(1,'rgba(25,0,35,1)');
+      ctx.fillStyle=g;ctx.strokeStyle='#31003e';ctx.lineWidth=2.2;
+      ctx.beginPath();ctx.moveTo(20,-4);
+      ctx.quadraticCurveTo(b.r*.60,-20,b.r,-3);
+      ctx.quadraticCurveTo(b.r*.73,10,21,6);
       ctx.closePath();ctx.fill();ctx.stroke();
+
+      // 毒液の光沢筋。透明な発光ではなく、刃の内側に沿う明るい紫。
+      ctx.strokeStyle='#a23db3';ctx.lineWidth=2;ctx.globalAlpha=.95;
+      ctx.beginPath();
+      ctx.moveTo(29,-4);
+      ctx.quadraticCurveTo(b.r*.58,-13,b.r*.86,-5);
+      ctx.stroke();
+      ctx.strokeStyle='#6f1c80';ctx.lineWidth=1.2;
+      ctx.beginPath();
+      ctx.moveTo(37,1);
+      ctx.quadraticCurveTo(b.r*.62,5,b.r*.78,2);
+      ctx.stroke();
       ctx.restore();
     });
 
@@ -10136,11 +10148,16 @@ function drawBackground(dt){
         ctx.beginPath();ctx.arc(0,0,q.r,0,Math.PI*2);ctx.fill();ctx.stroke();
         ctx.fillStyle='rgba(255,255,255,.78)';ctx.beginPath();ctx.ellipse(-q.r*.32,-q.r*.35,q.r*.22,q.r*.12,-.6,0,Math.PI*2);ctx.fill();
       }else if(q.style==='venomGloss'){
-        // 濃い毒液。発光・白いハイライトは付けない。
+        // 濃い毒液。弾そのものは完全不透明、発光なし。表面だけ濡れた光沢を入れる。
+        ctx.globalAlpha=1;
         const rg=ctx.createRadialGradient(-q.r*.28,-q.r*.30,1,0,0,q.r*1.15);
-        rg.addColorStop(0,'#650078');rg.addColorStop(.28,'#4a005c');rg.addColorStop(.72,'#2d003b');rg.addColorStop(1,'#160020');
+        rg.addColorStop(0,'#76008a');rg.addColorStop(.25,'#560067');rg.addColorStop(.70,'#30003e');rg.addColorStop(1,'#170020');
         ctx.shadowBlur=0;ctx.fillStyle=rg;ctx.beginPath();ctx.arc(0,0,q.r,0,Math.PI*2);ctx.fill();
-        ctx.strokeStyle='#390047';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,q.r,0,Math.PI*2);ctx.stroke();
+        ctx.strokeStyle='#260031';ctx.lineWidth=2.2;ctx.beginPath();ctx.arc(0,0,q.r,0,Math.PI*2);ctx.stroke();
+        ctx.fillStyle='#b84bc8';
+        ctx.beginPath();ctx.ellipse(-q.r*.30,-q.r*.34,q.r*.22,q.r*.10,-.55,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#8c279d';
+        ctx.beginPath();ctx.ellipse(-q.r*.08,-q.r*.45,q.r*.09,q.r*.045,-.35,0,Math.PI*2);ctx.fill();
       }else if(q.style==='samaelVenom'){
         const rg=ctx.createRadialGradient(-q.r*.32,-q.r*.35,1,0,0,q.r*1.2);
         rg.addColorStop(0,'#f2c8ff');rg.addColorStop(.18,'#d774ff');rg.addColorStop(.48,'#9a39df');rg.addColorStop(.78,'#5b1a91');rg.addColorStop(1,'#2b0b48');
