@@ -108,6 +108,7 @@
   let toxicWaters=[];
   let bossFish=[];
   let abyssShocks=[];
+  let venomBlades=[];
   let kawazuShots=[];
   let kawazuGhosts=[];
   let flaurosPillars=[];
@@ -379,14 +380,13 @@
     purple:[
       '舌ラッシュ：舌連打',
       'バブルショット：後ろ ＋ 舌',
-      'バックスピンキック：後ろ ＋ キック（追加入力で追加回転）',
+      'バックスピンウイング：後ろ ＋ キック（追加入力で追加回転）',
       'ドロップキック：前 ＋ キック'
     ],
     beelzebub:[
       'ヴェノム・ウォーター：下 → 後ろ ＋ ガード',
-      'アビスショック（上弧）：上 ＋ パンチ',
-      'アビスショック（下弧）：下 ＋ キック',
-      'ベノムショット：前 ＋ パンチ'
+      'ベノムブレード：方向 ＋ パンチ（約120°薙ぎ払い・自動補正）',
+      'ベノムショット：前 ＋ キック（3発同時）'
     ],
     sariel:[
       'ルナ・スラッシュ（上弧）：上 ＋ パンチ',
@@ -3510,8 +3510,8 @@
       yellow:['前 ＋ パンチ：水圧カッター（相手方向）','上 ＋ パンチ：エア（水圧）ブレード','下 ＋ パンチ：エアギロチン','上 ＋ キック：高速バブル上昇','下 ＋ キック：高速バブル下降','ガード ×2：ヒーリングバブル'],
       orange:['下 → 後ろ ＋ ガード：ホワイトカウンター','後ろ → 前 ＋ ガード：ガーディアンタックル','ガード長押し：ホワイトオーラ','オーラ中 パンチ / キック：白い長リーチ攻撃','ガード ＋ パンチ：ホワイトショット'],
       black:['前 ＋ キック：ヘルクラッシュ（氷オーラの蹴り・特大ノックバック）','後ろ ＋ パンチ長押し → 離す：アビスチャージ（周囲を一瞬凍結）','前 ＋ パンチ：アイスショット','後ろ ＋ ガード：アイスウォール','下 ＋ パンチ：ダイヤモンドヘイル（氷晶・雹を時間差で大量落下）'],
-      purple:['舌連打：舌ラッシュ','後ろ ＋ 舌：バブルショット','後ろ ＋ キック：バックスピンキック（追加入力で追加回転）','前 ＋ キック：ドロップキック'],
-      beelzebub:['下 → 後ろ ＋ ガード：ヴェノム・ウォーター','上 ＋ パンチ：アビスショック（上弧）','下 ＋ キック：アビスショック（下弧）','前 ＋ パンチ：ベノムショット'],
+      purple:['舌連打：舌ラッシュ','後ろ ＋ 舌：バブルショット','後ろ ＋ キック：バックスピンウイング（追加入力で追加回転）','前 ＋ キック：ドロップキック'],
+      beelzebub:['下 → 後ろ ＋ ガード：ヴェノム・ウォーター','方向 ＋ パンチ：ベノムブレード（約120°薙ぎ払い・自動補正）','前 ＋ キック：ベノムショット（3発同時）'],
       sariel:['上 ＋ パンチ：ルナ・スラッシュ（上弧）','下 ＋ パンチ：ルナ・スラッシュ（下弧）','前 ＋ ガード：イーブルアイ','後ろ ＋ ガード：ブラッドムーン','上 ＋ キック：ムーンサルトキック'],
       kokabiel:['前 ＋ パンチ：グラビティボール','後ろ ＋ ガード：グラビティゾーン','下 ＋ パンチ：メテオレイン','下 ＋ キック：グラビティダイブ'],
       jihal:['前 ＋ パンチ：ボルトショット（相手方向）','前 ＋ キック：ライトニングダッシュ（横/斜め45°自動補正）','後ろ ＋ キック長押し → 離す：サンダーチャージ（相手方向）','下 ＋ パンチ：スパークバースト','隠し技・サンダーフォール：下から方向キー1回転 ＋ パンチ'],
@@ -3634,7 +3634,7 @@
   function resetBattleEffects(){
     particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[]; aquaVortices=[];
     siltClouds=[]; catfishCharges=[]; pressureBlades=[]; water2Shots=[]; flaurosPillars=[]; flaurosClaws=[]; satanaelFlares=[]; satanaelRays=[]; satanaelPressures=[]; satanaelWaves=[]; samaelGates=[]; seraphielRays=[]; remielMirages=[]; remielFakeShots=[]; jihalBolts=[]; jihalBursts=[]; burstWaves=[];
-    leafTargets=[]; guardTargets=[]; toxicWaters=[]; bossFish=[]; abyssShocks=[]; kawazuShots=[]; kawazuGhosts=[];
+    leafTargets=[]; guardTargets=[]; toxicWaters=[]; bossFish=[]; abyssShocks=[]; venomBlades=[]; kawazuShots=[]; kawazuGhosts=[];
   }
 
   function startGame(mode='free', enemyType=null) {
@@ -4308,8 +4308,8 @@
     f.lilithSpinStartTime=performance.now();
     f.lilithSpinLastHitA=-9999; f.lilithSpinLastHitB=-9999;
     f.vx-=f.face*285; f.vy*=.25;
-    comboEl.textContent='バックスピンキック!';
-    setTimeout(()=>{if(comboEl.textContent==='バックスピンキック!')comboEl.textContent='';},600);
+    comboEl.textContent='バックスピンウイング!';
+    setTimeout(()=>{if(comboEl.textContent==='バックスピンウイング!')comboEl.textContent='';},600);
     return true;
   }
 
@@ -4419,7 +4419,7 @@
   function specialBeelzebubTripleVenom(f){
     if(gameOver||!f||f.type!=='beelzebub'||f.stun>0||f.guard||f.specialT>0)return false;
     const target=f.isPlayer?enemy:player;if(!target)return false;
-    f.specialType='water2ShotWindup';f.specialT=.62;f.attack='punch';f.attackT=.62;
+    f.specialType='water2ShotWindup';f.specialT=.62;f.attack='kick';f.attackT=.62;
     comboEl.textContent='ベノムショット…';
     setTimeout(()=>{
       if(gameOver||!f)return;
@@ -4471,33 +4471,25 @@
     return true;
   }
 
-  function specialAbyssShock(f, route='upper'){
-    if(gameOver || !f || f.stun>0 || f.specialT>0 || f.bossSpecialCooldown>0) return false;
-    const upper=route!=='lower';
-    f.specialType='abyssShock';
-    f.specialT=.62;
-    f.attack=upper?'punch':'kick';
-    f.attackVariant=upper?'up':'down';
-    f.attackT=.62;
-    f.bossSpecialCooldown=1.25;
+  function specialVenomBlade(f, dirName){
+    if(gameOver||!f||f.type!=='beelzebub'||f.stun>0||f.guard||f.specialT>0)return false;
+    const target=f.isPlayer?enemy:player;if(!target)return false;
+    const dirs={up:-Math.PI/2,down:Math.PI/2,left:Math.PI,right:0};
+    let base=dirs[dirName];
+    if(!Number.isFinite(base)) base=f.face>0?0:Math.PI;
 
-    setTimeout(()=>{
-      if(gameOver || !f) return;
-      abyssShocks.push({
-        owner:f,
-        x:f.x+f.face*52,
-        y:f.y+(upper?-28:52),
-        vx:f.face*300,
-        vy:upper?-220:220,
-        curve:upper?185:-185,
-        t:2.4, life:2.4,
-        r:30, hit:false, reflected:0, maxReflect:4,
-        damage:5.8
-      });
-    },180);
+    // 押した方向を主軸にしつつ、敵がその方向から大きく外れない範囲で自動補正。
+    const aim=Math.atan2(target.y-f.y,target.x-f.x);
+    let diff=Math.atan2(Math.sin(aim-base),Math.cos(aim-base));
+    diff=Math.max(-Math.PI/4,Math.min(Math.PI/4,diff));
+    const angle=base+diff;
 
-    comboEl.textContent='アビスショック!';
-    setTimeout(()=>{if(comboEl.textContent==='アビスショック!')comboEl.textContent='';},700);
+    f.specialType='venomBlade';f.specialT=.48;f.attack='punch';f.attackT=.48;
+    f.venomBladeAngle=angle;
+    f.face=Math.cos(angle)>=0?1:-1;
+    venomBlades.push({owner:f,x:f.x,y:f.y,angle,t:.34,life:.34,r:112,hit:false,damage:6.0});
+    comboEl.textContent='ベノムブレード!';
+    setTimeout(()=>{if(comboEl.textContent==='ベノムブレード!')comboEl.textContent='';},560);
     clearCommand();
     return true;
   }
@@ -6732,9 +6724,15 @@
     }
 
     if(f.type==='beelzebub'){
-      if(kind==='punch' && water2HeldDir(f,'forward')){ clearCommand(); return specialBeelzebubTripleVenom(f); }
-      if(kind==='punch' && water2HeldDir(f,'up')){ clearCommand(); return specialAbyssShock(f,'upper'); }
-      if(kind==='kick' && water2HeldDir(f,'down')){ clearCommand(); return specialAbyssShock(f,'lower'); }
+      if(kind==='punch'){
+        let bd=null;
+        if(input.y<-.35)bd='up'; else if(input.y>.35)bd='down';
+        else if(input.x<-.35)bd='left'; else if(input.x>.35)bd='right';
+        if(bd){ clearCommand(); return specialVenomBlade(f,bd); }
+      }
+      if(kind==='kick' && water2HeldDir(f,'forward')){
+        clearCommand(); return specialBeelzebubTripleVenom(f);
+      }
     }
 
     return false;
@@ -6779,7 +6777,7 @@
       if(specialRibbonWhip(f)){ playSfx('special'); return; }
     }
 
-    // リリスさん：後ろ＋キック。技中のキック追加入力で回転を追加。
+    // リリスさん：後ろ＋キックでバックスピンウイング。技中のキック追加入力で回転を追加。
     if(f.type==='purple' && kind==='kick'){
       if(f.specialType==='lilithBackSpin'){
         if(specialLilithBackSpin(f,true)){ playSfx('special'); return; }
@@ -7699,9 +7697,10 @@
 
       if(enemy.type==='beelzebub' && enemy.specialT<=0 && enemy.bossSpecialCooldown<=0){
         const roll=Math.random();
-        if(!mixBattleMode){
-          if(roll<dt*.10){ specialVenomWater(enemy); return; }
-          if(roll<dt*.26){ specialAbyssShock(enemy,dy<0?'upper':'lower'); return; }
+        if(!mixBattleMode && roll<dt*.10){ specialVenomWater(enemy); return; }
+        if(dist<230 && roll<dt*.30){
+          const dir=Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down');
+          specialVenomBlade(enemy,dir);return;
         }
         if(dist>150 && roll<dt*.46){ specialBeelzebubTripleVenom(enemy); return; }
       }
@@ -7977,11 +7976,24 @@
       const ang=elapsed*18*(f.face>0?-1:1);
       if(other){
         const now=performance.now();
-        [{x:-58,y:46,key:'lilithSpinLastHitA'},{x:58,y:46,key:'lilithSpinLastHitB'}].forEach(foot=>{
-          const p=rotatePoint(foot.x,foot.y,ang);
-          if(Math.hypot(other.x-(f.x+p.x),other.y-(f.y+p.y))<other.radius+22 && now-(f[foot.key]||-9999)>115){
-            f[foot.key]=now;
-            damageHit(f,other,.82*f.damageMul,-38*f.face,-5);
+        // スピンウイング：脚ではなく、左右の翼の面に攻撃判定を置く。
+        // 翼の根元～先端を複数点で覆い、見た目どおり黒翼が触れた時にヒットする。
+        const wings=[
+          {key:'lilithSpinLastHitA',pts:[[-31,-7],[-55,-9],[-76,5],[-56,20]]},
+          {key:'lilithSpinLastHitB',pts:[[31,-7],[55,-9],[76,5],[56,20]]}
+        ];
+        wings.forEach(wing=>{
+          if(now-(f[wing.key]||-9999)<=115)return;
+          const touched=wing.pts.some(([wx,wy])=>{
+            const rp=rotatePoint(wx,wy,ang);
+            return Math.hypot(other.x-(f.x+rp.x),other.y-(f.y+rp.y))<other.radius+24;
+          });
+          if(touched){
+            f[wing.key]=now;
+            const side=wing===wings[0]?-1:1;
+            const kp=rotatePoint(side*70,5,ang);
+            const kl=Math.hypot(kp.x,kp.y)||1;
+            damageHit(f,other,.88*f.damageMul,(kp.x/kl)*46,(kp.y/kl)*46);
           }
         });
       }
@@ -8776,6 +8788,24 @@ function drawBackground(dt){
       });
       bossFish=bossFish.filter(f=>f.t>0 && f.hp>0);
 
+      venomBlades.forEach(b=>{
+        b.t-=dt;
+        const target=b.owner&&b.owner.isPlayer?enemy:player;
+        if(target&&!b.hit){
+          const dx=target.x-b.owner.x,dy=target.y-b.owner.y,dist=Math.hypot(dx,dy);
+          const ta=Math.atan2(dy,dx);
+          const ad=Math.abs(Math.atan2(Math.sin(ta-b.angle),Math.cos(ta-b.angle)));
+          // 約120度の薙ぎ払い範囲。
+          if(dist<b.r+target.radius && ad<Math.PI/3){
+            b.hit=true;b.owner._projectileHit=true;
+            if(target.guard)damageHit(b.owner,target,.8*b.owner.damageMul,42*Math.cos(b.angle),42*Math.sin(b.angle));
+            else damageHit(b.owner,target,b.damage*b.owner.damageMul,125*Math.cos(b.angle),125*Math.sin(b.angle));
+            b.owner._projectileHit=false;applyPoison(target,b.owner,1.5);spawnImpact(target.x,target.y,target.guard?'guard':'hit');
+          }
+        }
+      });
+      venomBlades=venomBlades.filter(b=>b.t>0);
+
       abyssShocks.forEach(w=>{
         w.t-=dt;
         w.vy+=(w.curve||0)*dt;
@@ -9464,6 +9494,26 @@ function drawBackground(dt){
       ctx.restore();
     });
 
+    venomBlades.forEach(b=>{
+      const p=1-b.t/b.life;
+      const sweep=-Math.PI/3+p*(Math.PI*2/3); // 120度
+      ctx.save();ctx.translate(b.owner.x,b.owner.y);ctx.rotate(b.angle+sweep);
+      ctx.globalCompositeOperation='source-over';
+      ctx.globalAlpha=Math.max(0,b.t/b.life);
+      // 光らない、濃い毒液の刃。
+      const g=ctx.createLinearGradient(22,0,b.r,0);
+      g.addColorStop(0,'rgba(54,0,66,.18)');
+      g.addColorStop(.38,'rgba(74,0,91,.82)');
+      g.addColorStop(.76,'rgba(45,0,59,.96)');
+      g.addColorStop(1,'rgba(24,0,34,.92)');
+      ctx.fillStyle=g;ctx.strokeStyle='#3b004c';ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(18,-8);
+      ctx.quadraticCurveTo(b.r*.58,-34,b.r,-5);
+      ctx.quadraticCurveTo(b.r*.72,17,20,10);
+      ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.restore();
+    });
+
     abyssShocks.forEach(w=>{
       const a=Math.max(0,w.t/w.life);
       ctx.save();
@@ -10086,10 +10136,11 @@ function drawBackground(dt){
         ctx.beginPath();ctx.arc(0,0,q.r,0,Math.PI*2);ctx.fill();ctx.stroke();
         ctx.fillStyle='rgba(255,255,255,.78)';ctx.beginPath();ctx.ellipse(-q.r*.32,-q.r*.35,q.r*.22,q.r*.12,-.6,0,Math.PI*2);ctx.fill();
       }else if(q.style==='venomGloss'){
-        const rg=ctx.createRadialGradient(-q.r*.3,-q.r*.35,1,0,0,q.r*1.15);
-        rg.addColorStop(0,'#d14aff');rg.addColorStop(.16,'#8d0fc3');rg.addColorStop(.62,'#4b006c');rg.addColorStop(1,'#20002e');
-        ctx.shadowColor='#8915bd';ctx.shadowBlur=22;ctx.fillStyle=rg;ctx.beginPath();ctx.arc(0,0,q.r,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='rgba(255,255,255,.72)';ctx.beginPath();ctx.ellipse(-q.r*.28,-q.r*.32,q.r*.23,q.r*.12,-.6,0,Math.PI*2);ctx.fill();
+        // 濃い毒液。発光・白いハイライトは付けない。
+        const rg=ctx.createRadialGradient(-q.r*.28,-q.r*.30,1,0,0,q.r*1.15);
+        rg.addColorStop(0,'#650078');rg.addColorStop(.28,'#4a005c');rg.addColorStop(.72,'#2d003b');rg.addColorStop(1,'#160020');
+        ctx.shadowBlur=0;ctx.fillStyle=rg;ctx.beginPath();ctx.arc(0,0,q.r,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='#390047';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,q.r,0,Math.PI*2);ctx.stroke();
       }else if(q.style==='samaelVenom'){
         const rg=ctx.createRadialGradient(-q.r*.32,-q.r*.35,1,0,0,q.r*1.2);
         rg.addColorStop(0,'#f2c8ff');rg.addColorStop(.18,'#d774ff');rg.addColorStop(.48,'#9a39df');rg.addColorStop(.78,'#5b1a91');rg.addColorStop(1,'#2b0b48');
