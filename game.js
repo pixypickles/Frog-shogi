@@ -461,7 +461,9 @@
 
   function finishTurn(msg){
     state.selected=null;state.legal=[];state.moves++;
-    state.turn=state.turn==='angel'?'demon':'angel';
+    // 悪魔軍ガントレットはプレイヤー専用ターン。悪魔軍は盤上で移動・攻撃しない。
+    // これにより「攻められて撃退した悪魔が残る」ケース自体を発生させない。
+    state.turn=state.specialRule==='demonGauntlet'?'angel':(state.turn==='angel'?'demon':'angel');
     showSelected(null);statusText.textContent=msg;render();
     if(state.turn==='demon' && !state.pendingBattle) scheduleCpuMove();
   }
@@ -469,7 +471,7 @@
   const PIECE_VALUE={king:10000,rook:900,bishop:800,gold:600,silver:520,knight:360,lance:320,pawn:120,tokin:600,proLance:600,proKnight:600,proSilver:600,horse:950,dragon:1100};
 
   function scheduleCpuMove(){
-    if(state.gameOver || state.cpuThinking || state.pendingBattle || state.turn!=='demon')return;
+    if(state.gameOver || state.specialRule==='demonGauntlet' || state.cpuThinking || state.pendingBattle || state.turn!=='demon')return;
     state.cpuThinking=true;
     turnBadge.textContent='悪魔軍 CPU 思考中…';
     statusText.textContent='悪魔軍が次の一手を考えています。';
@@ -477,7 +479,7 @@
   }
 
   function cpuMove(){
-    if(state.gameOver || state.turn!=='demon' || state.pendingBattle){state.cpuThinking=false;return;}
+    if(state.gameOver || state.specialRule==='demonGauntlet' || state.turn!=='demon' || state.pendingBattle){state.cpuThinking=false;return;}
     const choices=[];
     for(let r=0;r<state.board.length;r++)for(let c=0;c<state.board[r].length;c++){
       const p=state.board[r][c];
@@ -582,7 +584,7 @@
   buildEditor();showSelected(null);render();
   if(state.specialRule==='demonGauntlet'){
     const setup=$('setupPanel');if(setup)setup.hidden=true;
-    const legend=document.querySelector('.legend');if(legend)legend.innerHTML='<span><i class="dot water"></i>特殊ステージ：縦1列・1人 vs 悪魔軍全9人・双方HP100%・敗者退場</span>';
+    const legend=document.querySelector('.legend');if(legend)legend.innerHTML='<span><i class="dot water"></i>特殊ステージ：縦1列・1人 vs 悪魔軍全9人・双方HP100%・天使軍の連続手番・敗者退場</span>';
     const title=document.querySelector('.topbar h1');if(title)title.textContent='特殊ステージ・悪魔軍ガントレット';
     statusText.textContent='選んだ1人で悪魔軍全9人に挑戦。戦闘ごとのHP補正はなく、双方100%で戦います。';
     render();
