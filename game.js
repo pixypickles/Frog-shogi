@@ -105,8 +105,8 @@
     const angelNames=teams&&Array.isArray(teams.angel)&&teams.angel.length===5?teams.angel:fallback.angel;
     const demonNames=teams&&Array.isArray(teams.demon)&&teams.demon.length===5?teams.demon:fallback.demon;
     // 5×5。前後一列に5人ずつ並べ、中央3列を空けて開始。
-    demonNames.forEach((name,c)=>b[0][c]={side:'demon',type:'rook',name,specialOriginal:true});
-    angelNames.forEach((name,c)=>b[4][c]={side:'angel',type:'rook',name,specialOriginal:true});
+    demonNames.forEach((name,c)=>b[0][c]={side:'demon',type:'rook',name,specialOriginal:true,persistentHp:100});
+    angelNames.forEach((name,c)=>b[4][c]={side:'angel',type:'rook',name,specialOriginal:true,persistentHp:100});
     return {board:b,turn:'angel',selected:null,legal:[],moves:0,pendingBattle:null,cpuThinking:false,gameOver:false,specialRule:'rookElimination5'};
   }
 
@@ -265,9 +265,10 @@
   function openBattle(b){
     const terrain='sky';
     const special=state.specialRule&&(state.specialRule.startsWith('rookElimination')||state.specialRule==='demonGauntlet');
-    const aHp=special?100:ROLE_HP[b.attacker.type];
+    const persistent5=state.specialRule==='rookElimination5';
+    const aHp=persistent5?Math.max(1,Math.round(b.attacker.persistentHp??100)):(special?100:ROLE_HP[b.attacker.type]);
     const dRoleHp=special?100:ROLE_HP[b.defender.type];
-    const dStart=special?100:Math.max(1,Math.round(dRoleHp/3));
+    const dStart=persistent5?Math.max(1,Math.round(b.defender.persistentHp??100)):(special?100:Math.max(1,Math.round(dRoleHp/3)));
     const playerRole=b.attacker.side==='angel'?'attacker':'defender';
     const context={
       source:'kaeru-shogi-v0.9.1',
@@ -291,8 +292,8 @@
     $('encounterAttacker').textContent=b.attacker.name;
     $('encounterDefender').textContent=b.defender.name;
     $('encounterAttackerRole').textContent=`${K[b.attacker.type]} / HP ${aHp}%`;
-    $('encounterDefenderRole').textContent=`${K[b.defender.type]} / HP 約${dStart}%`;
-    $('encounterRule').textContent=special?`特殊ステージ：攻撃・守備ともHP100%。敗者は盤外へ退場し、持ち駒にはなりません。`:`攻撃：${b.attacker.name}　守備：${b.defender.name}。守備側は役割HPのおよそ1/3から開始します。`;
+    $('encounterDefenderRole').textContent=`${K[b.defender.type]} / HP ${persistent5?'': '約'}${dStart}%`;
+    $('encounterRule').textContent=persistent5?`飛車5対5：各キャラの残りHPを次の戦闘へ持ち越します。回復はありません。`:special?`特殊ステージ：攻撃・守備ともHP100%。敗者は盤外へ退場し、持ち駒にはなりません。`:`攻撃：${b.attacker.name}　守備：${b.defender.name}。守備側は役割HPのおよそ1/3から開始します。`;
 
     state.pendingBattleContext=context;
     encounterModal.hidden=false;
@@ -364,6 +365,11 @@
 
     if(state.specialRule&&(state.specialRule.startsWith('rookElimination')||state.specialRule==='demonGauntlet')){
       const terrainName='雲上';
+      if(state.specialRule==='rookElimination5'){
+        // 戦闘結果の実HPを生存駒へ保存。次回はこの値から開始する。
+        b.attacker.persistentHp=Math.max(0,Math.min(100,Number(result.attackerHp)||0));
+        b.defender.persistentHp=Math.max(0,Math.min(100,Number(result.defenderHp)||0));
+      }
       if(result.winner==='attacker'){
         const defeatedName=b.defender.name;
         state.board[b.tr][b.tc]=b.attacker;state.board[b.fr][b.fc]=null;
@@ -583,11 +589,11 @@
     const setup=$('setupPanel');if(setup)setup.hidden=true;
     const is5=state.specialRule==='rookElimination5';
     const legend=document.querySelector('.legend');
-    if(legend)legend.innerHTML=`<span><i class="dot water"></i>特殊ステージ：${is5?'5×5・5対5':'7×7・9対9'}・全員飛車・双方HP100%・敗者退場</span>`;
+    if(legend)legend.innerHTML=`<span><i class="dot water"></i>特殊ステージ：${is5?'5×5・5対5・HP持ち越し':'7×7・9対9・双方HP100%'}・全員飛車・敗者退場</span>`;
     const title=document.querySelector('.topbar h1');
     if(title)title.textContent=is5?'特殊ステージ・飛車5対5':'特殊ステージ・飛車殲滅戦';
     statusText.textContent=is5
-      ?'選んだ天使軍5体 vs 悪魔軍5体。全員が飛車移動。相手軍を全滅させると勝利です。'
+      ?'選んだ天使軍5体 vs 悪魔軍5体。戦闘後の残りHPは回復せず次戦へ持ち越します。相手軍を全滅させると勝利です。'
       :'天使軍9体 vs 悪魔軍9体。全員が飛車移動。相手軍を全滅させると勝利です。';
     render();
   }
