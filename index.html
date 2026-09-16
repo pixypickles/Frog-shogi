@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="theme-color" content="#0d6672" />
-  <title>カエルしょうぎ 試作 v0.12.21</title>
+  <title>カエルしょうぎ 試作 v0.12.22</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -18,6 +18,10 @@
       <button id="modeShogi" class="mode-button shogi-mode" type="button">
         <strong>カエルしょうぎ</strong>
         <span>将棋盤＋格闘戦の本編</span>
+      </button>
+      <button id="modeSpecialRook" class="mode-button special-mode" type="button">
+        <strong>特殊ステージ・飛車殲滅戦</strong>
+        <span>7×7 / 9人対9人 / 全員飛車 / 戦闘HP100%</span>
       </button>
 <button id="modeSkyPractice" class="mode-button sky-mode" type="button">
         <strong>雲上バトル練習</strong>
@@ -74,7 +78,7 @@
 
     <section class="info-grid">
       <div class="mini-card">
-        <h2>v0.12.21</h2>
+        <h2>v0.12.22</h2>
         <p>明るい池デザインへ刷新。駒はキャラ色そのもののカエル型にし、陣営色ではなく各キャラの色を前面に出しました。</p>
       </div>
       <div class="mini-card">
@@ -173,8 +177,16 @@
     document.getElementById('modeShogi').addEventListener('click', () => {
       overlay.classList.add('hidden');
       sessionStorage.setItem('pondModeSelected','shogi');
+      sessionStorage.setItem('pondBoardRule','normal');
     });
-        document.getElementById('modeSkyPractice').addEventListener('click', () => {
+        document.getElementById('modeSpecialRook').addEventListener('click', () => {
+      sessionStorage.removeItem('pondShogiSnapshot');
+      sessionStorage.removeItem('mixBattleResult');
+      sessionStorage.setItem('pondModeSelected','shogi');
+      sessionStorage.setItem('pondBoardRule','rookElimination');
+      location.reload();
+    });
+    document.getElementById('modeSkyPractice').addEventListener('click', () => {
       location.href = './training.html';
     });
 
