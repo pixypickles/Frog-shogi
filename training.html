@@ -61,6 +61,7 @@
 
       <button id="startPractice" class="start" type="button">練習開始</button>
       <button id="backHome" class="back" type="button">モード選択へ戻る</button>
+      <button id="backTitle" class="back" type="button">タイトルへ戻る</button>
 
       <p class="hint">練習では両者HP100%。将棋用の守備側1/3ハンデはありません。</p>
     </section>
@@ -101,6 +102,11 @@
     sessionStorage.removeItem('mixBattleResult');
     const page = './sky-battle.html';
     location.href = `${page}?mix=1&battle=1&practice=1`;
+  });
+
+  document.getElementById('backTitle').addEventListener('click',()=>{
+    ['pondModeSelected','pondBoardRule','pondShogiSnapshot','mixBattle','mixBattleResult'].forEach(k=>sessionStorage.removeItem(k));
+    location.href='./index.html?title=1';
   });
 
   document.getElementById('backHome').addEventListener('click', () => {

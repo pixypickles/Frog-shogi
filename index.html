@@ -4,10 +4,18 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="theme-color" content="#0d6672" />
-  <title>カエルしょうぎ 試作 v0.12.26</title>
+  <title>カエルしょうぎ 試作 v0.12.27</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+  <div id="titleSplash" class="title-splash">
+    <div class="title-splash-inner">
+      <img src="frog-fighter-shogi-sky-title.png" alt="SHOGI FROG FIGHTER II SKY 蛙" class="title-logo">
+      <button id="titleStart" class="title-start" type="button">START</button>
+      <div class="title-version">FROG FIGHTER II SKY / v0.12.27</div>
+    </div>
+  </div>
 
   <div id="modeSelect" class="mode-select">
     <section class="mode-card">
@@ -44,7 +52,7 @@
         <div class="eyebrow">FROG FIGHTER 2 / MIX PROTOTYPE</div>
         <h1>カエルしょうぎ</h1>
       </div>
-      <button id="resetBtn" class="ghost" type="button">リセット</button>
+      <div class="topbar-actions"><button id="titleHomeBtn" class="ghost" type="button">タイトルへ戻る</button><button id="resetBtn" class="ghost" type="button">リセット</button></div>
     </header>
 
     <section class="status-card" aria-live="polite">
@@ -86,7 +94,7 @@
 
     <section class="info-grid">
       <div class="mini-card">
-        <h2>v0.12.26</h2>
+        <h2>v0.12.27</h2>
         <p>明るい池デザインへ刷新。駒はキャラ色そのもののカエル型にし、陣営色ではなく各キャラの色を前面に出しました。</p>
       </div>
       <div class="mini-card">
@@ -213,6 +221,16 @@
   <script>
   (() => {
     const overlay = document.getElementById('modeSelect');
+    const titleSplash=document.getElementById('titleSplash');
+    const clearToTitle=()=>{
+      ['pondModeSelected','pondBoardRule','pondShogiSnapshot','mixBattle','mixBattleResult'].forEach(k=>sessionStorage.removeItem(k));
+      location.href='./index.html?title=1';
+    };
+    document.getElementById('titleHomeBtn').addEventListener('click',clearToTitle);
+    document.getElementById('titleStart').addEventListener('click',()=>{
+      titleSplash.classList.add('hidden');
+      overlay.classList.remove('hidden');
+    });
     document.getElementById('modeShogi').addEventListener('click', () => {
       overlay.classList.add('hidden');
       sessionStorage.setItem('pondModeSelected','shogi');
@@ -288,7 +306,9 @@
     // 戦闘から将棋盤へ戻ってきた時は毎回モード選択を出さない
     const snap = sessionStorage.getItem('pondShogiSnapshot');
     const result = sessionStorage.getItem('mixBattleResult');
-    if (snap || result || sessionStorage.getItem('pondModeSelected') === 'shogi') {
+    const forceTitle=new URLSearchParams(location.search).has('title');
+    if (!forceTitle && (snap || result || sessionStorage.getItem('pondModeSelected') === 'shogi')) {
+      titleSplash.classList.add('hidden');
       overlay.classList.add('hidden');
     }
   })();

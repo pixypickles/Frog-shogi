@@ -298,6 +298,12 @@ html.mix-battle-boot #portraitOverlay{display:none!important}
     </div>
   </div>
   <script src="sky-battle.js?v=0.12.26"></script>
-<a id="mixMapReturn" href="index.html" aria-label="MIXマップへ戻る">タイトルへ</a>
+<a id="mixMapReturn" href="index.html?title=1" aria-label="タイトルへ戻る">タイトルへ戻る</a>
+<script>
+(() => {
+  const a=document.getElementById('mixMapReturn');
+  if(a)a.addEventListener('click',()=>{['pondModeSelected','pondBoardRule','pondShogiSnapshot','mixBattle','mixBattleResult'].forEach(k=>sessionStorage.removeItem(k));});
+})();
+</script>
 </body>
 </html>
