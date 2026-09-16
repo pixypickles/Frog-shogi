@@ -760,7 +760,7 @@
 
       // カエルしょうぎ側の練習から来た場合は、元の練習選択画面へ戻す。
       if(mixBattleMode && mixBattleContext && mixBattleContext.practice){
-        location.href=new URL(mixBattleContext.returnUrl||'training.html',location.href).href;
+        location.href=new URL('training.html?fromBattle=1',location.href).href;
         return;
       }
 
@@ -3625,7 +3625,7 @@
     if(practiceExitButton && mixBattleContext.practice){
       practiceExitButton.hidden=false;
       practiceExitButton.textContent='キャラ選択へ';
-      practiceExitButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'training.html',location.href).href; };
+      practiceExitButton.onclick=(e)=>{ if(e){e.preventDefault();e.stopPropagation();} location.href=new URL('training.html?fromBattle=1',location.href).href; };
     }
     return true;
   }
@@ -10650,7 +10650,7 @@ function drawBackground(dt){
         if(mixBattleContext.practice){
           practiceExitButton.hidden=false;
           practiceExitButton.textContent='キャラ選択へ';
-          practiceExitButton.onclick=()=>{ location.href=new URL(mixBattleContext.returnUrl||'training.html',location.href).href; };
+          practiceExitButton.onclick=(e)=>{ if(e){e.preventDefault();e.stopPropagation();} location.href=new URL('training.html?fromBattle=1',location.href).href; };
         }else{
           practiceExitButton.hidden=true;
         }

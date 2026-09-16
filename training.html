@@ -84,7 +84,7 @@
     const demonNames=new Set(['ルシファー','リリス','ベルゼブブ','サリエル','コカビエル','フラウロス','サマエル','サタナエル','覚醒コカビエル']);
     const fighterSide=demonNames.has(fighter)?'demon':'angel';
     const context = {
-      source:'pond-training-v0.12.21',
+      source:'pond-training-v0.12.28',
       practice:true,
       attacker:fighter,
       defender:'モブさん',
@@ -96,7 +96,7 @@
       defenderHp:100,
       playerRole:'attacker',
       terrain:'sky',
-      returnUrl:'./training.html'
+      returnUrl:'./training.html?fromBattle=1'
     };
     sessionStorage.setItem('mixBattle', JSON.stringify(context));
     sessionStorage.removeItem('mixBattleResult');

@@ -310,7 +310,7 @@ html,body{background:linear-gradient(180deg,#10b6c5 0%,#0aa2b4 48%,#078fa4 100%)
 .dot.lotus{display:none!important}
 .sky-mode{background:#e4f7ff;color:#175d78}
 
-.board.special-7{grid-template-columns:repeat(7,1fr)!important;grid-template-rows:repeat(7,1fr)!important;aspect-ratio:7/8.3;max-width:620px;margin-inline:auto}.special-mode{border-color:rgba(255,217,118,.55)!important;background:linear-gradient(135deg,rgba(93,68,17,.72),rgba(28,79,89,.8))!important}
+.board.special-7{grid-template-columns:repeat(7,1fr)!important;grid-template-rows:repeat(7,1fr)!important;aspect-ratio:7/8.3;max-width:620px;margin-inline:auto}.special-mode{border:2px solid #9fe8ee!important;background:linear-gradient(135deg,#e9fcff,#c9f3f5)!important;color:#0d5b68!important;box-shadow:0 7px 18px rgba(0,92,110,.14)!important}.special-mode strong{color:#075363!important}.special-mode span{color:#477a83!important;opacity:1!important}
 
 .rook5-pickers{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
 .rook5-pickers fieldset{border:1px solid rgba(255,255,255,.28);border-radius:14px;padding:10px;min-width:0}
@@ -322,7 +322,7 @@ html,body{background:linear-gradient(180deg,#10b6c5 0%,#0aa2b4 48%,#078fa4 100%)
 
 .gauntlet-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:12px 0}.gauntlet-choice{padding:10px 6px;border-radius:10px;background:rgba(255,255,255,.1);color:inherit;border:1px solid rgba(255,255,255,.2);font-weight:800}.board.gauntlet-board{grid-template-columns:1fr!important;aspect-ratio:1/5.8;max-width:150px;margin-inline:auto}.board.gauntlet-board .cell{min-height:72px}.board.gauntlet-board .piece-name{font-size:7px}
 
-/* v0.12.27 title screen */
+/* v0.12.28 title screen */
 .title-splash{position:fixed;inset:0;z-index:100000;background:#000;display:flex;align-items:center;justify-content:center;padding:18px env(safe-area-inset-right) 18px env(safe-area-inset-left)}
 .title-splash.hidden{display:none}
 .title-splash-inner{width:min(100%,980px);height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
@@ -331,3 +331,9 @@ html,body{background:linear-gradient(180deg,#10b6c5 0%,#0aa2b4 48%,#078fa4 100%)
 .title-version{color:#8fdce8;font:800 10px/1.2 system-ui,sans-serif;letter-spacing:.12em}
 .topbar-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 @media(max-width:520px){.topbar-actions .ghost{padding:8px 9px;font-size:11px}.title-logo{max-height:64vh}.title-start{font-size:18px;min-width:180px}}
+
+/* v0.12.28 special-stage pickers: mode overlay より前面に表示 */
+#rook5Select,#gauntletSelect{position:fixed;inset:0;z-index:260;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,35,44,.58);backdrop-filter:blur(5px)}
+#rook5Select[hidden],#gauntletSelect[hidden]{display:none!important}
+#rook5Select .modal-card,#gauntletSelect .modal-card{position:relative;z-index:1;width:min(94vw,520px);max-height:88svh;overflow:auto;border-radius:22px;padding:18px;background:#f4ffff;color:#164b58;box-shadow:0 24px 70px rgba(0,0,0,.32)}
+#rook5Select .rook5-choice,#gauntletSelect .gauntlet-choice{background:#e7f8fa;color:#155563;border:1px solid #b8e5e9}

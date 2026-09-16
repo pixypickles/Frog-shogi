@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="theme-color" content="#0d6672" />
-  <title>カエルしょうぎ 試作 v0.12.27</title>
+  <title>カエルしょうぎ 試作 v0.12.28</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -13,7 +13,7 @@
     <div class="title-splash-inner">
       <img src="frog-fighter-shogi-sky-title.png" alt="SHOGI FROG FIGHTER II SKY 蛙" class="title-logo">
       <button id="titleStart" class="title-start" type="button">START</button>
-      <div class="title-version">FROG FIGHTER II SKY / v0.12.27</div>
+      <div class="title-version">FROG FIGHTER II SKY / v0.12.28</div>
     </div>
   </div>
 
@@ -94,7 +94,7 @@
 
     <section class="info-grid">
       <div class="mini-card">
-        <h2>v0.12.27</h2>
+        <h2>v0.12.28</h2>
         <p>明るい池デザインへ刷新。駒はキャラ色そのもののカエル型にし、陣営色ではなく各キャラの色を前面に出しました。</p>
       </div>
       <div class="mini-card">
@@ -228,6 +228,8 @@
     };
     document.getElementById('titleHomeBtn').addEventListener('click',clearToTitle);
     document.getElementById('titleStart').addEventListener('click',()=>{
+      // ?title=1 を残したまま特殊ステージで reload すると再びタイトルへ戻るため、ここでURLを正規化。
+      history.replaceState(null,'',location.pathname);
       titleSplash.classList.add('hidden');
       overlay.classList.remove('hidden');
     });
@@ -314,6 +316,6 @@
   })();
   </script>
 
-  <script src="game.js?v=0.12.26"></script>
+  <script src="game.js?v=0.12.28"></script>
 </body>
 </html>
