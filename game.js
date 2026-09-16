@@ -94,8 +94,37 @@
     return {board:b,turn:'angel',selected:null,legal:[],moves:0,pendingBattle:null,cpuThinking:false,gameOver:false,specialRule:'rookElimination'};
   }
 
+  function specialRook5State(){
+    const b=emptyBoard(5);
+    let teams=null;
+    try{teams=JSON.parse(sessionStorage.getItem('pondRook5Teams')||'null');}catch(e){}
+    const fallback={
+      angel:['セラフィエル','ジィハル','ラファエル','ミカエル','カワズさん'],
+      demon:['サタナエル','フラウロス','ベルゼブブ','リリス','覚醒コカビエル']
+    };
+    const angelNames=teams&&Array.isArray(teams.angel)&&teams.angel.length===5?teams.angel:fallback.angel;
+    const demonNames=teams&&Array.isArray(teams.demon)&&teams.demon.length===5?teams.demon:fallback.demon;
+    // 5×5。前後一列に5人ずつ並べ、中央3列を空けて開始。
+    demonNames.forEach((name,c)=>b[0][c]={side:'demon',type:'rook',name,specialOriginal:true});
+    angelNames.forEach((name,c)=>b[4][c]={side:'angel',type:'rook',name,specialOriginal:true});
+    return {board:b,turn:'angel',selected:null,legal:[],moves:0,pendingBattle:null,cpuThinking:false,gameOver:false,specialRule:'rookElimination5'};
+  }
+
+  function demonGauntletState(){
+    const demonNames=['サタナエル','フラウロス','ベルゼブブ','サマエル','ルシファー','リリス','サリエル','コカビエル','覚醒コカビエル'];
+    let player='セラフィエル';
+    try{player=sessionStorage.getItem('pondGauntletPlayer')||player;}catch(e){}
+    // 横1マス×縦10マス。悪魔軍9人を上から並べ、プレイヤーは最下段から開始。
+    const b=Array.from({length:10},()=>Array(1).fill(null));
+    demonNames.forEach((name,r)=>b[r][0]={side:'demon',type:'rook',name,specialOriginal:true});
+    b[9][0]={side:'angel',type:'rook',name:player,specialOriginal:true};
+    return {board:b,turn:'angel',selected:null,legal:[],moves:0,pendingBattle:null,cpuThinking:false,gameOver:false,specialRule:'demonGauntlet'};
+  }
+
   function initialState(){
     if(requestedRule()==='rookElimination')return specialRookState();
+    if(requestedRule()==='rookElimination5')return specialRook5State();
+    if(requestedRule()==='demonGauntlet')return demonGauntletState();
     const b=emptyBoard();
     const back=['lance','knight','silver','gold','king','gold','silver','knight','lance'];
     back.forEach((t,c)=>b[0][c]=piece('demon',t)); b[1][1]=piece('demon','rook'); b[1][7]=piece('demon','bishop'); for(let c=0;c<9;c++)b[2][c]=piece('demon','pawn');
@@ -126,8 +155,12 @@
       if(p)cell.insertAdjacentHTML('beforeend',frogMarkup(p));
       cell.addEventListener('click',onCellClick);boardEl.appendChild(cell);
     }
-    boardEl.classList.toggle('special-7',state.specialRule==='rookElimination');
-    boardEl.setAttribute('aria-label',`${state.board.length}×${state.board.length} カエルしょうぎ盤`);
+    boardEl.classList.toggle('special-7',state.specialRule&&(state.specialRule.startsWith('rookElimination')||state.specialRule==='demonGauntlet'));
+    boardEl.classList.toggle('gauntlet-board',state.specialRule==='demonGauntlet');
+    const boardCols=(state.board[0]&&state.board[0].length)||state.board.length;
+    boardEl.style.gridTemplateColumns=`repeat(${boardCols},1fr)`;
+    boardEl.style.gridTemplateRows=`repeat(${state.board.length},1fr)`;
+    boardEl.setAttribute('aria-label',`${boardCols}×${state.board.length} カエルしょうぎ盤`);
     const a=state.turn==='angel';
     turnBadge.textContent=a?'天使軍の手番':(state.cpuThinking?'悪魔軍 CPU 思考中…':'悪魔軍 CPU の手番');
     turnBadge.className=`turn-badge ${a?'angel':'demon'}`;
@@ -188,7 +221,7 @@
   }
 
   function completeBoardMove(fr,fc,tr,tc,a){
-    if(state.specialRule==='rookElimination'){state.board[tr][tc]=a;state.board[fr][fc]=null;finishTurn(`${a.name}が移動しました。`);return;}
+    if(state.specialRule&&(state.specialRule.startsWith('rookElimination')||state.specialRule==='demonGauntlet')){state.board[tr][tc]=a;state.board[fr][fc]=null;finishTurn(`${a.name}が移動しました。`);return;}
     if(a.type==='pawn' && inPromotionZone(a.side,tr)){
       const moved=promotePawn(a);state.board[tr][tc]=moved;state.board[fr][fc]=null;
       finishTurn(`${a.name}が${promotionFighter(a.side)}（と）に成りました！`);return;
@@ -231,7 +264,7 @@
 
   function openBattle(b){
     const terrain='sky';
-    const special=state.specialRule==='rookElimination';
+    const special=state.specialRule&&(state.specialRule.startsWith('rookElimination')||state.specialRule==='demonGauntlet');
     const aHp=special?100:ROLE_HP[b.attacker.type];
     const dRoleHp=special?100:ROLE_HP[b.defender.type];
     const dStart=special?100:Math.max(1,Math.round(dRoleHp/3));
@@ -329,7 +362,7 @@
       sessionStorage.removeItem('pondShogiSnapshot');
     }catch(e){}
 
-    if(state.specialRule==='rookElimination'){
+    if(state.specialRule&&(state.specialRule.startsWith('rookElimination')||state.specialRule==='demonGauntlet')){
       const terrainName='雲上';
       if(result.winner==='attacker'){
         const defeatedName=b.defender.name;
@@ -476,7 +509,7 @@
   function getLegalMoves(r,c){
     const p=state.board[r][c];if(!p)return[];const f=p.side==='angel'?-1:1,out=[];
     const step=(dr,dc)=>add(r+dr,c+dc,p,out),ray=(dr,dc)=>{let rr=r+dr,cc=c+dc;while(inB(rr,cc)){const t=state.board[rr][cc];if(!t)out.push({r:rr,c:cc,capture:false});else{if(t.side!==p.side)out.push({r:rr,c:cc,capture:true});break;}rr+=dr;cc+=dc;}};
-    if(state.specialRule==='rookElimination'){
+    if(state.specialRule&&(state.specialRule.startsWith('rookElimination')||state.specialRule==='demonGauntlet')){
       [[-1,0],[1,0],[0,-1],[0,1]].forEach(d=>ray(...d));
       return out;
     }
@@ -495,7 +528,7 @@
     return out;
   }
   function add(r,c,p,out){if(!inB(r,c))return;const t=state.board[r][c];if(!t)out.push({r,c,capture:false});else if(t.side!==p.side)out.push({r,c,capture:true});}
-  const inB=(r,c)=>r>=0&&c>=0&&!!state&&r<state.board.length&&c<state.board.length;
+  const inB=(r,c)=>r>=0&&c>=0&&!!state&&r<state.board.length&&!!state.board[r]&&c<state.board[r].length;
 
   function buildEditor(){
     ['angel','demon'].forEach(side=>{const host=$(`${side}Editor`);host.innerHTML='';
@@ -540,11 +573,22 @@
   }
   if(!restored)state=initialState();
   buildEditor();showSelected(null);render();
-  if(state.specialRule==='rookElimination'){
+  if(state.specialRule==='demonGauntlet'){
     const setup=$('setupPanel');if(setup)setup.hidden=true;
-    const legend=document.querySelector('.legend');if(legend)legend.innerHTML='<span><i class="dot water"></i>特殊ステージ：7×7・9対9・全員飛車・双方HP100%・敗者退場</span>';
-    const title=document.querySelector('.topbar h1');if(title)title.textContent='特殊ステージ・飛車殲滅戦';
-    statusText.textContent='天使軍9体 vs 悪魔軍9体。全員が飛車移動。相手軍を全滅させると勝利です。';
+    const legend=document.querySelector('.legend');if(legend)legend.innerHTML='<span><i class="dot water"></i>特殊ステージ：縦1列・1人 vs 悪魔軍全9人・双方HP100%・敗者退場</span>';
+    const title=document.querySelector('.topbar h1');if(title)title.textContent='特殊ステージ・悪魔軍ガントレット';
+    statusText.textContent='選んだ1人で悪魔軍全9人に挑戦。戦闘ごとのHP補正はなく、双方100%で戦います。';
+    render();
+  }else if(state.specialRule&&(state.specialRule.startsWith('rookElimination')||state.specialRule==='demonGauntlet')){
+    const setup=$('setupPanel');if(setup)setup.hidden=true;
+    const is5=state.specialRule==='rookElimination5';
+    const legend=document.querySelector('.legend');
+    if(legend)legend.innerHTML=`<span><i class="dot water"></i>特殊ステージ：${is5?'5×5・5対5':'7×7・9対9'}・全員飛車・双方HP100%・敗者退場</span>`;
+    const title=document.querySelector('.topbar h1');
+    if(title)title.textContent=is5?'特殊ステージ・飛車5対5':'特殊ステージ・飛車殲滅戦';
+    statusText.textContent=is5
+      ?'選んだ天使軍5体 vs 悪魔軍5体。全員が飛車移動。相手軍を全滅させると勝利です。'
+      :'天使軍9体 vs 悪魔軍9体。全員が飛車移動。相手軍を全滅させると勝利です。';
     render();
   }
 })();

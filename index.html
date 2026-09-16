@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="theme-color" content="#0d6672" />
-  <title>カエルしょうぎ 試作 v0.12.23</title>
+  <title>カエルしょうぎ 試作 v0.12.25</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -22,6 +22,14 @@
       <button id="modeSpecialRook" class="mode-button special-mode" type="button">
         <strong>特殊ステージ・飛車殲滅戦</strong>
         <span>7×7 / 9人対9人 / 全員飛車 / 戦闘HP100%</span>
+      </button>
+      <button id="modeSpecialRook5" class="mode-button special-mode" type="button">
+        <strong>特殊ステージ・飛車5対5</strong>
+        <span>5×5 / 好きな5人を選択 / 全員飛車 / 戦闘HP100%</span>
+      </button>
+      <button id="modeDemonGauntlet" class="mode-button special-mode" type="button">
+        <strong>特殊ステージ・悪魔軍ガントレット</strong>
+        <span>1列の縦長ステージ / 好きな1人 vs 悪魔軍全員 / 戦闘HP100%</span>
       </button>
 <button id="modeSkyPractice" class="mode-button sky-mode" type="button">
         <strong>雲上バトル練習</strong>
@@ -78,7 +86,7 @@
 
     <section class="info-grid">
       <div class="mini-card">
-        <h2>v0.12.23</h2>
+        <h2>v0.12.25</h2>
         <p>明るい池デザインへ刷新。駒はキャラ色そのもののカエル型にし、陣営色ではなく各キャラの色を前面に出しました。</p>
       </div>
       <div class="mini-card">
@@ -165,6 +173,37 @@
     </section>
   </div>
 
+  <div id="gauntletSelect" class="modal-backdrop" hidden>
+    <section class="modal-card">
+      <h2>悪魔軍ガントレット・キャラ選択</h2>
+      <p>こちら側のキャラを1人選んでください。縦1列のステージで、悪魔軍全9人を相手にします。</p>
+      <div id="gauntletAngelList" class="gauntlet-list"></div>
+      <div class="modal-actions">
+        <button id="gauntletCancel" class="secondary" type="button">戻る</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="rook5Select" class="modal-backdrop" hidden>
+    <section class="modal-card">
+      <h2>飛車5対5・メンバー選択</h2>
+      <p>天使軍と悪魔軍から5人ずつ選んでください。カワズさん／覚醒コカビエルさんも選択できます。</p>
+      <div class="rook5-pickers">
+        <fieldset><legend>天使軍 <span id="rook5AngelCount">0/5</span></legend>
+          <div id="rook5AngelList" class="rook5-list"></div>
+        </fieldset>
+        <fieldset><legend>悪魔軍 <span id="rook5DemonCount">0/5</span></legend>
+          <div id="rook5DemonList" class="rook5-list"></div>
+        </fieldset>
+      </div>
+      <p id="rook5Warning">両軍5人ずつ選ぶと開始できます。</p>
+      <div class="modal-actions">
+        <button id="rook5Start" type="button" disabled>5対5を開始</button>
+        <button id="rook5Cancel" class="secondary" type="button">戻る</button>
+      </div>
+    </section>
+  </div>
+
   <div id="resultToast" class="result-toast" hidden aria-live="polite">
     <strong id="resultTitle">戦闘結果</strong>
     <span id="resultText"></span>
@@ -186,6 +225,62 @@
       sessionStorage.setItem('pondBoardRule','rookElimination');
       location.reload();
     });
+    const gauntletModal=document.getElementById('gauntletSelect');
+    const gauntletAngels=['セラフィエル','ジィハル','ラファエル','ウリエル','ミカエル','ガブリエル','レミエル','モブさん','カワズさん'];
+    const gauntletList=document.getElementById('gauntletAngelList');
+    gauntletAngels.forEach(name=>{
+      const b=document.createElement('button');b.type='button';b.className='gauntlet-choice';b.textContent=name;
+      b.addEventListener('click',()=>{
+        sessionStorage.removeItem('pondShogiSnapshot');sessionStorage.removeItem('mixBattleResult');
+        sessionStorage.setItem('pondGauntletPlayer',name);
+        sessionStorage.setItem('pondModeSelected','shogi');
+        sessionStorage.setItem('pondBoardRule','demonGauntlet');
+        location.reload();
+      });
+      gauntletList.appendChild(b);
+    });
+    document.getElementById('modeDemonGauntlet').addEventListener('click',()=>{gauntletModal.hidden=false;});
+    document.getElementById('gauntletCancel').addEventListener('click',()=>{gauntletModal.hidden=true;});
+
+    const rook5Modal=document.getElementById('rook5Select');
+    const rook5Teams={
+      angel:['セラフィエル','ジィハル','ラファエル','ウリエル','ミカエル','ガブリエル','レミエル','モブさん','カワズさん'],
+      demon:['サタナエル','フラウロス','ベルゼブブ','サマエル','ルシファー','リリス','サリエル','コカビエル','覚醒コカビエル']
+    };
+    const rook5Chosen={angel:new Set(),demon:new Set()};
+    function buildRook5(side){
+      const host=document.getElementById(side==='angel'?'rook5AngelList':'rook5DemonList');
+      host.innerHTML='';
+      rook5Teams[side].forEach(name=>{
+        const label=document.createElement('label');label.className='rook5-choice';
+        const cb=document.createElement('input');cb.type='checkbox';cb.value=name;
+        cb.addEventListener('change',()=>{
+          const set=rook5Chosen[side];
+          if(cb.checked){
+            if(set.size>=5){cb.checked=false;return;}
+            set.add(name);
+          }else set.delete(name);
+          updateRook5();
+        });
+        label.append(cb,document.createTextNode(name));host.appendChild(label);
+      });
+    }
+    function updateRook5(){
+      document.getElementById('rook5AngelCount').textContent=`${rook5Chosen.angel.size}/5`;
+      document.getElementById('rook5DemonCount').textContent=`${rook5Chosen.demon.size}/5`;
+      document.getElementById('rook5Start').disabled=!(rook5Chosen.angel.size===5&&rook5Chosen.demon.size===5);
+    }
+    buildRook5('angel');buildRook5('demon');updateRook5();
+    document.getElementById('modeSpecialRook5').addEventListener('click',()=>{rook5Modal.hidden=false;});
+    document.getElementById('rook5Cancel').addEventListener('click',()=>{rook5Modal.hidden=true;});
+    document.getElementById('rook5Start').addEventListener('click',()=>{
+      if(rook5Chosen.angel.size!==5||rook5Chosen.demon.size!==5)return;
+      sessionStorage.removeItem('pondShogiSnapshot');sessionStorage.removeItem('mixBattleResult');
+      sessionStorage.setItem('pondRook5Teams',JSON.stringify({angel:[...rook5Chosen.angel],demon:[...rook5Chosen.demon]}));
+      sessionStorage.setItem('pondModeSelected','shogi');
+      sessionStorage.setItem('pondBoardRule','rookElimination5');
+      location.reload();
+    });
     document.getElementById('modeSkyPractice').addEventListener('click', () => {
       location.href = './training.html';
     });
@@ -199,6 +294,6 @@
   })();
   </script>
 
-  <script src="game.js"></script>
+  <script src="game.js?v=0.12.24"></script>
 </body>
 </html>

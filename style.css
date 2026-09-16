@@ -311,3 +311,13 @@ html,body{background:linear-gradient(180deg,#10b6c5 0%,#0aa2b4 48%,#078fa4 100%)
 .sky-mode{background:#e4f7ff;color:#175d78}
 
 .board.special-7{grid-template-columns:repeat(7,1fr)!important;grid-template-rows:repeat(7,1fr)!important;aspect-ratio:7/8.3;max-width:620px;margin-inline:auto}.special-mode{border-color:rgba(255,217,118,.55)!important;background:linear-gradient(135deg,rgba(93,68,17,.72),rgba(28,79,89,.8))!important}
+
+.rook5-pickers{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.rook5-pickers fieldset{border:1px solid rgba(255,255,255,.28);border-radius:14px;padding:10px;min-width:0}
+.rook5-pickers legend{font-weight:800;padding:0 6px}
+.rook5-list{display:grid;gap:5px}
+.rook5-choice{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:9px;background:rgba(255,255,255,.09);font-size:.92rem}
+.rook5-choice input{width:18px;height:18px}
+@media(max-width:560px){.rook5-pickers{grid-template-columns:1fr 1fr;gap:7px}.rook5-choice{font-size:.78rem;padding:5px 4px}}
+
+.gauntlet-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:12px 0}.gauntlet-choice{padding:10px 6px;border-radius:10px;background:rgba(255,255,255,.1);color:inherit;border:1px solid rgba(255,255,255,.2);font-weight:800}.board.gauntlet-board{grid-template-columns:1fr!important;aspect-ratio:1/5.8;max-width:150px;margin-inline:auto}.board.gauntlet-board .cell{min-height:72px}.board.gauntlet-board .piece-name{font-size:7px}
