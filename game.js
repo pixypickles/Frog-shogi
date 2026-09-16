@@ -148,14 +148,15 @@
   function render(){
     boardEl.innerHTML='';
     // 大葉は撤去。小さい蓮の葉のみ。
-    for(let r=0;r<state.board.length;r++)for(let c=0;c<state.board.length;c++){
+    for(let r=0;r<state.board.length;r++)for(let c=0;c<state.board[r].length;c++){
       const cell=document.createElement('button'); cell.type='button'; cell.className='cell water'; cell.style.setProperty('--leaf-rot',`${((r*17+c*29)%70)-35}deg`); cell.dataset.r=r;cell.dataset.c=c;
       const legal=state.legal.find(m=>m.r===r&&m.c===c); if(state.selected&&state.selected.r===r&&state.selected.c===c)cell.classList.add('selected'); if(legal)cell.classList.add(legal.capture?'capture':'legal');
       const marker=document.createElement('span');marker.className='move-dot';cell.appendChild(marker); const p=state.board[r][c];
       if(p)cell.insertAdjacentHTML('beforeend',frogMarkup(p));
       cell.addEventListener('click',onCellClick);boardEl.appendChild(cell);
     }
-    boardEl.classList.toggle('special-7',state.specialRule&&(state.specialRule.startsWith('rookElimination')||state.specialRule==='demonGauntlet'));
+    boardEl.classList.toggle('special-7',state.specialRule==='rookElimination');
+    boardEl.classList.toggle('special-5',state.specialRule==='rookElimination5');
     boardEl.classList.toggle('gauntlet-board',state.specialRule==='demonGauntlet');
     const boardCols=(state.board[0]&&state.board[0].length)||state.board.length;
     boardEl.style.gridTemplateColumns=`repeat(${boardCols},1fr)`;
@@ -478,7 +479,7 @@
   function cpuMove(){
     if(state.gameOver || state.turn!=='demon' || state.pendingBattle){state.cpuThinking=false;return;}
     const choices=[];
-    for(let r=0;r<state.board.length;r++)for(let c=0;c<state.board.length;c++){
+    for(let r=0;r<state.board.length;r++)for(let c=0;c<state.board[r].length;c++){
       const p=state.board[r][c];
       if(!p || p.side!=='demon')continue;
       for(const m of getLegalMoves(r,c)){
