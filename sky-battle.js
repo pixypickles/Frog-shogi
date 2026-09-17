@@ -8459,10 +8459,14 @@ function drawBackground(dt){
       remielMirages=remielMirages.filter(m=>m.t>0);
       remielFakeShots.forEach(q=>{
         q.t-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;
-        if(target&&!q.hit&&Math.abs(q.x-target.x)<(q.r||14)+target.radius*.62&&Math.abs(q.y-target.y)<(q.r||14)+target.radius*.62){
+        // 各オーブ弾ごとに所有者から相手を取得する。
+        // 以前は未定義の target を参照しており、オーブ弾生成直後の更新で
+        // ReferenceError が発生してゲームループ全体が停止していた。
+        const shotTarget=q.owner?(q.owner.isPlayer?enemy:player):null;
+        if(shotTarget&&!q.hit&&Math.abs(q.x-shotTarget.x)<(q.r||14)+shotTarget.radius*.62&&Math.abs(q.y-shotTarget.y)<(q.r||14)+shotTarget.radius*.62){
           q.hit=true;q.t=0;
-          if(target.guard)spawnImpact(target.x,target.y,'guard');
-          else{damageHit(q.owner,target,q.damage||2.4*q.owner.damageMul,75*Math.sign(q.vx||q.owner.face),-18);spawnImpact(target.x,target.y,'hit');}
+          if(shotTarget.guard)spawnImpact(shotTarget.x,shotTarget.y,'guard');
+          else{damageHit(q.owner,shotTarget,q.damage||2.4*q.owner.damageMul,75*Math.sign(q.vx||q.owner.face),-18);spawnImpact(shotTarget.x,shotTarget.y,'hit');}
         }
       });
       remielFakeShots=remielFakeShots.filter(q=>q.t>0&&q.x>-50&&q.x<innerWidth+50&&q.y>-50&&q.y<innerHeight+50);
